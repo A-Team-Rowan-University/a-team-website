@@ -21,3 +21,12 @@ pub struct NewUser {
     pub banner_id: u32,
     pub email: Option<String>,
 }
+
+#[derive(AsChangeset, Serialize, Deserialize)]
+#[table_name = "users"]
+pub struct PartialUser {
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+    pub banner_id: Option<u32>,
+    pub email: Option<Option<String>>,
+}

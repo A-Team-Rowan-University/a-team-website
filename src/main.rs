@@ -110,11 +110,16 @@ fn handle_request(
                 database_connection
             ).map(|s| Some(s))
         },
-        (POST) (/users/create) => {
+        (POST) (/users) => {
             let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
             let new_user: models::NewUser = serde_json::from_reader(request_body)?;
 
             handle_insert(new_user, database_connection).map(|s| Some(s))
+        },
+        (POST) (/users/{id: u64}) => {
+            let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+            let update_user: models::PartialUser = serde_json::from_reader(request_body)?;
+            handle_update(id, update_user, database_connection).map(|_| None)
         },
         (DELETE) (/users/{id: u64}) => {
             handle_delete(id, database_connection).map(|_| None)
@@ -166,6 +171,12 @@ fn handle_insert(
         .load::<models::User>(database_connection)?;
 
     Ok(serde_json::to_string(&inserted_user)?)
+}
+
+fn handle_update(id: u64, user: models::PartialUser, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
+    diesel::update(users::table).filter(users::id.eq(id)).set(&user).execute(database_connection)?;
+
+    Ok(())
 }
 
 fn handle_delete(id: u64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
