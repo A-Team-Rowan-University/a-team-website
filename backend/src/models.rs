@@ -30,3 +30,14 @@ pub struct PartialUser {
     pub banner_id: Option<u32>,
     pub email: Option<Option<String>>,
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct UserList {
+    pub users: Vec<User>
+}
+
+pub enum UserResponse {
+    OneUser(User),
+    ManyUsers(UserList),
+    NoResponse,
+}

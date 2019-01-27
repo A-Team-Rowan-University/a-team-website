@@ -69,6 +69,12 @@ impl From<std::num::ParseIntError> for WebdevError {
     }
 }
 
+impl From<std::str::ParseBoolError> for WebdevError {
+    fn from(s: std::str::ParseBoolError) -> WebdevError {
+        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+    }
+}
+
 impl From<WebdevError> for rouille::Response {
     fn from(e: WebdevError) -> rouille::Response {
         match e.kind() {

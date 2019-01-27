@@ -1,0 +1,6 @@
+backend/target
+backend/.env
+
+frontend/elm-stuff
+
+.idea
