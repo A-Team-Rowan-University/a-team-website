@@ -10,7 +10,6 @@ Coded in Rust, manages database manipulation using AJAX requests from frontend.
 * [log 0.4](https://github.com/rust-lang-nursery/log)
 * [simplelog](https://github.com/drakulix/simplelog.rs)
 
-
 ### API Calls
 
 `GET /users`
