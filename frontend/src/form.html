@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script type="text/javascript">
+      function ajaxGet()
+      {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open("GET", "/users/", true);
+        xhttp.send();
+        console.log(1);
+      }
+    </script>
+  </head>
+  <body>
+    <form name="databaseFrontend" onSubmit="JavaScript:ajaxGet()">
+      <input name="ajaxGet" type="submit" value="Test"
+        onClick="JavaScript:ajaxGet()">
+    </form>
+  </body>
+</html>
