@@ -51,12 +51,14 @@ type alias User =
     , email : Maybe String
     }
 
+
 type alias CreateUser =
     { first_name : String
     , last_name : String
     , banner_id : Maybe Int
     , email : Maybe String
     }
+
 
 type alias UserList =
     List User
@@ -73,7 +75,7 @@ init _ =
       , create_user = Nothing
       }
     , Http.get
-        { url = "http://localhost:8000/users"
+        { url = "http://localhost:8000/users/"
         , expect = Http.expectJson GotUsers decodeUserList
         }
     )
@@ -138,57 +140,76 @@ update msg model =
             case model.create_user of
                 Just create_user ->
                     let
-                        new_create_user = { create_user | first_name = first_name }
+                        new_create_user =
+                            { create_user | first_name = first_name }
                     in
-                        ( { model | create_user = Just new_create_user }, Cmd.none )
+                    ( { model | create_user = Just new_create_user }, Cmd.none )
+
                 Nothing ->
-                    (  model, Cmd.none)
+                    ( model, Cmd.none )
 
         CreateUserLastName last_name ->
             case model.create_user of
                 Just create_user ->
                     let
-                        new_create_user = { create_user | last_name = last_name }
+                        new_create_user =
+                            { create_user | last_name = last_name }
                     in
-                        ( { model | create_user = Just new_create_user }, Cmd.none )
+                    ( { model | create_user = Just new_create_user }, Cmd.none )
+
                 Nothing ->
-                    (  model, Cmd.none)
+                    ( model, Cmd.none )
 
         CreateUserBannerId banner_id ->
             case model.create_user of
                 Just create_user ->
                     let
-                        new_create_user = { create_user | banner_id = emptyToNothingInt banner_id }
+                        new_create_user =
+                            { create_user | banner_id = emptyToNothingInt banner_id }
                     in
-                        ( { model | create_user = Just new_create_user }, Cmd.none )
+                    ( { model | create_user = Just new_create_user }, Cmd.none )
+
                 Nothing ->
-                    (  model, Cmd.none)
+                    ( model, Cmd.none )
 
         CreateUserHasEmail has_email ->
             case model.create_user of
                 Just create_user ->
                     let
-                        new_create_user = { create_user | email = if has_email then Just "" else Nothing }
+                        new_create_user =
+                            { create_user
+                                | email =
+                                    if has_email then
+                                        Just ""
+
+                                    else
+                                        Nothing
+                            }
                     in
-                        ( { model | create_user = Just new_create_user }, Cmd.none )
+                    ( { model | create_user = Just new_create_user }, Cmd.none )
+
                 Nothing ->
-                    (  model, Cmd.none)
+                    ( model, Cmd.none )
 
         CreateUserEmail email ->
             case model.create_user of
                 Just create_user ->
                     let
-                        new_create_user = { create_user | email = Just email }
+                        new_create_user =
+                            { create_user | email = Just email }
                     in
-                        ( { model | create_user = Just new_create_user }, Cmd.none )
+                    ( { model | create_user = Just new_create_user }, Cmd.none )
+
                 Nothing ->
-                    (  model, Cmd.none)
+                    ( model, Cmd.none )
 
         SubmitCreateUser _ ->
             case model.create_user of
                 Just create_user ->
                     ( { model | create_user = Nothing }, createCmd create_user )
-                Nothing -> ( model, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         SubmittedCreateUser err ->
             ( model, searchCmd model )
@@ -199,23 +220,30 @@ createCmd create_user =
     case create_user.banner_id of
         Just banner_id ->
             let
-                user_body = Encode.object
-                    [ ("first_name", Encode.string create_user.first_name)
-                    , ("last_name", Encode.string create_user.last_name)
-                    , ("banner_id", Encode.int banner_id)
-                    , ("email",
-                        case create_user.email of
-                            Just email -> Encode.string email
-                            Nothing -> Encode.null
-                        )
-                    ]
+                user_body =
+                    Encode.object
+                        [ ( "first_name", Encode.string create_user.first_name )
+                        , ( "last_name", Encode.string create_user.last_name )
+                        , ( "banner_id", Encode.int banner_id )
+                        , ( "email"
+                          , case create_user.email of
+                                Just email ->
+                                    Encode.string email
+
+                                Nothing ->
+                                    Encode.null
+                          )
+                        ]
             in
-                Http.post
-                    { url = "http://localhost:8000/users"
-                    , body = Http.jsonBody user_body
-                    , expect = Http.expectWhatever SubmittedCreateUser
-                    }
-        Nothing -> Cmd.none
+            Http.post
+                { url = "http://localhost:8000/users/"
+                , body = Http.jsonBody user_body
+                , expect = Http.expectWhatever SubmittedCreateUser
+                }
+
+        Nothing ->
+            Cmd.none
+
 
 emptyCreateUser : CreateUser
 emptyCreateUser =
@@ -224,6 +252,7 @@ emptyCreateUser =
     , banner_id = Nothing
     , email = Nothing
     }
+
 
 emptyToNothingInt : String -> Maybe Int
 emptyToNothingInt s =
@@ -242,24 +271,26 @@ emptyToNothing s =
     else
         Just s
 
+
 deleteCmd : Int -> Cmd UserMsg
 deleteCmd id =
     Http.request
         { method = "DELETE"
         , headers = []
-        , url = crossOrigin "http://localhost:8000" ["users", String.fromInt id] []
+        , url = crossOrigin "http://localhost:8000" [ "users", String.fromInt id ] []
         , body = Http.emptyBody
         , expect = Http.expectWhatever UserDeleted
         , timeout = Nothing
         , tracker = Nothing
         }
 
+
 searchCmd : UserModel -> Cmd UserMsg
 searchCmd model =
     Http.get
         { url =
             crossOrigin "http://localhost:8000"
-                [ "users" ]
+                [ "users/" ]
                 ([]
                     |> concatConditional
                         (Maybe.map (\a -> Url.Builder.string "first_name_exact" a) model.first_name_search)
@@ -361,54 +392,64 @@ view model =
         , case model.create_user of
             Nothing ->
                 input [ type_ "button", value "Add User", onClick (ShowCreateUser ()) ] []
+
             Just create_user ->
                 viewCreateUser create_user
         ]
+
 
 viewCreateUser : CreateUser -> Html UserMsg
 viewCreateUser create_user =
     div []
         (([ input
-            [ type_ "text"
-            , value create_user.first_name
-            , onInput CreateUserFirstName
-            ] []
-        , input
-            [ type_ "text"
-            , value create_user.last_name
-            , onInput CreateUserLastName
-            ] []
-        , input
-            [ type_ "text"
-            , value (Maybe.withDefault "" (Maybe.map String.fromInt create_user.banner_id))
-            , onInput CreateUserBannerId
-            ] []
-        , div []
-            [ text "Has email?"
-            , input
-                [ type_ "checkbox"
-                , checked
-                    ( case create_user.email of
-                        Just _ -> True
-                        Nothing -> False
-                    )
-                , onCheck CreateUserHasEmail
-                ] []
-            ]
-        ]
-        |> concatConditional
-            ( Maybe.map
-                (\email -> input [ type_ "text", value email, onInput CreateUserEmail ] [])
-                create_user.email
-            ))
-        ++
-        [ input
-            [ type_ "button"
-            , value "Submit User"
-            , onClick (SubmitCreateUser ())
-            ] []
-        ])
+                [ type_ "text"
+                , value create_user.first_name
+                , onInput CreateUserFirstName
+                ]
+                []
+          , input
+                [ type_ "text"
+                , value create_user.last_name
+                , onInput CreateUserLastName
+                ]
+                []
+          , input
+                [ type_ "text"
+                , value (Maybe.withDefault "" (Maybe.map String.fromInt create_user.banner_id))
+                , onInput CreateUserBannerId
+                ]
+                []
+          , div []
+                [ text "Has email?"
+                , input
+                    [ type_ "checkbox"
+                    , checked
+                        (case create_user.email of
+                            Just _ ->
+                                True
 
+                            Nothing ->
+                                False
+                        )
+                    , onCheck CreateUserHasEmail
+                    ]
+                    []
+                ]
+          ]
+            |> concatConditional
+                (Maybe.map
+                    (\email -> input [ type_ "text", value email, onInput CreateUserEmail ] [])
+                    create_user.email
+                )
+         )
+            ++ [ input
+                    [ type_ "button"
+                    , value "Submit User"
+                    , onClick (SubmitCreateUser ())
+                    ]
+                    []
+               ]
+        )
 
 
 viewUsers : List User -> Html UserMsg
