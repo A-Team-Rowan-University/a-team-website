@@ -23,7 +23,7 @@ pub struct User {
     pub email: Option<String>,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "users"]
 pub struct NewUser {
     pub first_name: String,

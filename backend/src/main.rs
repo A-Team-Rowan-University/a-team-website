@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate diesel;
-
 use std::env;
 use std::sync::Mutex;
 
@@ -18,8 +15,6 @@ use dotenv::dotenv;
 use self::errors::WebdevError;
 use self::errors::WebdevErrorKind;
 
-mod errors;
-mod users;
 
 use self::users::models::UserRequest;
 use self::users::requests::handle_user;
