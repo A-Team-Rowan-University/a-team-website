@@ -81,7 +81,7 @@ fn get_user(id: u64, database_connection: &MysqlConnection) -> Result<User, Webd
     }
 }
 
-pub fn create_user(user: NewUser, database_connection: &MysqlConnection) -> Result<User, WebdevError> {
+fn create_user(user: NewUser, database_connection: &MysqlConnection) -> Result<User, WebdevError> {
     diesel::insert_into(users_schema::table)
         .values(user)
         .execute(database_connection)?;
