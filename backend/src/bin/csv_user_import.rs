@@ -13,6 +13,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 #[derive(Serialize, Deserialize, Debug)]
+//Struct to take the data from the csv
 struct Csv_User {
 	#[serde(rename = "Banner ID")]
 	banner_id: i32,
@@ -27,8 +28,8 @@ struct Csv_User {
 	#[serde(rename = "Department")]
 	department: String,
 }
-
 fn main(){
+	//Diesel things
 	dotenv().ok();
 
     simplelog::TermLogger::init(simplelog::LevelFilter::Trace, simplelog::Config::default())
@@ -55,42 +56,49 @@ fn main(){
     };
 
     debug!("Connected to database");
-
+	//Get file name and path from args
 	use std::env;
 	let arg = env::args().nth(1);
 	let filename = 	match arg {
 		Some(name) => name,
 		None => {
-			println!("Needs a filename");
+			error!("Needs a filename");
 			return;
 		}
 	};
-	println!("{}", filename);
-	
+	debug!("{}", filename);
+	//Import the csv into an iterator
+	let mut user_count = 0;
 	let all_users_result = csv::Reader::from_path(filename);
 	let mut all_users = match all_users_result{
 		Ok(data) => data,
 		Err(e) => {
-				println!("Bad file. Error {}",e);
+				error!("Bad file. Error {}",e);
 				return;
 			}
 	};		
+	//Go through each item in the iterator
 	for result in all_users.deserialize(){
+		//Check to see if it's valid
 		let csv_user: Csv_User = match result{
 			Ok(data) => data,
 			Err(e) => {
-				println!("Bad data, {:?}", e);
+				error!("Bad data, {:?}", e);
 				return;
 			}
 		};
+		//Convert the user data from the csv and create a New User from it
 		let new_user:NewUser = NewUser{
 			first_name: csv_user.first_name,
 			last_name: csv_user.last_name,
 			email:  Some(csv_user.email),
 			banner_id: csv_user.banner_id as u32,
 		};
-		
-		requests::create_user(new_user, &connection);
+		//Import new user into database
+		let import_user = UserRequest::CreateUser(new_user);
+		requests::handle_user(import_user, &connection);
+		user_count = user_count+1;
 	}
+	info!("Imported {} user(s)",user_count);
 }
 
