@@ -12,12 +12,12 @@ use diesel::MysqlConnection;
 
 use dotenv::dotenv;
 
-use self::errors::WebdevError;
-use self::errors::WebdevErrorKind;
+use web_dev::errors::WebdevError;
+use web_dev::errors::WebdevErrorKind;
 
 
-use self::users::models::UserRequest;
-use self::users::requests::handle_user;
+use web_dev::users::models::UserRequest;
+use web_dev::users::requests::handle_user;
 
 fn main() {
     dotenv().ok();
