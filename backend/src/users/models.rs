@@ -3,6 +3,7 @@ use rouille::router;
 use rouille::Request;
 use serde::Deserialize;
 use serde::Serialize;
+use url::form_urlencoded;
 
 use log::trace;
 use log::warn;
@@ -57,53 +58,66 @@ pub enum UserRequest {
 impl UserRequest {
     pub fn from_rouille(request: &rouille::Request) -> Result<UserRequest, WebdevError> {
         trace!("Creating UserRequest from {:#?}", request);
+
+        let url_query = form_urlencoded::parse(request.raw_query_string().as_bytes());
+
         router!(request,
             (GET) (/) => {
 
-                // TODO Searching really needs to be fixed up
-
-                let first_name_filter = request.get_param("first_name_exact");
-                let last_name_filter = request.get_param("last_name_exact");
-                let banner_id_filter =
-                    if let Some(p) = request.get_param("banner_id_exact") {
-                        Some(p.parse()?)
+                let first_name_filter = url_query.clone().find_map(|(k, v)| {
+                    if k == "first_name" {
+                        Some(v.to_string())
                     } else {
                         None
-                    };
+                    }
+                });
 
-                let has_email_filter =
-                    if let Some(p) = request.get_param("has_email") {
-                        Some(p.parse()?)
+                let last_name_filter = url_query.clone().find_map(|(k, v)| {
+                    if k == "last_name" {
+                        Some(v.to_string())
                     } else {
                         None
-                    };
+                    }
+                });
 
-                let email_filter = request.get_param("email");
+                let banner_id_filter = url_query.clone().find_map(|(k, v)| {
+                    if k == "banner_id" {
+                        Some(v.parse())
+                    } else {
+                        None
+                    }
+                });
 
-                /*
-                 * has_email | email | out
-                 *   None      None    None
-                 *  Some(t)    None    None ?
-                 *  Some(f)    None    Some(None)
-                 *   None     Some(s)  Some(Some(s))
-                 *  Some(t)   Some(s)  Some(Some(s))
-                 *  Some(f)   Some(s)  Some(None)
-                 */
-
-                let email = match (has_email_filter, email_filter) {
-                    (None, None) => None,
-                    (Some(true), None) => None,
-                    (Some(false), None) => Some(None),
-                    (None, Some(s)) => Some(Some(s)),
-                    (Some(true), Some(s)) => Some(Some(s)),
-                    (Some(false), Some(s)) => Some(None),
+                // Propogate the error if the id could not be parsed as a u32
+                let banner_id_filter = match banner_id_filter {
+                    Some(result) => Some(result?),
+                    None => None,
                 };
+
+                // TODO This email filter only covers 2 of the possibilities:
+                //
+                // No email filter:     Yes
+                // None email:          No
+                // Some email:          No
+                // Some specific email: Yes
+                //
+                // Should expect a query like
+                // No email:            email=None
+                // Some email:          email=Some
+                // Some specific email: email=Some,hollabaut1@students.rowan.edu
+                let email_filter = url_query.clone().find_map(|(k, v)| {
+                    if k == "email" {
+                        Some(Some(v.to_string()))
+                    } else {
+                        None
+                    }
+                });
 
                 Ok(UserRequest::SearchUsers(PartialUser {
                     first_name: first_name_filter,
                     last_name: last_name_filter,
                     banner_id: banner_id_filter,
-                    email: email,
+                    email: email_filter,
                 }))
             },
 

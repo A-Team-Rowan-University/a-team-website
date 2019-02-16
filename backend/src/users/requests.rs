@@ -77,7 +77,7 @@ fn get_user(id: u64, database_connection: &MysqlConnection) -> Result<User, Webd
 
     match found_users.pop() {
         Some(user) => Ok(user),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound))
+        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
     }
 }
 
