@@ -6,14 +6,23 @@ use diesel::query_builder::BoxedSelectStatement;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
+use diesel::TextExpressionMethods;
 
 use log::trace;
-
-use crate::users::models::{NewUser, PartialUser, User, UserList, UserRequest, UserResponse};
-use crate::users::schema::users as users_schema;
+use log::info;
+use log::warn;
+use log::error;
 
 use crate::errors::WebdevError;
 use crate::errors::WebdevErrorKind;
+
+use crate::search::NullableSearch;
+use crate::search::Search;
+
+use crate::users::models::{
+    NewUser, PartialUser, SearchUser, User, UserList, UserRequest, UserResponse,
+};
+use crate::users::schema::users as users_schema;
 
 pub fn handle_user(
     request: UserRequest,
@@ -39,29 +48,67 @@ pub fn handle_user(
 }
 
 fn search_users(
-    partial_user: PartialUser,
+    user: SearchUser,
     database_connection: &MysqlConnection,
 ) -> Result<UserList, WebdevError> {
     let mut users_query = users_schema::table.as_query().into_boxed();
 
-    if let Some(first_name) = partial_user.first_name {
-        users_query = users_query.filter(users_schema::first_name.eq(first_name));
+    match user.first_name {
+        Search::Partial(s) => {
+            users_query = users_query.filter(users_schema::first_name.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            users_query = users_query.filter(users_schema::first_name.eq(s))
+        }
+
+        Search::NoSearch => {}
     }
 
-    if let Some(last_name) = partial_user.last_name {
-        users_query = users_query.filter(users_schema::last_name.eq(last_name));
+    match user.last_name {
+        Search::Partial(s) => {
+            users_query = users_query.filter(users_schema::last_name.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            users_query = users_query.filter(users_schema::last_name.eq(s))
+        }
+
+        Search::NoSearch => {}
     }
 
-    if let Some(banner_id) = partial_user.banner_id {
-        users_query = users_query.filter(users_schema::banner_id.eq(banner_id));
+    match user.banner_id {
+        Search::Partial(s) => {
+            warn!("Trying to partial search by banner id. This is not currently supported, so performing exact search instead");
+            trace!("Partial search required the field to be a text field, but banner id is currently an integet");;
+            users_query = users_query.filter(users_schema::banner_id.eq(s))
+        }
+
+        Search::Exact(s) => {
+            users_query = users_query.filter(users_schema::banner_id.eq(s))
+        }
+
+        Search::NoSearch => {}
     }
 
-    if let Some(option_email) = partial_user.email {
-        if let Some(email) = option_email {
-            users_query = users_query.filter(users_schema::email.eq(email));
-        } else {
+    match user.email {
+        NullableSearch::Partial(s) => {
+            users_query = users_query.filter(users_schema::email.like(format!("{}%", s)))
+        }
+
+        NullableSearch::Exact(s) => {
+            users_query = users_query.filter(users_schema::email.eq(s))
+        }
+
+        NullableSearch::Some => {
+            users_query = users_query.filter(users_schema::email.is_not_null());
+        }
+
+        NullableSearch::None => {
             users_query = users_query.filter(users_schema::email.is_null());
         }
+
+        NullableSearch::NoSearch => {}
     }
 
     let found_users = users_query.load::<User>(database_connection)?;

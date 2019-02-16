@@ -19,6 +19,7 @@ use self::errors::WebdevError;
 use self::errors::WebdevErrorKind;
 
 mod errors;
+mod search;
 mod users;
 
 use self::users::models::UserRequest;

@@ -13,6 +13,9 @@ use super::schema::users;
 use crate::errors::WebdevError;
 use crate::errors::WebdevErrorKind;
 
+use crate::search::NullableSearch;
+use crate::search::Search;
+
 use crate::users::requests;
 
 #[derive(Queryable, Serialize, Deserialize)]
@@ -42,13 +45,20 @@ pub struct PartialUser {
     pub email: Option<Option<String>>,
 }
 
+pub struct SearchUser {
+    pub first_name: Search<String>,
+    pub last_name: Search<String>,
+    pub banner_id: Search<u32>,
+    pub email: NullableSearch<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct UserList {
     pub users: Vec<User>,
 }
 
 pub enum UserRequest {
-    SearchUsers(PartialUser),
+    SearchUsers(SearchUser),
     GetUser(u64),
     CreateUser(NewUser),
     UpdateUser(u64, PartialUser),
@@ -59,65 +69,31 @@ impl UserRequest {
     pub fn from_rouille(request: &rouille::Request) -> Result<UserRequest, WebdevError> {
         trace!("Creating UserRequest from {:#?}", request);
 
-        let url_query = form_urlencoded::parse(request.raw_query_string().as_bytes());
+        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
 
-                let first_name_filter = url_query.clone().find_map(|(k, v)| {
-                    if k == "first_name" {
-                        Some(v.to_string())
-                    } else {
-                        None
+                let mut first_name_search = Search::NoSearch;
+                let mut last_name_search = Search::NoSearch;
+                let mut banner_id_search = Search::NoSearch;
+                let mut email_search = NullableSearch::NoSearch;
+
+                for (field, query) in url_queries {
+                    match field.as_ref() {
+                        "first_name" => first_name_search = Search::from_query(query.as_ref())?,
+                        "last_name" => last_name_search = Search::from_query(query.as_ref())?,
+                        "banner_id" => banner_id_search = Search::from_query(query.as_ref())?,
+                        "email" => email_search = NullableSearch::from_query(query.as_ref())?,
+                        _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
                     }
-                });
+                }
 
-                let last_name_filter = url_query.clone().find_map(|(k, v)| {
-                    if k == "last_name" {
-                        Some(v.to_string())
-                    } else {
-                        None
-                    }
-                });
-
-                let banner_id_filter = url_query.clone().find_map(|(k, v)| {
-                    if k == "banner_id" {
-                        Some(v.parse())
-                    } else {
-                        None
-                    }
-                });
-
-                // Propogate the error if the id could not be parsed as a u32
-                let banner_id_filter = match banner_id_filter {
-                    Some(result) => Some(result?),
-                    None => None,
-                };
-
-                // TODO This email filter only covers 2 of the possibilities:
-                //
-                // No email filter:     Yes
-                // None email:          No
-                // Some email:          No
-                // Some specific email: Yes
-                //
-                // Should expect a query like
-                // No email:            email=None
-                // Some email:          email=Some
-                // Some specific email: email=Some,hollabaut1@students.rowan.edu
-                let email_filter = url_query.clone().find_map(|(k, v)| {
-                    if k == "email" {
-                        Some(Some(v.to_string()))
-                    } else {
-                        None
-                    }
-                });
-
-                Ok(UserRequest::SearchUsers(PartialUser {
-                    first_name: first_name_filter,
-                    last_name: last_name_filter,
-                    banner_id: banner_id_filter,
-                    email: email_filter,
+                Ok(UserRequest::SearchUsers(SearchUser {
+                    first_name: first_name_search,
+                    last_name: last_name_search,
+                    banner_id: banner_id_search,
+                    email: email_search,
                 }))
             },
 
