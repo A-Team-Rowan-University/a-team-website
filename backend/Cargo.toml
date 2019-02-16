@@ -13,3 +13,8 @@ serde_json = "1.0"
 log = "0.4"
 simplelog = "0.5"
 url="1.7.2"
+csv = "1.0.5"
+
+[[bin]]
+name = "csv_user_import"
+path = "src/bin/csv_user_import.rs"
