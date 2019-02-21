@@ -1,8 +1,7 @@
 function get_users() {
-  //Things to add:
-  //Edit/Delete
-  //Add
-  var x, fn, ln,people,y;
+  var x, fn, ln,y;
+  var people;
+  //people.id = "seach_table";
   if (document.getElementById("firstname")){
 	fn = document.getElementById("firstname").value;
   }else{
@@ -23,21 +22,23 @@ function get_users() {
 		for(x in search_results.users){
 			//people += search_results.users[x].first_name+ " " + search_results.users[x].last_name + ", email: "+search_results.users[x].email+"<br>";
 			y=parseInt(x)+1;
-			people += "<tr> <td>"+ y +"</td><td>"+search_results.users[x].first_name+ "</td><td>" + search_results.users[x].last_name + "</td><td>"+search_results.users[x].email+"</td></td>";
+			people += "<tr> <td>"+ y +"</td><td>"+search_results.users[x].first_name+ "</td><td>" + search_results.users[x].last_name 
+			+ "</td><td>"+search_results.users[x].email+"</td><td>" + 
+      "<input type=\"button\" onclick=\"location.href=\'/users/edit.html?user_id="+search_results.users[x].id+"\'\" value=\"Edit\"/></td></tr>";
 		}
 		document.getElementById("user").innerHTML = people;
 	}
   };
   console.log("first name: \""+fn + "\" lastname: \"" + ln+"\"");
   if (fn !=="" && ln !==""){ 
-	xhttp.open("GET", "http://192.168.176.129:8000/users/?first_name_exact="+fn+"&last_name_exact="+ln, true);
+	xhttp.open("GET", baseip+":8000/users/?first_name_exact="+fn+"&last_name_exact="+ln, true);
   }else if(fn !==""){
-	xhttp.open("GET", "http://192.168.176.129:8000/users/?first_name_exact="+fn, true);  
+	xhttp.open("GET", baseip+":8000/users/?first_name_exact="+fn, true);  
   }else if(ln !==""){
-	  xhttp.open("GET", "http://192.168.176.129:8000/users/?last_name_exact="+ln, true);
+	  xhttp.open("GET", baseip+":8000/users/?last_name_exact="+ln, true);
   }else {
 	  console.log("Empty Search");
-	  xhttp.open("GET", "http://192.168.176.129:8000/users/", true);
+	  xhttp.open("GET", baseip+":8000/users/", true);
   }
   xhttp.send();
 }

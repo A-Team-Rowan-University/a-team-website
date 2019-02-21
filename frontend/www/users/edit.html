@@ -1,0 +1,34 @@
+<html>
+  <head>
+    <title>Kluzy-Users</title>
+	<script type="text/javascript" src="update_user.js"></script>
+  </head>
+  <body  onload="get_user_from_url();">
+    <h1> Edit User </h1>
+    <p> Edit the user selected from your search.</p>
+	<div>
+     <h2> Current User Data </h2>
+     <table id = "current_user"></table>
+  </div>
+  <div>
+    <h2> Updated User Data </h2>
+    <form name="edit_data">
+  		First name:<br>
+  		<input type="text" id="firstname" value=""><br>
+  		Last name:<br>
+  		<input type="text" id="lastname" value=""><br>
+  		Email:<br>
+  		<input type="text" id="email" value=""><br>
+  		Banner ID:<br>
+  		<input type="text" id="banner_id" value=""><br>
+  		<br>
+  		<input type="button" onclick="update_user()" value="Edit"/><br>
+  	</form>
+   </div>
+  <p id = "result"></p>
+  <div>
+    <h2> DELETE USER </h2>
+    <input type="button" onclick="delete_user()" value="Cannot be undone!"/><br>
+  </div>
+  </body>
+</html>
