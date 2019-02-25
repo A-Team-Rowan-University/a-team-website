@@ -1,0 +1,20 @@
+<html>
+  <head>
+    <title>Search Users</title>
+	<script type="text/javascript" src="/../settings.js"></script>
+	<script type="text/javascript" src="/get_users.js"></script> 
+  </head>
+  <body>
+    <h1> Search Users Database </h1>
+    <p> Note: Searches are exact only!</p>
+	<form name="search_terms">
+		First name:<br>
+		<input type="text" id="firstname" value=""><br>
+		Last name:<br>
+		<input type="text" id="lastname" value=""><br><br>
+		<input type="button" onclick="get_users()" value="Search"/><br>
+	</form>
+	
+	  <table id="user"></table>
+  </body>
+</html>
