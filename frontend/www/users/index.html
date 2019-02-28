@@ -1,13 +1,15 @@
 <html>
   <head>
     <title>Kluzy-Users</title>
-    <!--
-	<script type="text/javascript" src="hello_world.js"></script>
-	<script type="text/javascript" src="get_users.js"></script>
-	-->
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" type="image/png" href="/images/A-Team-Logo.png">
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+    <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+    <script type="text/javascript" src="/settings.js"></script>
   </head>
   <body>
-    <h1> Users-Test-Server </h1>
+    <div id ="navbar" onload="/load_header()"> </div>
+    <h1  class="pagename"> Users Database</h1>
     <p> Welcome to the users database. Please select a function.</p>
 	<input type="button" onclick="location.href='/users/search'" value="Search"/><br>
 	<input type="button" onclick="location.href='/users/add'" value="Add"/><br>
