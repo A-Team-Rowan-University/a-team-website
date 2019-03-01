@@ -21,7 +21,7 @@ use web_dev::users::requests::handle_user;
 fn main() {
     dotenv().ok();
 
-    simplelog::TermLogger::init(simplelog::LevelFilter::Trace, simplelog::Config::default())
+    simplelog::SimpleLogger::init(simplelog::LevelFilter::Trace, simplelog::Config::default())
         .unwrap();
 
     info!("Connecting to database");
