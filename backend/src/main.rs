@@ -1,5 +1,7 @@
 use std::env;
 use std::sync::Mutex;
+use std::thread;
+use std::time;
 
 use log::debug;
 use log::error;
@@ -36,11 +38,14 @@ fn main() {
 
     debug!("Connecting to {}", database_url);
 
-    let connection = match MysqlConnection::establish(&database_url) {
-        Ok(c) => c,
-        Err(e) => {
-            error!("Could not connect to database: {}", e);
-            return;
+    let connection = loop {
+        match MysqlConnection::establish(&database_url) {
+            Ok(c) => break c,
+            Err(e) => {
+                error!("Could not connect to database: {}", e);
+                error!("Retrying in a second");
+                thread::sleep(time::Duration::from_secs(1));
+            }
         }
     };
 
