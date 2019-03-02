@@ -22,6 +22,4 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: apple1
       MYSQL_DATABASE: web_dev
-    volumes:
-      - ./backend/migrations/2019-01-13-203149_create_users/up.sql:/docker-entrypoint-initdb.d/:ro
 
