@@ -34,7 +34,7 @@ function add_user(){
   }
   if (fn !== "" | ln !== "" | bi !== ""){
     person = {first_name:fn , last_name:ln, banner_id:parseInt(bi), email:em };
-    xhttp.open("POST", baseip+":8000/users/", true);
+    xhttp.open("POST", baseip+"/users/", true);
     xhttp.send(JSON.stringify(person));
     console.log("Sent to database");
   }else{

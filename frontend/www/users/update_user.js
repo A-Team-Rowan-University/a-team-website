@@ -14,7 +14,7 @@ function get_user_from_url(){
       "<tr><td> Banner ID: </td><td> " + search_results.banner_id + "</td></tr>";
     document.getElementById("current_user").innerHTML = user;
   }};
-  xhttp.open("GET", baseip+":8000/users/"+user_id,true);
+  xhttp.open("GET", baseip+"/users/"+user_id,true);
   xhttp.send();
 }
 function update_user(){
@@ -54,7 +54,7 @@ function update_user(){
   var point = url.indexOf("=");
   var user_id = url.substring(point+1, url.length);
   person = {first_name:fn , last_name:ln, banner_id:parseInt(bi), email:em };
-  xhttp.open("POST", baseip+":8000/users/"+user_id, true);
+  xhttp.open("POST", baseip+"/users/"+user_id, true);
   xhttp.send(JSON.stringify(person));
   console.log("Sent to database");
     
@@ -74,7 +74,7 @@ function delete_user() {
   } else {
     document.getElementById("result").innerHTML ="Error deleting user";
   }}
-  xhttp.open("DELETE", baseip+":8000/users/"+user_id, true);
+  xhttp.open("DELETE", baseip+"/users/"+user_id, true);
   xhttp.send();
   
   

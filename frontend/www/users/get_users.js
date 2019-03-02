@@ -38,7 +38,7 @@ function get_users() {
 	  xhttp.open("GET", baseip+":8000/users/?last_name_exact="+ln, true);
   }else {
 	  console.log("Empty Search");
-	  xhttp.open("GET", baseip+":8000/users/", true);
+	  xhttp.open("GET", baseip+"/users/", true);
   }
   xhttp.send();
 }

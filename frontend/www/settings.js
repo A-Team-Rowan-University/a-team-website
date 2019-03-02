@@ -1,4 +1,4 @@
-var baseip="http://192.168.176.129";
+var baseip="/api/v1";
 
 function load_header() {
   console.log("Loading Header");
