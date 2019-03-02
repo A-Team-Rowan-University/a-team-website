@@ -31,11 +31,11 @@ function get_users() {
   };
   console.log("first name: \""+fn + "\" lastname: \"" + ln+"\"");
   if (fn !=="" && ln !==""){ 
-	xhttp.open("GET", baseip+":8000/users/?first_name_exact="+fn+"&last_name_exact="+ln, true);
+	xhttp.open("GET", baseip+"/users/?first_name_exact="+fn+"&last_name_exact="+ln, true);
   }else if(fn !==""){
-	xhttp.open("GET", baseip+":8000/users/?first_name_exact="+fn, true);  
+	xhttp.open("GET", baseip+"/users/?first_name_exact="+fn, true);  
   }else if(ln !==""){
-	  xhttp.open("GET", baseip+":8000/users/?last_name_exact="+ln, true);
+	  xhttp.open("GET", baseip+"/users/?last_name_exact="+ln, true);
   }else {
 	  console.log("Empty Search");
 	  xhttp.open("GET", baseip+"/users/", true);
