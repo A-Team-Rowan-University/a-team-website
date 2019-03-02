@@ -1,11 +1,16 @@
 <html>
   <head>
-    <title>Kluzy-Users</title>
-	<script type="text/javascript" src="/../settings.js"></script>
-	<script type="text/javascript" src="update_user.js"></script>
+    <title>Users</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" type="image/png" href="/images/A-Team-Logo.png">
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+    <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+	  <script type="text/javascript" src="/settings.js"></script>
+	  <script type="text/javascript" src="/users/update_user.js"></script>
   </head>
-  <body  onload="get_user_from_url();">
-    <h1> Edit User </h1>
+  <body  onload="load_header();get_user_from_url();">
+    <div id ="navbar"> </div>
+    <h1 class="pagename"> Users Database (Edit) </h1>
     <p> Edit the user selected from your search.</p>
 	<div>
      <h2> Current User Data </h2>
@@ -23,7 +28,7 @@
   		Banner ID:<br>
   		<input type="text" id="banner_id" value=""><br>
   		<br>
-  		<input type="button" onclick="update_user()" value="Edit"/><br>
+  		<input type="submit" onclick="update_user()" value="Edit"/><br>
   	</form>
    </div>
   <p id = "result"></p>
