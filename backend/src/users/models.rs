@@ -3,6 +3,7 @@ use rouille::router;
 use rouille::Request;
 use serde::Deserialize;
 use serde::Serialize;
+use url::form_urlencoded;
 
 use log::trace;
 use log::warn;
@@ -11,6 +12,9 @@ use super::schema::users;
 
 use crate::errors::WebdevError;
 use crate::errors::WebdevErrorKind;
+
+use crate::search::NullableSearch;
+use crate::search::Search;
 
 use crate::users::requests;
 
@@ -41,13 +45,20 @@ pub struct PartialUser {
     pub email: Option<Option<String>>,
 }
 
+pub struct SearchUser {
+    pub first_name: Search<String>,
+    pub last_name: Search<String>,
+    pub banner_id: Search<u32>,
+    pub email: NullableSearch<String>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct UserList {
     pub users: Vec<User>,
 }
 
 pub enum UserRequest {
-    SearchUsers(PartialUser),
+    SearchUsers(SearchUser),
     GetUser(u64),
     CreateUser(NewUser),
     UpdateUser(u64, PartialUser),
@@ -57,53 +68,32 @@ pub enum UserRequest {
 impl UserRequest {
     pub fn from_rouille(request: &rouille::Request) -> Result<UserRequest, WebdevError> {
         trace!("Creating UserRequest from {:#?}", request);
+
+        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
+
         router!(request,
             (GET) (/) => {
 
-                // TODO Searching really needs to be fixed up
+                let mut first_name_search = Search::NoSearch;
+                let mut last_name_search = Search::NoSearch;
+                let mut banner_id_search = Search::NoSearch;
+                let mut email_search = NullableSearch::NoSearch;
 
-                let first_name_filter = request.get_param("first_name_exact");
-                let last_name_filter = request.get_param("last_name_exact");
-                let banner_id_filter =
-                    if let Some(p) = request.get_param("banner_id_exact") {
-                        Some(p.parse()?)
-                    } else {
-                        None
-                    };
+                for (field, query) in url_queries {
+                    match field.as_ref() {
+                        "first_name" => first_name_search = Search::from_query(query.as_ref())?,
+                        "last_name" => last_name_search = Search::from_query(query.as_ref())?,
+                        "banner_id" => banner_id_search = Search::from_query(query.as_ref())?,
+                        "email" => email_search = NullableSearch::from_query(query.as_ref())?,
+                        _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
+                    }
+                }
 
-                let has_email_filter =
-                    if let Some(p) = request.get_param("has_email") {
-                        Some(p.parse()?)
-                    } else {
-                        None
-                    };
-
-                let email_filter = request.get_param("email");
-
-                /*
-                 * has_email | email | out
-                 *   None      None    None
-                 *  Some(t)    None    None ?
-                 *  Some(f)    None    Some(None)
-                 *   None     Some(s)  Some(Some(s))
-                 *  Some(t)   Some(s)  Some(Some(s))
-                 *  Some(f)   Some(s)  Some(None)
-                 */
-
-                let email = match (has_email_filter, email_filter) {
-                    (None, None) => None,
-                    (Some(true), None) => None,
-                    (Some(false), None) => Some(None),
-                    (None, Some(s)) => Some(Some(s)),
-                    (Some(true), Some(s)) => Some(Some(s)),
-                    (Some(false), Some(s)) => Some(None),
-                };
-
-                Ok(UserRequest::SearchUsers(PartialUser {
-                    first_name: first_name_filter,
-                    last_name: last_name_filter,
-                    banner_id: banner_id_filter,
-                    email: email,
+                Ok(UserRequest::SearchUsers(SearchUser {
+                    first_name: first_name_search,
+                    last_name: last_name_search,
+                    banner_id: banner_id_search,
+                    email: email_search,
                 }))
             },
 

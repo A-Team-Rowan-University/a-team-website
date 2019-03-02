@@ -1,0 +1,25 @@
+<html>
+    <head>
+        <title>Search Users</title>
+        <link rel="stylesheet" href="/style.css">
+        <link rel="icon" type="image/png" href="/images/A-Team-Logo.png">
+        <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+        <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+        <script type="text/javascript" src="/settings.js"></script>
+        <script type="text/javascript" src="/users/get_users.js"></script> 
+    </head>
+    <body>
+        <div id ="navbar" onload="/load_header()"> </div>
+        <h1  class="pagename"> Users Database (Search)</h1>
+        <p> Note: Searches are exact only!</p>
+        <form name="search_terms">
+            First name:<br>
+            <input type="text" id="firstname" value=""><br>
+            Last name:<br>
+            <input type="text" id="lastname" value=""><br><br>
+            <input type="submit" action="#" onclick="get_users();return false" value="Search"/><br>
+        </form>
+
+        <table id="user"></table>
+    </body>
+</html>

@@ -1,6 +1,7 @@
-use std::convert::From;
 use std::error::Error;
 use std::fmt;
+
+use crate::search::SearchParseError;
 
 #[derive(Debug, Copy, Clone)]
 pub enum WebdevErrorKind {
@@ -71,6 +72,18 @@ impl From<std::num::ParseIntError> for WebdevError {
 
 impl From<std::str::ParseBoolError> for WebdevError {
     fn from(s: std::str::ParseBoolError) -> WebdevError {
+        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+    }
+}
+
+impl From<url::ParseError> for WebdevError {
+    fn from(s: url::ParseError) -> WebdevError {
+        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+    }
+}
+
+impl From<SearchParseError> for WebdevError {
+    fn from(s: SearchParseError) -> WebdevError {
         WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
     }
 }

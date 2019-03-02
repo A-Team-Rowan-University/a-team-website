@@ -1,0 +1,40 @@
+<html>
+    <head>
+        <title>Users</title>
+        <link rel="stylesheet" href="/style.css">
+        <link rel="icon" type="image/png" href="/images/A-Team-Logo.png">
+        <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+        <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+        <script type="text/javascript" src="/settings.js"></script>
+        <script type="text/javascript" src="/users/update_user.js"></script>
+    </head>
+    <body  onload="load_header();get_user_from_url();">
+        <div id ="navbar"> </div>
+        <h1 class="pagename"> Users Database (Edit) </h1>
+        <p> Edit the user selected from your search.</p>
+        <div>
+            <h2> Current User Data </h2>
+            <table id = "current_user"></table>
+        </div>
+        <div>
+            <h2> Updated User Data </h2>
+            <form name="edit_data">
+                First name:<br>
+                <input type="text" id="firstname" value=""><br>
+                Last name:<br>
+                <input type="text" id="lastname" value=""><br>
+                Email:<br>
+                <input type="text" id="email" value=""><br>
+                Banner ID:<br>
+                <input type="text" id="banner_id" value=""><br>
+                <br>
+                <input type="submit" onclick="update_user()" value="Edit"/><br>
+            </form>
+        </div>
+        <p id = "result"></p>
+        <div>
+            <h2> DELETE USER </h2>
+            <input type="button" onclick="delete_user()" value="Cannot be undone!"/><br>
+        </div>
+    </body>
+</html>
