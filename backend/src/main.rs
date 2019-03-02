@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate diesel_migrations;
+
 use std::env;
 use std::sync::Mutex;
 use std::thread;
@@ -6,7 +9,6 @@ use std::time;
 use log::debug;
 use log::error;
 use log::info;
-use log::trace;
 use log::warn;
 
 use diesel::prelude::*;
@@ -20,6 +22,8 @@ use web_dev::errors::WebdevErrorKind;
 use web_dev::users::models::UserRequest;
 use web_dev::users::requests::handle_user;
 
+embed_migrations!();
+
 fn main() {
     dotenv().ok();
 
@@ -30,7 +34,7 @@ fn main() {
 
     let database_url = match env::var("DATABASE_URL") {
         Ok(url) => url,
-        Err(e) => {
+        Err(_e) => {
             error!("Could not read DATABASE_URL environment variable");
             return;
         }
@@ -42,14 +46,17 @@ fn main() {
         match MysqlConnection::establish(&database_url) {
             Ok(c) => break c,
             Err(e) => {
-                error!("Could not connect to database: {}", e);
-                error!("Retrying in a second");
+                warn!("Could not connect to database: {}", e);
+                info!("Retrying in a second");
                 thread::sleep(time::Duration::from_secs(1));
             }
         }
     };
 
     debug!("Connected to database");
+
+    info!("Running migrations");
+    embedded_migrations::run(&connection);
 
     let connection_mutex = Mutex::new(connection);
 
