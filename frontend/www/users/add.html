@@ -1,29 +1,29 @@
 <html>
-  <head>
-    <title>Users</title>
-    <link rel="stylesheet" href="/style.css">
-    <link rel="icon" type="image/png" href="/images/A-Team-Logo.png">
-    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
-    <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
-	<script type="text/javascript" src="/settings.js"></script>
-	<script type="text/javascript" src="/users/add_user.js"></script>
-  </head>
-  <body>
-    <div id ="navbar" onload="/load_header()"> </div>
-    <h1  class="pagename"> Users Database (Add)</h1>
-    <p> To add a user, fill out the textboxes and hit submit.</p>
-	<form name="add_data">
-		First name:<br>
-		<input type="text" id="firstname" value=""><br>
-		Last name:<br>
-		<input type="text" id="lastname" value=""><br>
-		Email:<br>
-		<input type="text" id="email" value=""><br>
-		Banner ID:<br>
-		<input type="text" id="banner_id" value=""><br>
-		<br>
-		<input type="submit" onclick="add_user()" value="Add"/><br>
-	</form>
-  <p id = "result"></p>
-  </body>
+    <head>
+        <title>Users</title>
+        <link rel="stylesheet" href="/style.css">
+        <link rel="icon" type="image/png" href="/images/A-Team-Logo.png">
+        <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'>
+        <link href='https://fonts.googleapis.com/css?family=Oswald' rel='stylesheet'>
+        <script type="text/javascript" src="/settings.js"></script>
+        <script type="text/javascript" src="/users/add_user.js"></script>
+    </head>
+    <body>
+        <div id ="navbar" onload="/load_header()"> </div>
+        <h1  class="pagename"> Users Database (Add)</h1>
+        <p> To add a user, fill out the textboxes and hit submit.</p>
+        <form name="add_data">
+            First name:<br>
+            <input type="text" id="firstname" value=""><br>
+            Last name:<br>
+            <input type="text" id="lastname" value=""><br>
+            Email:<br>
+            <input type="text" id="email" value=""><br>
+            Banner ID:<br>
+            <input type="text" id="banner_id" value=""><br>
+            <br>
+            <input type="submit" onclick="add_user()" value="Add"/><br>
+        </form>
+        <p id = "result"></p>
+    </body>
 </html>
