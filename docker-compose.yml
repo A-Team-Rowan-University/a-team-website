@@ -23,3 +23,8 @@ services:
       MYSQL_ROOT_PASSWORD: apple1
       MYSQL_DATABASE: web_dev
 
+  frontend:
+    image: webdev_frontend
+    ports:
+      - "80:80"
+
