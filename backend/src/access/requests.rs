@@ -1,4 +1,5 @@
 use diesel;
+use diesel::types;
 use diesel::mysql::MysqlConnection;
 use diesel::query_builder::AsQuery;
 use diesel::QueryDsl;
@@ -30,13 +31,13 @@ pub fn handle_access(
     match request {
         AccessRequest::GetAccess(id) => {
             get_access(id, database_connection).map(|a| AccessResponse::OneAccess(a))
-        }
+        },
         AccessRequest::CreateAccess(access) => {
             create_access(access, database_connection).map(|a| AccessResponse::OneAccess(a))
-        }
+        },
         AccessRequest::UpdateAccess(id, access) => {
             update_access(id, access, database_connection).map(|_| AccessResponse::NoResponse)
-        }
+        },
         AccessRequest::DeleteAccess(id) => {
             delete_access(id, database_connection).map(|_| AccessResponse::NoResponse)
         }
@@ -59,8 +60,11 @@ fn create_access(access: NewAccess, database_connection: &MysqlConnection) -> Re
         .values(access)
         .execute(database_connection)?;
 
+    no_arg_sql_function!(last_insert_id, types::Bigint);
+
     let mut inserted_accesses = access_schema::table
-        .filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
+        .filter(access_schema::id.eq(last_insert_id))
+        //.filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
         .load::<Access>(database_connection)?;
 
     if let Some(inserted_access) = inserted_accesses.pop() {
@@ -94,16 +98,19 @@ pub fn handle_user_access(
     match request {
         UserAccessRequest::SearchAccess(user_access) => {
             search_user_access(user_access, database_connection).map(|u| UserAccessResponse::ManyUsers(u))
-        }
+        },
+        UserAccessRequest::GetAccess(permission_id) => {
+            get_user_access(permission_id, database_connection).map(|a| UserAccessResponse::OneUserAccess(a))
+        },
         UserAccessRequest::CheckAccess(user_id, access_id) => {
             check_user_access(user_id, access_id, database_connection).map(|s| UserAccessResponse::AccessState(s))
-        }
+        },
         UserAccessRequest::CreateAccess(user_access) => {
             create_user_access(user_access, database_connection).map(|a| UserAccessResponse::OneUserAccess(a))
-        }
+        },
         UserAccessRequest::UpdateAccess(id, user_access) => {
             update_user_access(id, user_access, database_connection).map(|_| UserAccessResponse::NoResponse)
-        }
+        },
         UserAccessRequest::DeleteAccess(id) => {
             delete_user_access(id, database_connection).map(|_| UserAccessResponse::NoResponse)
         }
@@ -196,20 +203,31 @@ fn search_user_access(
     Ok(user_list)
 }
 
+fn get_user_access(
+    permission_id: i64,
+    database_connection: &MysqlConnection
+) -> Result<UserAccess, WebdevError> {
+    let mut found_user_accesses = user_access_schema::table
+        .filter(user_access_schema::permission_id.eq(permission_id))
+        .load::<UserAccess>(database_connection)?;
+
+    match found_user_accesses.pop() {
+        Some(found_user_access) => Ok(found_user_access),
+        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+    }
+}
+
 fn check_user_access(
     user_id: i64,
     access_id: i64,
     database_connection: &MysqlConnection
 ) -> Result<bool, WebdevError> {
-    let mut found_user_accesses = user_access_schema::table
+    let found_user_accesses = user_access_schema::table
         .filter(user_access_schema::user_id.eq(user_id))
         .filter(user_access_schema::access_id.eq(access_id))
-        .load::<UserAccess>(database_connection)?;
+        .execute(database_connection)?;
 
-    match found_user_accesses.pop() {
-        Some(found_user_access) => Ok(true),
-        None => Ok(false),
-    }
+    if found_user_accesses != 0 { Ok(true) } else { Ok(false) }
 }
 
 fn create_user_access(
@@ -217,33 +235,30 @@ fn create_user_access(
     database_connection: &MysqlConnection
 ) -> Result<UserAccess, WebdevError> {
     //find if permission currently exists, should not duplicate (user_id, access_id) pairs
-    let mut found_user_accesses = user_access_schema::table
+    let found_user_accesses = user_access_schema::table
         .filter(user_access_schema::user_id.eq(user_access.user_id))
         .filter(user_access_schema::access_id.eq(user_access.access_id))
+        .execute(database_connection)?;
+
+    if found_user_accesses != 0 { return Err(WebdevError::new(WebdevErrorKind::Database)) }
+
+    //permission most definitely does not exist at this point
+
+    diesel::insert_into(user_access_schema::table)
+        .values(user_access)
+        .execute(database_connection)?;
+
+    no_arg_sql_function!(last_insert_id, types::Bigint);
+
+    let mut inserted_accesses = user_access_schema::table
+        .filter(user_access_schema::permission_id.eq(last_insert_id))
+        //.filter(diesel::dsl::sql("permission_id = LAST_INSERT_ID()"))
         .load::<UserAccess>(database_connection)?;
 
-    match found_user_accesses.pop() {
-        Some(found_user_access) => Ok(found_user_access),
-        None => {
-            //access most definitely does not exist at this point
-
-            match diesel::insert_into(user_access_schema::table)
-                .values(user_access)
-                .execute(database_connection) {
-                   Ok(u_size) => {();}, //cant return yet, we do not have the inserted access object
-                   Err(e) => {();} //No need for error correction, the following code checks for insertion
-            };
-
-            let mut inserted_accesses = user_access_schema::table
-                .filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
-                .load::<UserAccess>(database_connection)?;
-
-            if let Some(inserted_access) = inserted_accesses.pop() {
-                Ok(inserted_access)
-            } else {
-                Err(WebdevError::new(WebdevErrorKind::Database))
-            }
-        },
+    if let Some(inserted_access) = inserted_accesses.pop() {
+        Ok(inserted_access)
+    } else {
+        Err(WebdevError::new(WebdevErrorKind::Database))
     }
 }
 

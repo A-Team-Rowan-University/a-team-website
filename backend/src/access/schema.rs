@@ -1,5 +1,3 @@
-use diesel::table;
-
 use crate::users::schema::users;
 
 table! {

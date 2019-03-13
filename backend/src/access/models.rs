@@ -125,6 +125,7 @@ pub struct SearchUserAccess {
 
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
+    GetAccess(i64), //get individual access entry from its id
     CheckAccess(i64, i64), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
     UpdateAccess(i64, PartialUserAccess), //entry to update with new information
@@ -158,6 +159,10 @@ impl UserAccessRequest {
                     user_id,
                     permission_level,
                 }))
+            },
+
+            (GET) (/{permission_id: i64}) => {
+                Ok(UserAccessRequest::GetAccess(permission_id))
             },
 
             (GET) (/{user_id:i64}/{access_id: i64}) => {
