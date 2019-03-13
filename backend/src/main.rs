@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate diesel_migrations;
 
+#[macro_use]
+extern crate diesel;
+
 use std::env;
 use std::sync::Mutex;
 use std::thread;
@@ -16,11 +19,19 @@ use diesel::MysqlConnection;
 
 use dotenv::dotenv;
 
+mod errors;
+mod access;
+mod users;
+mod search;
+
 use web_dev::errors::WebdevError;
 use web_dev::errors::WebdevErrorKind;
 
 use web_dev::users::models::UserRequest;
 use web_dev::users::requests::handle_user;
+
+use access::models::{AccessRequest, UserAccessRequest};
+use access::requests::{handle_access, handle_user_access};
 
 embed_migrations!();
 
@@ -104,6 +115,22 @@ fn handle_request(
             Err(err) => rouille::Response::from(err),
             Ok(user_request) => match handle_user(user_request, database_connection) {
                 Ok(user_response) => user_response.to_rouille(),
+                Err(err) => rouille::Response::from(err),
+            },
+        }
+    } else if let Some(access_request) = request.remove_prefix("/access") {
+        match AccessRequest::from_rouille(&access_request) {
+            Err(err) => rouille::Response::from(err),
+            Ok(access_request) => match handle_access(access_request, database_connection) {
+                Ok(access_response) => access_response.to_rouille(),
+                Err(err) => rouille::Response::from(err),
+            },
+        }
+    } else if let Some(user_access_request) = request.remove_prefix("/user_access") {
+        match UserAccessRequest::from_rouille(&user_access_request) {
+            Err(err) => rouille::Response::from(err),
+            Ok(user_access_request) => match handle_user_access(user_access_request, database_connection) {
+                Ok(user_access_response) => user_access_response.to_rouille(),
                 Err(err) => rouille::Response::from(err),
             },
         }

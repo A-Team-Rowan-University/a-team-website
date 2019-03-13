@@ -1,6 +1,6 @@
 pub mod models;
 pub mod requests;
-mod schema;
+pub mod schema;
 
 use self::schema::users as users_schema;
 use diesel::expression::AsExpression;

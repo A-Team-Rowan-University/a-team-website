@@ -117,7 +117,7 @@ fn search_users(
     Ok(user_list)
 }
 
-fn get_user(id: u64, database_connection: &MysqlConnection) -> Result<User, WebdevError> {
+fn get_user(id: i64, database_connection: &MysqlConnection) -> Result<User, WebdevError> {
     let mut found_users = users_schema::table
         .filter(users_schema::id.eq(id))
         .load::<User>(database_connection)?;
@@ -145,7 +145,7 @@ fn create_user(user: NewUser, database_connection: &MysqlConnection) -> Result<U
 }
 
 fn update_user(
-    id: u64,
+    id: i64,
     user: PartialUser,
     database_connection: &MysqlConnection,
 ) -> Result<(), WebdevError> {
@@ -156,7 +156,7 @@ fn update_user(
     Ok(())
 }
 
-fn delete_user(id: u64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
+fn delete_user(id: i64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
     diesel::delete(users_schema::table.filter(users_schema::id.eq(id)))
         .execute(database_connection)?;
 
