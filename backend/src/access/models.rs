@@ -13,7 +13,6 @@ use crate::errors::{WebdevError, WebdevErrorKind};
 
 use crate::search::{NullableSearch, Search};
 
-use crate::users::models::UserList;
 use super::schema::{access, user_access};
 
 #[derive(Queryable, Serialize, Deserialize)]
@@ -141,23 +140,23 @@ impl UserAccessRequest {
         router!(request,
             (GET) (/) => {
 
-                let mut access_id = Search::NoSearch;
-                let mut user_id = Search::NoSearch;
-                let mut permission_level = NullableSearch::NoSearch;
+                let mut access_id_search = Search::NoSearch;
+                let mut user_id_search = Search::NoSearch;
+                let mut permission_level_search = NullableSearch::NoSearch;
 
                 for (field, query) in url_queries {
-                    match field.as_ref() {
-                        "access_id" => access_id = Search::from_query(query.as_ref())?,
-                        "user_id" => user_id = Search::from_query(query.as_ref())?,
-                        "permission_level" => permission_level = NullableSearch::from_query(query.as_ref())?,
+                    match field.as_ref() as &str {
+                        "access_id" => access_id_search = Search::from_query(query.as_ref())?,
+                        "user_id" => user_id_search = Search::from_query(query.as_ref())?,
+                        "permission_level" => permission_level_search = NullableSearch::from_query(query.as_ref())?,
                         _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
                     }
                 }
 
                 Ok(UserAccessRequest::SearchAccess(SearchUserAccess {
-                    access_id,
-                    user_id,
-                    permission_level,
+                    access_id: access_id_search,
+                    user_id: user_id_search,
+                    permission_level: permission_level_search,
                 }))
             },
 
@@ -196,8 +195,8 @@ impl UserAccessRequest {
 }
 
 pub enum UserAccessResponse {
-    ManyUsers(UserList),
     AccessState(bool),
+    ManyUserAccess(JoinedUserAccessList),
     OneUserAccess(UserAccess),
     NoResponse,
 }
@@ -205,10 +204,27 @@ pub enum UserAccessResponse {
 impl UserAccessResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            UserAccessResponse::ManyUsers(users) => rouille::Response::json(&users),
             UserAccessResponse::AccessState(state) => rouille::Response::text(if state {"true"} else {"false"}),
+            UserAccessResponse::ManyUserAccess(user_accesses) => rouille::Response::json(&user_accesses),
             UserAccessResponse::OneUserAccess(user_access) => rouille::Response::json(&user_access),
             UserAccessResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
+}
+
+
+
+#[derive(Queryable, Serialize, Deserialize)]
+pub struct JoinedUserAccess {
+    pub permission_id: i64,
+    pub user_id: i64,
+    pub access_id: i64,
+    pub first_name: String,
+    pub last_name: String,
+    pub banner_id: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct JoinedUserAccessList {
+    pub entries: Vec<JoinedUserAccess>,
 }

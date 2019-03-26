@@ -1,11 +1,14 @@
 use diesel;
 use diesel::types;
 use diesel::mysql::MysqlConnection;
+use diesel::mysql::Mysql;
 use diesel::query_builder::AsQuery;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::ExpressionMethods;
 use diesel::TextExpressionMethods;
+use diesel::NullableExpressionMethods;
+use diesel::query_builder::BoxedSelectStatement;
 
 use crate::errors::{WebdevError, WebdevErrorKind};
 
@@ -15,7 +18,9 @@ use super::models::{
     Access, NewAccess, PartialAccess, AccessRequest, AccessResponse,
 
     UserAccess, NewUserAccess, PartialUserAccess, SearchUserAccess,
-    UserAccessRequest, UserAccessResponse
+    UserAccessRequest, UserAccessResponse,
+
+    JoinedUserAccess, JoinedUserAccessList
 };
 
 use crate::users::models::{User, UserList};
@@ -97,7 +102,7 @@ pub fn handle_user_access(
 ) -> Result<UserAccessResponse, WebdevError> {
     match request {
         UserAccessRequest::SearchAccess(user_access) => {
-            search_user_access(user_access, database_connection).map(|u| UserAccessResponse::ManyUsers(u))
+            search_user_access(user_access, database_connection).map(|u| UserAccessResponse::ManyUserAccess(u))
         },
         UserAccessRequest::GetAccess(permission_id) => {
             get_user_access(permission_id, database_connection).map(|a| UserAccessResponse::OneUserAccess(a))
@@ -120,9 +125,17 @@ pub fn handle_user_access(
 fn search_user_access(
     user_access_search: SearchUserAccess,
     database_connection: &MysqlConnection
-) -> Result<UserList, WebdevError> {
+) -> Result<JoinedUserAccessList, WebdevError> {
     let mut user_access_query = user_access_schema::table
-        .as_query().into_boxed();
+        .inner_join(access_schema::table)
+        .inner_join(users_schema::table)
+        .select((user_access_schema::permission_id,
+            users_schema::id,
+            access_schema::id,
+            users_schema::first_name,
+            users_schema::last_name,
+            users_schema::banner_id))
+        .into_boxed::<Mysql>();
 
     match user_access_search.access_id {
         Search::Partial(s) => {
@@ -176,31 +189,10 @@ fn search_user_access(
         NullableSearch::NoSearch => {}
     }
 
-    let found_access_entries = user_access_query.load::<UserAccess>(database_connection)?;
+    let found_access_entries = user_access_query.load::<JoinedUserAccess>(database_connection)?;
+    let joined_list = JoinedUserAccessList { entries: found_access_entries };
 
-    let mut out: Vec<User> = Vec::new();
-
-    for user_access in &found_access_entries {
-
-        let mut found_users = users_schema::table
-            .filter(users_schema::id.eq(user_access.user_id))
-            .load::<User>(database_connection)?;
-
-        match found_users.pop() {
-            Some(user) => {
-                let mut found: bool = false;
-                for pending_user in &out {
-                    if pending_user.id == user.id { found = true; }
-                }
-                if !found { out.push(user); }
-            },
-            None => {();},
-        };
-    }
-
-    let user_list = UserList { users: out };
-
-    Ok(user_list)
+    Ok(joined_list)
 }
 
 fn get_user_access(
