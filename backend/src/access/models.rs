@@ -17,7 +17,7 @@ use super::schema::{access, user_access};
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct Access {
-    pub id: i64,
+    pub id: u64,
     pub access_name: String,
 }
 
@@ -34,10 +34,10 @@ pub struct PartialAccess {
 }
 
 pub enum AccessRequest {
-    GetAccess(i64), //id of access name searched
+    GetAccess(u64), //id of access name searched
     CreateAccess(NewAccess), //new access type of some name to be created
-    UpdateAccess(i64, PartialAccess), //Contains id to be changed to new access_name
-    DeleteAccess(i64), //if of access to be deleted
+    UpdateAccess(u64, PartialAccess), //Contains id to be changed to new access_name
+    DeleteAccess(u64), //if of access to be deleted
 }
 
 impl AccessRequest {
@@ -45,7 +45,7 @@ impl AccessRequest {
         trace!("Creating AccessRequest from {:#?}", request);
 
         router!(request,
-            (GET) (/{id: i64}) => {
+            (GET) (/{id: u64}) => {
                 Ok(AccessRequest::GetAccess(id))
             },
 
@@ -56,14 +56,14 @@ impl AccessRequest {
                 Ok(AccessRequest::CreateAccess(new_access))
             },
 
-            (POST) (/{id: i64}) => {
+            (POST) (/{id: u64}) => {
                 let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
                 let update_access: PartialAccess = serde_json::from_reader(request_body)?;
 
                 Ok(AccessRequest::UpdateAccess(id, update_access))
             },
 
-            (DELETE) (/{id: i64}) => {
+            (DELETE) (/{id: u64}) => {
                 Ok(AccessRequest::DeleteAccess(id))
             },
 
@@ -94,41 +94,41 @@ impl AccessResponse {
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct UserAccess {
-    pub permission_id: i64,
-    pub access_id: i64,
-    pub user_id: i64,
+    pub permission_id: u64,
+    pub access_id: u64,
+    pub user_id: u64,
     pub permission_level: Option<String>,
 }
 
 #[derive(Insertable, Serialize, Deserialize)]
 #[table_name = "user_access"]
 pub struct NewUserAccess {
-    pub access_id: i64,
-    pub user_id: i64,
+    pub access_id: u64,
+    pub user_id: u64,
     pub permission_level: Option<String>,
 }
 
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "user_access"]
 pub struct PartialUserAccess {
-    pub access_id: i64,
-    pub user_id: i64,
+    pub access_id: u64,
+    pub user_id: u64,
     pub permission_level: Option<Option<String>>,
 }
 
 pub struct SearchUserAccess {
-    pub access_id: Search<i64>,
-    pub user_id: Search<i64>,
+    pub access_id: Search<u64>,
+    pub user_id: Search<u64>,
     pub permission_level: NullableSearch<String>,
 }
 
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
-    GetAccess(i64), //get individual access entry from its id
-    CheckAccess(i64, i64), //entry allowing user of user_id to perform action of action_id
+    GetAccess(u64), //get individual access entry from its id
+    CheckAccess(u64, u64), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
-    UpdateAccess(i64, PartialUserAccess), //entry to update with new information
-    DeleteAccess(i64), //entry to delete from database
+    UpdateAccess(u64, PartialUserAccess), //entry to update with new information
+    DeleteAccess(u64), //entry to delete from database
 }
 
 impl UserAccessRequest {
@@ -160,11 +160,11 @@ impl UserAccessRequest {
                 }))
             },
 
-            (GET) (/{permission_id: i64}) => {
+            (GET) (/{permission_id: u64}) => {
                 Ok(UserAccessRequest::GetAccess(permission_id))
             },
 
-            (GET) (/{user_id:i64}/{access_id: i64}) => {
+            (GET) (/{user_id:u64}/{access_id: u64}) => {
                 Ok(UserAccessRequest::CheckAccess(user_id, access_id))
             },
 
@@ -175,14 +175,14 @@ impl UserAccessRequest {
                 Ok(UserAccessRequest::CreateAccess(new_user_access))
             },
 
-            (POST) (/{id: i64}) => {
+            (POST) (/{id: u64}) => {
                 let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
                 let update_user_access: PartialUserAccess = serde_json::from_reader(request_body)?;
 
                 Ok(UserAccessRequest::UpdateAccess(id, update_user_access))
             },
 
-            (DELETE) (/{id: i64}) => {
+            (DELETE) (/{id: u64}) => {
                 Ok(UserAccessRequest::DeleteAccess(id))
             },
 
@@ -216,9 +216,9 @@ impl UserAccessResponse {
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct JoinedUserAccess {
-    pub permission_id: i64,
-    pub user_id: i64,
-    pub access_id: i64,
+    pub permission_id: u64,
+    pub user_id: u64,
+    pub access_id: u64,
     pub first_name: String,
     pub last_name: String,
     pub banner_id: u32,

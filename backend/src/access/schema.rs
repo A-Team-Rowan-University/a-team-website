@@ -2,16 +2,16 @@ use crate::users::schema::users;
 
 table! {
     access (id) {
-        id -> Bigint,
+        id -> Unsigned<Bigint>,
         access_name -> Varchar,
     }
 }
 
 table! {
     user_access (permission_id) {
-        permission_id -> Bigint,
-        access_id -> Bigint,
-        user_id -> Bigint,
+        permission_id -> Unsigned<Bigint>,
+        access_id -> Unsigned<Bigint>,
+        user_id -> Unsigned<Bigint>,
         permission_level -> Nullable<Varchar>,
     }
 }

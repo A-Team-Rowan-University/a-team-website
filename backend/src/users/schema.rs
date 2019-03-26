@@ -1,6 +1,6 @@
 table! {
     users (id) {
-        id -> Bigint,
+        id -> Unsigned<Bigint>,
         first_name -> Varchar,
         last_name -> Varchar,
         banner_id -> Unsigned<Integer>,

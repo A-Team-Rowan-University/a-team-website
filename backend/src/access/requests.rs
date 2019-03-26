@@ -2,6 +2,7 @@ use diesel;
 use diesel::types;
 use diesel::mysql::MysqlConnection;
 use diesel::mysql::Mysql;
+use diesel::mysql::types::Unsigned;
 use diesel::query_builder::AsQuery;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
@@ -49,7 +50,7 @@ pub fn handle_access(
     }
 }
 
-fn get_access(id: i64, database_connection: &MysqlConnection) -> Result<Access, WebdevError> {
+fn get_access(id: u64, database_connection: &MysqlConnection) -> Result<Access, WebdevError> {
     let mut found_access = access_schema::table
         .filter(access_schema::id.eq(id))
         .load::<Access>(database_connection)?;
@@ -65,7 +66,7 @@ fn create_access(access: NewAccess, database_connection: &MysqlConnection) -> Re
         .values(access)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, types::Bigint);
+    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
 
     let mut inserted_accesses = access_schema::table
         .filter(access_schema::id.eq(last_insert_id))
@@ -79,7 +80,7 @@ fn create_access(access: NewAccess, database_connection: &MysqlConnection) -> Re
     }
 }
 
-fn update_access(id: i64, access: PartialAccess, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
+fn update_access(id: u64, access: PartialAccess, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
     diesel::update(access_schema::table)
         .filter(access_schema::id.eq(id))
         .set(&access)
@@ -87,7 +88,7 @@ fn update_access(id: i64, access: PartialAccess, database_connection: &MysqlConn
     Ok(())
 }
 
-fn delete_access(id: i64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
+fn delete_access(id: u64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
     diesel::delete(access_schema::table.filter(access_schema::id.eq(id)))
         .execute(database_connection)?;
 
@@ -196,7 +197,7 @@ fn search_user_access(
 }
 
 fn get_user_access(
-    permission_id: i64,
+    permission_id: u64,
     database_connection: &MysqlConnection
 ) -> Result<UserAccess, WebdevError> {
     let mut found_user_accesses = user_access_schema::table
@@ -210,8 +211,8 @@ fn get_user_access(
 }
 
 fn check_user_access(
-    user_id: i64,
-    access_id: i64,
+    user_id: u64,
+    access_id: u64,
     database_connection: &MysqlConnection
 ) -> Result<bool, WebdevError> {
     let found_user_accesses = user_access_schema::table
@@ -240,7 +241,7 @@ fn create_user_access(
         .values(user_access)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, types::Bigint);
+    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
 
     let mut inserted_accesses = user_access_schema::table
         .filter(user_access_schema::permission_id.eq(last_insert_id))
@@ -255,7 +256,7 @@ fn create_user_access(
 }
 
 fn update_user_access(
-    id: i64,
+    id: u64,
     user_access: PartialUserAccess,
     database_connection: &MysqlConnection
 ) -> Result<(), WebdevError> {
@@ -267,7 +268,7 @@ fn update_user_access(
     Ok(())
 }
 
-fn delete_user_access(id: i64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
+fn delete_user_access(id: u64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
     diesel::delete(user_access_schema::table.filter(user_access_schema::permission_id.eq(id)))
         .execute(database_connection)?;
 

@@ -20,7 +20,7 @@ use crate::users::requests;
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct User {
-    pub id: i64,
+    pub id: u64,
     pub first_name: String,
     pub last_name: String,
     pub banner_id: u32,
@@ -59,10 +59,10 @@ pub struct UserList {
 
 pub enum UserRequest {
     SearchUsers(SearchUser),
-    GetUser(i64),
+    GetUser(u64),
     CreateUser(NewUser),
-    UpdateUser(i64, PartialUser),
-    DeleteUser(i64),
+    UpdateUser(u64, PartialUser),
+    DeleteUser(u64),
 }
 
 impl UserRequest {
@@ -97,7 +97,7 @@ impl UserRequest {
                 }))
             },
 
-            (GET) (/{id: i64}) => {
+            (GET) (/{id: u64}) => {
                 Ok(UserRequest::GetUser(id))
             },
 
@@ -108,14 +108,14 @@ impl UserRequest {
                 Ok(UserRequest::CreateUser(new_user))
             },
 
-            (POST) (/{id: i64}) => {
+            (POST) (/{id: u64}) => {
                 let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
                 let update_user: PartialUser = serde_json::from_reader(request_body)?;
 
                 Ok(UserRequest::UpdateUser(id, update_user))
             },
 
-            (DELETE) (/{id: i64}) => {
+            (DELETE) (/{id: u64}) => {
                 Ok(UserRequest::DeleteUser(id))
             },
 
