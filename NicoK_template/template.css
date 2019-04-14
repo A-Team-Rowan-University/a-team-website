@@ -1,0 +1,148 @@
+html {
+height: 100%
+}
+
+body {
+  font: 15px/1.5 'Trebuchet MS';
+  padding: 0;
+  margin: 0;
+  height: 100%
+}
+
+/* Global */
+.container{
+  width: 80%;
+  margin: auto;
+  overflow: hidden;
+}
+
+/* Header */
+header{
+  background: #57150B;
+  padding-top: 2em;
+  min-height: 4em;
+  border-bottom: #FFCC00 3px solid;
+  position: relative;
+}
+
+header #branding h1 {
+  float: left;
+  text-align: center;
+  margin-top: 1em;
+  color: #FFCC00;
+  font: bold 5em 'Palatino Linotype';
+}
+
+header #branding img {
+  float: left;
+  width: 10em;
+  filter: brightness(0.6) sepia(1) hue-rotate(-2deg) contrast(1.5) saturate(3);
+}
+
+header nav {
+  float: right;
+  padding-top: 1.5em;
+}
+
+.navbutton {
+  background: #FFCC00;
+  border: none;
+  border-radius: 0.5em;
+  padding: 0.2em 0.5em;
+  text-align: center;
+  font-size: 2em;
+}
+
+/* Sidenav */
+
+.sidenav {
+
+  width: 0;
+  right: Max;
+  z-index: 1;
+  top: 0;
+  background-color: #e2e2e2;
+  overflow-x: hidden;
+  transition: 0.5s;
+  float:right;
+  height: inherit;
+}
+
+
+.sidenav a, .dropdown {
+  padding: 0.3em 0.3em 0.3em 1.4em;
+  text-decoration: none;
+  font-size: 2em;
+  color: #818181;
+  background-color: none;
+  display: block;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.sidenav a:hover {
+  color: #2a2a2a;
+}
+
+.sidenav .closebtn {
+
+  top: 0;
+  right: 0.5em;
+  font-size: 2em;
+
+}
+
+.closebtn {
+  float: right;
+  margin-bottom: auto;
+}
+
+#linksDiv {
+
+  padding-top: 4em;
+  padding-top: 4em;
+
+}
+
+.active {
+  background-color: rgba(0,0,0,0.1);
+}
+
+.ddmenu {
+  background-color: rgba(0,0,0,0.1);
+  padding-left: 8px;
+}
+
+.fa-caret-down {
+  float: right;
+  padding-right: 8px;
+}
+
+/*drop down menu style for side nav */
+
+.accordionMenu, .MenuItem {
+  background-color: #e2e2e2; /* #2a2a2a  eee*/
+  color: #444;
+  cursor: pointer;
+  font: 15px/1.5 'Trebuchet MS';
+  width: 100%;
+  border: none;
+  text-align: left;
+  outline: none;
+  font-size: 15px;
+  transition: 0.4s;
+}
+
+
+.active, .accordionMenu:hover {
+  color: #818181;
+}
+
+.panel {
+  padding: 0 18px;
+  display: none;
+  background-color: white;
+  overflow: hidden;
+  background-color: rgba(0,0,0,0.1);
+  padding-left: 8px;
+}
