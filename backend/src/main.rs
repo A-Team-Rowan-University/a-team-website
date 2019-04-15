@@ -23,6 +23,7 @@ mod errors;
 mod access;
 mod users;
 mod search;
+mod chemicals;
 
 use web_dev::errors::WebdevError;
 use web_dev::errors::WebdevErrorKind;
@@ -32,6 +33,9 @@ use web_dev::users::requests::handle_user;
 
 use access::models::{AccessRequest, UserAccessRequest};
 use access::requests::{handle_access, handle_user_access};
+
+use chemicals::models::{ChemicalRequest, ChemicalInventoryRequest};
+use chemicals::requests::{handle_chemical, handle_chemical_inventory};
 
 embed_migrations!();
 
@@ -131,6 +135,22 @@ fn handle_request(
             Err(err) => rouille::Response::from(err),
             Ok(user_access_request) => match handle_user_access(user_access_request, database_connection) {
                 Ok(user_access_response) => user_access_response.to_rouille(),
+                Err(err) => rouille::Response::from(err),
+            },
+        }
+    } else if let Some(chemical_request_url) = request.remove_prefix("/chemical") {
+        match ChemicalRequest::from_rouille(&chemical_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(chemical_request) => match handle_chemical(chemical_request, database_connection) {
+                Ok(chemical_response) => chemical_response.to_rouille(),
+                Err(err) => rouille::Response::from(err),
+            },
+        }
+    } else if let Some(chem_inventory_request_url) = request.remove_prefix("/user_access") {
+        match ChemicalInventoryRequest::from_rouille(&chem_inventory_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(chem_inventory_request) => match handle_chemical_inventory(chem_inventory_request, database_connection) {
+                Ok(chem_inventory_response) => chem_inventory_response.to_rouille(),
                 Err(err) => rouille::Response::from(err),
             },
         }
