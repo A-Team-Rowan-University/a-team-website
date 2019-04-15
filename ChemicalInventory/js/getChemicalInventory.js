@@ -1,4 +1,4 @@
-function getChemicals()
+function getChemicalinventory()
 {
   var xhttp = new XMLHttpRequest
 
@@ -29,7 +29,13 @@ function getChemicals()
             th.innerHTML = "Chemical Name";
             break;
           case 2:
-            th.innerHTML = "Purpose";
+            th.innerHTML = "Company Name";
+            break;
+          case 3:
+            th.innerHTML = "Ingredients";
+            break;
+          case 4:
+            th.innerHTML = "Manual Link";
             break;
         }
         thd.appendChild(th);
@@ -40,17 +46,23 @@ function getChemicals()
       var tbod = document.createElement("tbody")
       for (var i = 0; i < responseObject.chemicals.length; i++) {
         var trow = document.createElement("tr");
-        for (var j = 0; j < 3; j++) {
+        for (var j = 0; j < 4; j++) {
           var td = document.createElement("td");
           switch (j) {
             case 0:
               td.innerHTML = responseObject.chemicals[i].id;
               break;
             case 1:
-              td.innerHTML = responseObject.chemicals[i].name;
+              td.innerHTML = responseObject.chemicals[i].chemical_name;
               break;
             case 2:
-              td.innerHTML = responseObject.chemicals[i].purpose;
+              td.innerHTML = responseObject.chemicals[i].company_name;
+              break;
+            case 3:
+              th.innerHTML = responseObject.chemicals[i].ingredients;
+              break;
+            case 4:
+              th.innerHTML = responseObject.chemicals[i].manual_link;
               break;
           }
           trow.appendChild(td);
