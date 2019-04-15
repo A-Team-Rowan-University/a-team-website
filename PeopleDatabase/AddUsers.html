@@ -5,40 +5,43 @@
 		<meta name="viewport" content="width=device-width">
 		<meta name="description" content="">
 		<title>Rowan University Databases | </title>
-		<link rel="stylesheet" href="./css/template.css">
-		<script type="text/javascript" src="./js/env.js"></script>
-		<script type="text/javascript" src="./js/sidenav.js"></script>
+		<link rel="stylesheet" href="../css/template.css">
+		<script type="text/javascript" src="../js/env.js"></script>
+		<script type="text/javascript" src="../js/sidenav.js"></script>
 	</head>
-  <body>
+  <body onload="sideNavDropDown()">
     <header>
       <div class="container">
         <nav>
           <button class="navbutton" onclick="opennav()">&#9776;</button>
         </nav>
         <div id="branding">
-          <img id="logo" src="./media/A-Team-Logo.png">
-          <h1>Template</h1>
+          <img id="logo" src="../media/A-Team-Logo.png">
+          <h1>Add Users</h1>
         </div>
       </div>
     </header>
-
-    <aside id="sidenav" class="sidenav">
+		<div id="sidenav" class="sidenav">
+		<div id = closebutton>
 			<a href="javascript:void(0)" class="closebtn" onclick="closenav()">&times;</a>
-			<a href="#">Index</a>
-      <a class="dropdown">People</a>
-      <div class="ddmenu">
-        <a href="#">All Users</a>
-        <a href="#">Search User</a>
-        <a href="#">Add User</a>
+		</div>
+		<div id = linksDiv>
+			<a href="#" class = "dropdown">Index</a>
+			<button class="accordionMenu"><span class = dropdown>People</span></button>
+			<div class="panel">
+				<a href="PeopleDatabase/AllUsers.html">All Users</a>
+        <a href="PeopleDatabase/SearchUser">Search User</a>
+        <a href="PeopleDatabase/AddUsers.html">Add User</a>
         <a href="#">Edit User</a>
-      </div>
-			<a class="dropdown">Chemicals</a>
-      <div class="ddmenu">
-        <a href="#">All Chemicals</a>
+			</div>
+			<button class="accordionMenu"><span class = dropdown>Chemicals</span></button>
+			<div class="panel">
+				<a href="PeopleDatabase/">All Chemicals</a>
         <a href="#">Search Chemical</a>
         <a href="#">Add Chemical</a>
         <a href="#">Edit Chemical</a>
+			</div>
       </div>
-		</aside>
+		</div>
   </body>
 </html>
