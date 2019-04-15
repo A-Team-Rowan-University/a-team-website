@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<meta name="description" content="">
+		<title>Rowan University Databases | Chemical Database</title>
+		<link rel="stylesheet" href="../css/template.css">
+		<link rel="stylesheet" href="./css/AllChemicals.css">
+		<script type="text/javascript" src="./js/env.js"></script>
+		<script type="text/javascript" src="../js/sidenav.js"></script>
+		<script type="text/javascript" src="./js/getChemicals.js"></script>
+		<script>
+			window.onload = function() {
+  			getChemicals();
+			};
+		</script>
+	</head>
+  <body onload="sideNavDropDown()">
+    <header>
+      <div class="container">
+        <nav>
+          <button class="navbutton" onclick="opennav()">&#9776;</button>
+        </nav>
+        <div id="branding">
+          <img id="logo" src="../media/A-Team-Logo.png">
+          <h1>Chemical Database</h1>
+        </div>
+      </div>
+			</header>
+
+		<section id="table">
+			<div id="userReturn">
+        <table id="rtrndata"></table>
+      </div>
+		</section>
+
+    <div id="sidenav" class="sidenav">
+		<div id = closebutton>
+			<a href="javascript:void(0)" class="closebtn" onclick="closenav()">&times;</a>
+		</div>
+		<div id = linksDiv>
+			<a href="#" class = "dropdown">Index</a>
+			<button class="accordionMenu"><span class = dropdown>People</span></button>
+			<div class="panel">
+				<a href="#">All Users</a>
+        <a href="#">Search User</a>
+        <a href="#">Add User</a>
+        <a href="#">Edit User</a>
+			</div>
+
+			<button class="accordionMenu"><span class = dropdown>Chemicals</span></button>
+			<div class="panel">
+				<a href="#">All Chemicals</a>
+        <a href="#">Search Chemical</a>
+        <a href="#">Add Chemical</a>
+        <a href="#">Edit Chemical</a>
+			</div>
+      </div>
+		</div>
+		<div id="content">
+		<div>
+  </body>
+</html>
