@@ -9,11 +9,11 @@
 		<script type="text/javascript" src="js/env.js"></script>
 		<script type="text/javascript" src="js/sidenav.js"></script>
 	</head>
-  <body onload="sideNavDropDown()">
+  <body>
     <header>
       <div class="container">
         <nav>
-          <button class="navbutton" onclick="opennav();">&#9776;</button>
+          <button class="navbutton" onclick="opennav();updateLinks();sideNavDropDown()">&#9776;</button>
         </nav>
         <div id="branding">
           <img id="logo" src="media/A-Team-Logo.png">
@@ -21,7 +21,7 @@
         </div>
       </div>
 			</header>
-    <div id="sidenav" class="sidenav">
+    <div id="sidenav" class="sidenav"><!-- the html in this div servers no purpose other than referance for chagning divs. to change future links see the siddnav.js-->
 		<div id = closebutton>
 			<a href="javascript:void(0)" class="closebtn" onclick="closenav()">&times;</a>
 		</div>
@@ -29,9 +29,9 @@
 			<a href="#" class = "dropdown">Index</a>
 			<button class="accordionMenu"><span class = dropdown>People</span></button>
 			<div class="panel">
-				<a href="PeopleDatabase/AllUsers.html">All Users</a>
-        <a href="PeopleDatabase/SearchUser.html">Search User</a>
-        <a href="PeopleDatabase/AddUsers.html">Add User</a>
+				<a href="./PeopleDatabase/AllUsers.html">All Users</a>
+        <a href="./PeopleDatabase/SearchUsers.html">Search User</a>
+        <a href="./PeopleDatabase/AddUsers.html">Add User</a>
         <a href="#">Edit User</a>
 			</div>
 
