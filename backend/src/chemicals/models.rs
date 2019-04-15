@@ -20,6 +20,9 @@ pub struct Chemical {
     pub id: u64,
     pub name: String,
     pub purpose: String,
+    pub company_name: String,
+    pub ingredients: String,
+    pub manual_link: String,
 }
 
 #[derive(Insertable, Serialize, Deserialize)]
@@ -27,6 +30,9 @@ pub struct Chemical {
 pub struct NewChemical {
     pub name: String,
     pub purpose: String,
+    pub company_name: String,
+    pub ingredients: String,
+    pub manual_link: String,
 }
 
 #[derive(AsChangeset, Serialize, Deserialize)]
@@ -34,11 +40,17 @@ pub struct NewChemical {
 pub struct PartialChemical {
     pub name: String,
     pub purpose: String,
+    pub company_name: String,
+    pub ingredients: String,
+    pub manual_link: String,
 }
 
 pub struct SearchChemical {
     pub name: Search<String>,
     pub purpose: Search<String>,
+    pub company_name: Search<String>,
+    pub ingredients: Search<String>,
+    pub manual_link: Search<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -64,11 +76,17 @@ impl ChemicalRequest {
             (GET) (/) => {
                 let mut name_search = Search::NoSearch;
                 let mut purpose_search = Search::NoSearch;
+                let mut company_name_search = Search::NoSearch;
+                let mut ingredients_search = Search::NoSearch;
+                let mut manual_link_search = Search::NoSearch;
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
                         "name" => name_search = Search::from_query(query.as_ref())?,
                         "purpose" => purpose_search = Search::from_query(query.as_ref())?,
+                        "company_name" => company_name_search = Search::from_query(query.as_ref())?,
+                        "ingredients" => ingredients_search = Search::from_query(query.as_ref())?,
+                        "manual_link" => manual_link_search = Search::from_query(query.as_ref())?,
                         _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
                     }
                 }
@@ -76,6 +94,9 @@ impl ChemicalRequest {
                 Ok(ChemicalRequest::Search(SearchChemical {
                     name: name_search,
                     purpose: purpose_search,
+                    company_name: company_name_search,
+                    ingredients: ingredients_search,
+                    manual_link: manual_link_search,
                 }))
             },
 
@@ -134,6 +155,8 @@ pub struct ChemicalInventory {
     pub purchaser_id: u64,
     pub custodian_id: u64,
     pub chemical_id: u64,
+    pub storage_location: String,
+    pub amount: String,
 }
 
 #[derive(Insertable, Serialize, Deserialize)]
@@ -142,6 +165,8 @@ pub struct NewChemicalInventory {
     pub purchaser_id: u64,
     pub custodian_id: u64,
     pub chemical_id: u64,
+    pub storage_location: String,
+    pub amount: String,
 }
 
 #[derive(AsChangeset, Serialize, Deserialize)]
@@ -150,12 +175,16 @@ pub struct PartialChemicalInventory {
     pub purchaser_id: u64,
     pub custodian_id: u64,
     pub chemical_id: u64,
+    pub storage_location: String,
+    pub amount: String,
 }
 
 pub struct SearchChemicalInventory {
     pub purchaser_id: Search<u64>,
     pub custodian_id: Search<u64>,
     pub chemical_id: Search<u64>,
+    pub storage_location: Search<String>,
+    pub amount: Search<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -182,12 +211,16 @@ impl ChemicalInventoryRequest {
                 let mut purchaser_id_search = Search::NoSearch;
                 let mut custodian_id_search = Search::NoSearch;
                 let mut chemical_id_search = Search::NoSearch;
+                let mut storage_location_search = Search::NoSearch;
+                let mut amount_search = Search::NoSearch;
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
                         "purchaser_id" => purchaser_id_search = Search::from_query(query.as_ref())?,
                         "custodian_id" => custodian_id_search = Search::from_query(query.as_ref())?,
                         "chemical_id" => chemical_id_search = Search::from_query(query.as_ref())?,
+                        "storage_location" => storage_location_search = Search::from_query(query.as_ref())?,
+                        "amount" => amount_search = Search::from_query(query.as_ref())?,
                         _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
                     }
                 }
@@ -196,6 +229,8 @@ impl ChemicalInventoryRequest {
                     purchaser_id: purchaser_id_search,
                     custodian_id: custodian_id_search,
                     chemical_id: chemical_id_search,
+                    storage_location: storage_location_search,
+                    amount: amount_search,
                 }))
             },
 

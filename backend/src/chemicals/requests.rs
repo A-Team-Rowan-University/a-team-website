@@ -79,6 +79,42 @@ fn search_chemical(
         Search::NoSearch => {}
     }
 
+    match chemical_search.company_name {
+        Search::Partial(s) => {
+            chemical_query = chemical_query.filter(chemical_schema::company_name.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            chemical_query = chemical_query.filter(chemical_schema::company_name.eq(s))
+        }
+
+        Search::NoSearch => {}
+    }
+
+    match chemical_search.ingredients {
+        Search::Partial(s) => {
+            chemical_query = chemical_query.filter(chemical_schema::ingredients.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            chemical_query = chemical_query.filter(chemical_schema::ingredients.eq(s))
+        }
+
+        Search::NoSearch => {}
+    }
+
+    match chemical_search.manual_link {
+        Search::Partial(s) => {
+            chemical_query = chemical_query.filter(chemical_schema::manual_link.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            chemical_query = chemical_query.filter(chemical_schema::manual_link.eq(s))
+        }
+
+        Search::NoSearch => {}
+    }
+
     let found_chemicals = chemical_query.load::<Chemical>(database_connection)?;
     let chemical_list = ChemicalList { chemicals: found_chemicals };
 
@@ -198,6 +234,34 @@ fn search_chemical_inventory(
         Search::Exact(s) => {
             chemical_inventory_query = chemical_inventory_query
                 .filter(chemical_inventory_schema::chemical_id.eq(s))
+        }
+
+        Search::NoSearch => {}
+    }
+
+    match chemical_inventory_search.storage_location {
+        Search::Partial(s) => {
+            chemical_inventory_query = chemical_inventory_query
+                .filter(chemical_inventory_schema::storage_location.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            chemical_inventory_query = chemical_inventory_query
+                .filter(chemical_inventory_schema::storage_location.eq(s))
+        }
+
+        Search::NoSearch => {}
+    }
+
+    match chemical_inventory_search.amount {
+        Search::Partial(s) => {
+            chemical_inventory_query = chemical_inventory_query
+                .filter(chemical_inventory_schema::amount.like(format!("{}%", s)))
+        }
+
+        Search::Exact(s) => {
+            chemical_inventory_query = chemical_inventory_query
+                .filter(chemical_inventory_schema::amount.eq(s))
         }
 
         Search::NoSearch => {}

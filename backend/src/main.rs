@@ -146,7 +146,7 @@ fn handle_request(
                 Err(err) => rouille::Response::from(err),
             },
         }
-    } else if let Some(chem_inventory_request_url) = request.remove_prefix("/user_access") {
+    } else if let Some(chem_inventory_request_url) = request.remove_prefix("/chemical_inventory") {
         match ChemicalInventoryRequest::from_rouille(&chem_inventory_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(chem_inventory_request) => match handle_chemical_inventory(chem_inventory_request, database_connection) {

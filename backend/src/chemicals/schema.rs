@@ -5,6 +5,9 @@ table! {
         id -> Unsigned<Bigint>,
         name -> Varchar,
         purpose -> Varchar,
+        company_name -> Varchar,
+        ingredients -> Varchar,
+        manual_link -> Varchar,
     }
 }
 
@@ -14,6 +17,8 @@ table! {
         purchaser_id -> Unsigned<Bigint>,
         custodian_id -> Unsigned<Bigint>,
         chemical_id -> Unsigned<Bigint>,
+        storage_location -> Varchar,
+        amount -> Varchar,
     }
 }
 
