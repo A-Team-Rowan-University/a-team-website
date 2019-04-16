@@ -5,4 +5,4 @@ CREATE TABLE users (
   last_name VARCHAR(255) NOT NULL,
   banner_id INT(9) UNSIGNED NOT NULL,
   email VARCHAR(255)
-)
+);
