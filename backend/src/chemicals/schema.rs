@@ -27,8 +27,4 @@ table! {
 //joinable!(chemical_inventory -> users (custodian_id));
 joinable!(chemical_inventory -> chemical (chemical_id));
 
-allow_tables_to_appear_in_same_query!(
-    chemical,
-    chemical_inventory,
-    users,
-);
+allow_tables_to_appear_in_same_query!(chemical, chemical_inventory, users,);

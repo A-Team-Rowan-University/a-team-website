@@ -1,39 +1,42 @@
+use csv;
+use diesel::prelude::*;
+use diesel::MysqlConnection;
+use dotenv::dotenv;
 use log::debug;
 use log::error;
 use log::info;
 use log::trace;
 use log::warn;
-use diesel::prelude::*;
-use diesel::MysqlConnection;
-use dotenv::dotenv;
-use csv;
-use web_dev::users::models::{NewUser,UserRequest};
-use web_dev::users::requests;
 use serde::Deserialize;
 use serde::Serialize;
+use web_dev::users::models::{NewUser, UserRequest};
+use web_dev::users::requests;
 
 #[derive(Serialize, Deserialize, Debug)]
 //Struct to take the data from the csv
 struct Csv_User {
-	#[serde(rename = "Banner ID")]
-	banner_id: i32,
-	#[serde(rename = "Last Name")]
-	last_name: String,
-	#[serde(rename = "First Name")]
-	first_name: String,
-	#[serde(rename = "Email")]
-	email: String,
-	#[serde(rename = "Year")]
-	year: String,
-	#[serde(rename = "Department")]
-	department: String,
+    #[serde(rename = "Banner ID")]
+    banner_id: i32,
+    #[serde(rename = "Last Name")]
+    last_name: String,
+    #[serde(rename = "First Name")]
+    first_name: String,
+    #[serde(rename = "Email")]
+    email: String,
+    #[serde(rename = "Year")]
+    year: String,
+    #[serde(rename = "Department")]
+    department: String,
 }
-fn main(){
-	//Diesel things
-	dotenv().ok();
+fn main() {
+    //Diesel things
+    dotenv().ok();
 
-    simplelog::TermLogger::init(simplelog::LevelFilter::Trace, simplelog::Config::default())
-        .unwrap();
+    simplelog::TermLogger::init(
+        simplelog::LevelFilter::Trace,
+        simplelog::Config::default(),
+    )
+    .unwrap();
 
     info!("Connecting to database");
 
@@ -56,49 +59,48 @@ fn main(){
     };
 
     debug!("Connected to database");
-	//Get file name and path from args
-	use std::env;
-	let arg = env::args().nth(1);
-	let filename = 	match arg {
-		Some(name) => name,
-		None => {
-			error!("Needs a filename");
-			return;
-		}
-	};
-	debug!("{}", filename);
-	//Import the csv into an iterator
-	let mut user_count = 0;
-	let all_users_result = csv::Reader::from_path(filename);
-	let mut all_users = match all_users_result{
-		Ok(data) => data,
-		Err(e) => {
-				error!("Bad file. Error {}",e);
-				return;
-			}
-	};		
-	//Go through each item in the iterator
-	for result in all_users.deserialize(){
-		//Check to see if it's valid
-		let csv_user: Csv_User = match result{
-			Ok(data) => data,
-			Err(e) => {
-				error!("Bad data, {:?}", e);
-				return;
-			}
-		};
-		//Convert the user data from the csv and create a New User from it
-		let new_user:NewUser = NewUser{
-			first_name: csv_user.first_name,
-			last_name: csv_user.last_name,
-			email:  Some(csv_user.email),
-			banner_id: csv_user.banner_id as u32,
-		};
-		//Import new user into database
-		let import_user = UserRequest::CreateUser(new_user);
-		requests::handle_user(import_user, &connection);
-		user_count = user_count+1;
-	}
-	info!("Imported {} user(s)",user_count);
+    //Get file name and path from args
+    use std::env;
+    let arg = env::args().nth(1);
+    let filename = match arg {
+        Some(name) => name,
+        None => {
+            error!("Needs a filename");
+            return;
+        }
+    };
+    debug!("{}", filename);
+    //Import the csv into an iterator
+    let mut user_count = 0;
+    let all_users_result = csv::Reader::from_path(filename);
+    let mut all_users = match all_users_result {
+        Ok(data) => data,
+        Err(e) => {
+            error!("Bad file. Error {}", e);
+            return;
+        }
+    };
+    //Go through each item in the iterator
+    for result in all_users.deserialize() {
+        //Check to see if it's valid
+        let csv_user: Csv_User = match result {
+            Ok(data) => data,
+            Err(e) => {
+                error!("Bad data, {:?}", e);
+                return;
+            }
+        };
+        //Convert the user data from the csv and create a New User from it
+        let new_user: NewUser = NewUser {
+            first_name: csv_user.first_name,
+            last_name: csv_user.last_name,
+            email: Some(csv_user.email),
+            banner_id: csv_user.banner_id as u32,
+        };
+        //Import new user into database
+        let import_user = UserRequest::CreateUser(new_user);
+        requests::handle_user(import_user, &connection);
+        user_count = user_count + 1;
+    }
+    info!("Imported {} user(s)", user_count);
 }
-

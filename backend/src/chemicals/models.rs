@@ -38,11 +38,11 @@ pub struct NewChemical {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "chemical"]
 pub struct PartialChemical {
-    pub name: String,
-    pub purpose: String,
-    pub company_name: String,
-    pub ingredients: String,
-    pub manual_link: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub company_name: Option<String>,
+    pub ingredients: Option<String>,
+    pub manual_link: Option<String>,
 }
 
 pub struct SearchChemical {
@@ -60,17 +60,20 @@ pub struct ChemicalList {
 
 pub enum ChemicalRequest {
     Search(SearchChemical),
-    GetChemical(u64), //id of access name searched
+    GetChemical(u64),            //id of access name searched
     CreateChemical(NewChemical), //new access type of some name to be created
     UpdateChemical(u64, PartialChemical), //Contains id to be changed to new access_name
-    DeleteChemical(u64), //if of access to be deleted
+    DeleteChemical(u64),                  //if of access to be deleted
 }
 
 impl ChemicalRequest {
-    pub fn from_rouille(request: &rouille::Request) -> Result<ChemicalRequest, WebdevError> {
+    pub fn from_rouille(
+        request: &rouille::Request,
+    ) -> Result<ChemicalRequest, WebdevError> {
         trace!("Creating ChemicalRequest from {:#?}", request);
 
-        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
+        let url_queries =
+            form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
@@ -127,7 +130,6 @@ impl ChemicalRequest {
                 Err(WebdevError::new(WebdevErrorKind::NotFound))
             }
         ) //end router
-
     }
 }
 
@@ -140,14 +142,16 @@ pub enum ChemicalResponse {
 impl ChemicalResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            ChemicalResponse::OneChemical(chemical) => rouille::Response::json(&chemical),
-            ChemicalResponse::ManyChemical(chemicals) => rouille::Response::json(&chemicals.chemicals),
+            ChemicalResponse::OneChemical(chemical) => {
+                rouille::Response::json(&chemical)
+            }
+            ChemicalResponse::ManyChemical(chemicals) => {
+                rouille::Response::json(&chemicals.chemicals)
+            }
             ChemicalResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }
-
-
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct ChemicalInventory {
@@ -172,11 +176,11 @@ pub struct NewChemicalInventory {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "chemical_inventory"]
 pub struct PartialChemicalInventory {
-    pub purchaser_id: u64,
-    pub custodian_id: u64,
-    pub chemical_id: u64,
-    pub storage_location: String,
-    pub amount: String,
+    pub purchaser_id: Option<u64>,
+    pub custodian_id: Option<u64>,
+    pub chemical_id: Option<u64>,
+    pub storage_location: Option<String>,
+    pub amount: Option<String>,
 }
 
 pub struct SearchChemicalInventory {
@@ -201,10 +205,13 @@ pub enum ChemicalInventoryRequest {
 }
 
 impl ChemicalInventoryRequest {
-    pub fn from_rouille(request: &rouille::Request) -> Result<ChemicalInventoryRequest, WebdevError> {
+    pub fn from_rouille(
+        request: &rouille::Request,
+    ) -> Result<ChemicalInventoryRequest, WebdevError> {
         trace!("Creating ChemicalInvntoryRequest from {:#?}", request);
 
-        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
+        let url_queries =
+            form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
@@ -273,9 +280,15 @@ pub enum ChemicalInventoryResponse {
 impl ChemicalInventoryResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            ChemicalInventoryResponse::OneInventoryEntry(entry) => rouille::Response::json(&entry),
-            ChemicalInventoryResponse::ManyInventoryEntries(entries) => rouille::Response::json(&entries.entries),
-            ChemicalInventoryResponse::NoResponse => rouille::Response::empty_204(),
+            ChemicalInventoryResponse::OneInventoryEntry(entry) => {
+                rouille::Response::json(&entry)
+            }
+            ChemicalInventoryResponse::ManyInventoryEntries(entries) => {
+                rouille::Response::json(&entries.entries)
+            }
+            ChemicalInventoryResponse::NoResponse => {
+                rouille::Response::empty_204()
+            }
         }
     }
 }

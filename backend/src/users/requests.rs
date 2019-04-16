@@ -8,10 +8,10 @@ use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
 
-use log::trace;
-use log::info;
-use log::warn;
 use log::error;
+use log::info;
+use log::trace;
+use log::warn;
 
 use crate::errors::WebdevError;
 use crate::errors::WebdevErrorKind;
@@ -30,20 +30,20 @@ pub fn handle_user(
 ) -> Result<UserResponse, WebdevError> {
     match request {
         UserRequest::SearchUsers(user) => {
-            search_users(user, database_connection).map(|u| UserResponse::ManyUsers(u))
+            search_users(user, database_connection)
+                .map(|u| UserResponse::ManyUsers(u))
         }
         UserRequest::GetUser(id) => {
             get_user(id, database_connection).map(|u| UserResponse::OneUser(u))
         }
-        UserRequest::CreateUser(user) => {
-            create_user(user, database_connection).map(|u| UserResponse::OneUser(u))
-        }
+        UserRequest::CreateUser(user) => create_user(user, database_connection)
+            .map(|u| UserResponse::OneUser(u)),
         UserRequest::UpdateUser(id, user) => {
-            update_user(id, user, database_connection).map(|_| UserResponse::NoResponse)
+            update_user(id, user, database_connection)
+                .map(|_| UserResponse::NoResponse)
         }
-        UserRequest::DeleteUser(id) => {
-            delete_user(id, database_connection).map(|_| UserResponse::NoResponse)
-        }
+        UserRequest::DeleteUser(id) => delete_user(id, database_connection)
+            .map(|_| UserResponse::NoResponse),
     }
 }
 
@@ -55,7 +55,8 @@ fn search_users(
 
     match user.first_name {
         Search::Partial(s) => {
-            users_query = users_query.filter(users_schema::first_name.like(format!("{}%", s)))
+            users_query = users_query
+                .filter(users_schema::first_name.like(format!("{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -67,7 +68,8 @@ fn search_users(
 
     match user.last_name {
         Search::Partial(s) => {
-            users_query = users_query.filter(users_schema::last_name.like(format!("{}%", s)))
+            users_query = users_query
+                .filter(users_schema::last_name.like(format!("{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -93,7 +95,8 @@ fn search_users(
 
     match user.email {
         NullableSearch::Partial(s) => {
-            users_query = users_query.filter(users_schema::email.like(format!("{}%", s)))
+            users_query =
+                users_query.filter(users_schema::email.like(format!("{}%", s)))
         }
 
         NullableSearch::Exact(s) => {
@@ -117,7 +120,10 @@ fn search_users(
     Ok(user_list)
 }
 
-fn get_user(id: u64, database_connection: &MysqlConnection) -> Result<User, WebdevError> {
+fn get_user(
+    id: u64,
+    database_connection: &MysqlConnection,
+) -> Result<User, WebdevError> {
     let mut found_users = users_schema::table
         .filter(users_schema::id.eq(id))
         .load::<User>(database_connection)?;
@@ -128,7 +134,10 @@ fn get_user(id: u64, database_connection: &MysqlConnection) -> Result<User, Webd
     }
 }
 
-fn create_user(user: NewUser, database_connection: &MysqlConnection) -> Result<User, WebdevError> {
+fn create_user(
+    user: NewUser,
+    database_connection: &MysqlConnection,
+) -> Result<User, WebdevError> {
     diesel::insert_into(users_schema::table)
         .values(user)
         .execute(database_connection)?;
@@ -156,7 +165,10 @@ fn update_user(
     Ok(())
 }
 
-fn delete_user(id: u64, database_connection: &MysqlConnection) -> Result<(), WebdevError> {
+fn delete_user(
+    id: u64,
+    database_connection: &MysqlConnection,
+) -> Result<(), WebdevError> {
     diesel::delete(users_schema::table.filter(users_schema::id.eq(id)))
         .execute(database_connection)?;
 

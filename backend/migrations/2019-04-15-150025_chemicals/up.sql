@@ -6,7 +6,7 @@ CREATE TABLE chemical (
   company_name VARCHAR(255) NOT NULL,
   ingredients VARCHAR(1023) NOT NULL,
   manual_link VARCHAR(1023) NOT NULL
-)
+);
 
 CREATE TABLE chemical_inventory (
   id SERIAL PRIMARY KEY,
@@ -27,4 +27,4 @@ CREATE TABLE chemical_inventory (
     REFERENCES chemical(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE
-)
+);
