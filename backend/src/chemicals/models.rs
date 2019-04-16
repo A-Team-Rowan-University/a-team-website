@@ -146,7 +146,7 @@ impl ChemicalResponse {
                 rouille::Response::json(&chemical)
             }
             ChemicalResponse::ManyChemical(chemicals) => {
-                rouille::Response::json(&chemicals.chemicals)
+                rouille::Response::json(&chemicals)
             }
             ChemicalResponse::NoResponse => rouille::Response::empty_204(),
         }
@@ -284,7 +284,7 @@ impl ChemicalInventoryResponse {
                 rouille::Response::json(&entry)
             }
             ChemicalInventoryResponse::ManyInventoryEntries(entries) => {
-                rouille::Response::json(&entries.entries)
+                rouille::Response::json(&entries)
             }
             ChemicalInventoryResponse::NoResponse => {
                 rouille::Response::empty_204()
