@@ -81,6 +81,6 @@ function getChemicals()
   };
 
   // Send Get Request
-  xhttp.open("GET", database, true);
+  xhttp.open("GET", database + "/", true);
   xhttp.send();
 }

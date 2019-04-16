@@ -1,1 +1,1 @@
-var database = "/api/v1/chemicals/"
+var database = "/api/v1/chemicals"

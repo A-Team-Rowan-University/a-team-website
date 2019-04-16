@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width">
+		<meta name="description" content="">
+		<title>Rowan University Databases | </title>
+		<link rel="stylesheet" href="../css/template.css">
+		<link rel="stylesheet" href="./css/SearchChemicals.css">
+		<script type="text/javascript" src="./js/env.js"></script>
+		<script type="text/javascript" src="../js/sidenav.js"></script>
+		<script type="text/javascript" src="./js/searchChemicals.js"></script>
+	</head>
+  <body>
+    <header>
+      <div class="container">
+        <nav>
+          <button class="navbutton" onclick="opennav();updateLinks();sideNavDropDown()">&#9776;</button>
+        </nav>
+        <div id="branding">
+          <img id="logo" src="../media/A-Team-Logo.png">
+          <h1>Template</h1>
+        </div>
+      </div>
+		</header>
+
+		<!-- SIDENAV -->
+		<div id="sidenav" class="sidenav"><!-- the html in this div servers no purpose other than referance for chagning divs. to change future links see the siddnav.js-->
+			<div id = closebutton>
+				<a href="javascript:void(0)" class="closebtn" onclick="closenav()">&times;</a>
+			</div>
+			<div id = linksDiv>
+				<a href="#" class = "dropdown">Index</a>
+				<button class="accordionMenu"><span class = dropdown>People</span></button>
+				<div class="panel">
+					<a href="./PeopleDatabase/AllUsers.html">All Users</a>
+					<a href="./PeopleDatabase/SearchUsers.html">Search User</a>
+					<a href="./PeopleDatabase/AddUsers.html">Add User</a>
+					<a href="#">Edit User</a>
+				</div>
+
+				<button class="accordionMenu"><span class = dropdown>Chemicals</span></button>
+				<div class="panel">
+					<a href="PeopleDatabase/">All Chemicals</a>
+					<a href="#">Search Chemical</a>
+					<a href="#">Add Chemical</a>
+					<a href="#">Edit Chemical</a>
+				</div>
+			</div>
+		</div>
+
+
+		<div id="content">
+			<table id="form" style="margin-left:auto;margin-right:auto;">
+	      <tr>
+	        <td class="inputlabel">
+	          <label for="name">Chemical Name</label>
+	        </td>
+	        <td class="inputactual">
+	          <input id="name" type="text">
+	        </td>
+	      </tr>
+	      <tr>
+	        <td class="inputlabel">
+	          <label for="purpose">Purpose</label>
+	        </td>
+	        <td class="inputactual">
+	          <input id="purpose" type="text">
+	        </td>
+	      </tr>
+				<tr>
+	        <td class="inputlabel">
+	          <label for="company_name">Company Name</label>
+	        </td>
+	        <td class="inputactual">
+	          <input id="company_name" type="text">
+	        </td>
+	      </tr>
+				<tr>
+	        <td class="inputlabel">
+	          <label for="ingredients">Ingredients</label>
+	        </td>
+	        <td class="inputactual">
+	          <input id="ingredients" type="text">
+	        </td>
+	      </tr>
+				<tr>
+	        <td class="inputlabel">
+	          <label for="manual_link">Manual Link</label>
+	        </td>
+	        <td class="inputactual">
+	          <input id="manual_link" type="text">
+	        </td>
+	      </tr>
+	    </table>
+	    <div id="buttons">
+	      <input name="search" type="submit" value="Search"
+	        onClick="searchChemicals()" class="button"><br />
+	    </div>
+
+			<div id="userReturn">
+	      <table id="rtrndata"></table>
+	    </div>
+		</div>
+  </body>
+</html>
