@@ -1,0 +1,80 @@
+#table {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+input[type=text] {
+  -webkit-transition: border-bottom 0.6s linear;
+  transition: border-bottom 0.6s linear;
+  border: none;
+  border-bottom: 2px solid #57150B;
+  width: 100%;
+  font-family: 'Trebuchet MS';
+  font-size: 1em;
+}
+
+input[type=text]:focus {
+  border-bottom: 2px solid #FFCC00;
+}
+
+#form td{
+  padding: 5px;
+  font-family: 'Trebuchet MS';
+  font-size: 1.25em;
+  text-align: center;
+  width: 40%
+}
+
+#buttons {
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+}
+.button {
+  -webkit-transition: box-shadow 0.6s ease-in-out;
+  transition: box-shadow 0.6s ease-in-out;
+  box-shadow: none;
+  background-color: #FFCC00;
+  border: none;
+  border-radius: 5px;
+  font-family: 'Trebuchet MS';
+  font-size: 1.6em;
+  color: #57150B;
+  padding: 16px 32px;
+  margin: 4px 4px;
+}
+
+.button:hover {
+  box-shadow: 0 0 10px 0 rgba(0,200,200,0.6);
+}
+
+.button:active {
+  background-color: #EEBB00;
+}
+
+#rtrndata {
+  border-collapse: collapse;
+  border-bottom: 1px solid black;
+  text-align: center;
+  font-size: 1.5em;
+  font-family: 'Trebuchet MS';
+}
+
+#rtrndata th {
+  background-color: #EEBB00;
+  color: #57150B;
+  padding: 1em;
+}
+
+#rtrndata td {
+  padding: 1em;
+}
+
+#rtrndata tr:nth-child(even) {
+  background-color: #f0f0f0;
+}
+
+#rtrndata tr:hover {
+  background-color: #EEEEEE;
+}
