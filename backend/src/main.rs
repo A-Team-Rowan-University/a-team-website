@@ -157,18 +157,6 @@ fn handle_request(
                 Err(err) => rouille::Response::from(err),
             },
         }
-    } else if let Some(chemical_request_url) =
-        request.remove_prefix("/chemical")
-    {
-        match ChemicalRequest::from_rouille(&chemical_request_url) {
-            Err(err) => rouille::Response::from(err),
-            Ok(chemical_request) => {
-                match handle_chemical(chemical_request, database_connection) {
-                    Ok(chemical_response) => chemical_response.to_rouille(),
-                    Err(err) => rouille::Response::from(err),
-                }
-            }
-        }
     } else if let Some(chem_inventory_request_url) =
         request.remove_prefix("/chemical_inventory")
     {
@@ -185,6 +173,18 @@ fn handle_request(
                 }
                 Err(err) => rouille::Response::from(err),
             },
+        }
+    } else if let Some(chemical_request_url) =
+        request.remove_prefix("/chemical")
+    {
+        match ChemicalRequest::from_rouille(&chemical_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(chemical_request) => {
+                match handle_chemical(chemical_request, database_connection) {
+                    Ok(chemical_response) => chemical_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
         }
     } else {
         rouille::Response::empty_404()
