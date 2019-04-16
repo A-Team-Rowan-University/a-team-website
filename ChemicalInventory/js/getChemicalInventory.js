@@ -19,7 +19,7 @@ function getChemicalinventory()
 
       // Table Headers
       var thd = document.createElement("thead");
-      for (var i = 0; i < 4; i++) {
+      for (var i = 0; i < 7; i++) {
         var th = document.createElement("th");
         switch (i) {
           case 0:
@@ -37,6 +37,12 @@ function getChemicalinventory()
           case 4:
             th.innerHTML = "Manual Link";
             break;
+          case 5:
+            th.innerHTML = "Storage Location";
+            break;
+          case 6:
+            th.innerHTML = "Amount";
+            break;
         }
         thd.appendChild(th);
       }
@@ -46,7 +52,7 @@ function getChemicalinventory()
       var tbod = document.createElement("tbody")
       for (var i = 0; i < responseObject.chemicals.length; i++) {
         var trow = document.createElement("tr");
-        for (var j = 0; j < 4; j++) {
+        for (var j = 0; j < 7; j++) {
           var td = document.createElement("td");
           switch (j) {
             case 0:
@@ -63,6 +69,12 @@ function getChemicalinventory()
               break;
             case 4:
               th.innerHTML = responseObject.chemicals[i].manual_link;
+              break;
+            case 5:
+              th.innerHTML = responseObject.chemicals[i].storage_location;
+              break;
+            case 6:
+              th.innerHTML = responseObject.chemicals[i].amount;
               break;
           }
           trow.appendChild(td);

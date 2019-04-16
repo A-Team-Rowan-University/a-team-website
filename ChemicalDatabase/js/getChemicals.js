@@ -19,7 +19,7 @@ function getChemicals()
 
       // Table Headers
       var thd = document.createElement("thead");
-      for (var i = 0; i < 4; i++) {
+      for (var i = 0; i < 6; i++) {
         var th = document.createElement("th");
         switch (i) {
           case 0:
@@ -31,6 +31,15 @@ function getChemicals()
           case 2:
             th.innerHTML = "Purpose";
             break;
+          case 3:
+            th.innerHTML = "Company Name";
+            break;
+          case 4:
+            th.innerHTML = "Ingredients";
+            break;
+          case 5:
+            th.innerHTML = "Manual Link";
+            break;
         }
         thd.appendChild(th);
       }
@@ -40,7 +49,7 @@ function getChemicals()
       var tbod = document.createElement("tbody")
       for (var i = 0; i < responseObject.chemicals.length; i++) {
         var trow = document.createElement("tr");
-        for (var j = 0; j < 3; j++) {
+        for (var j = 0; j < 6; j++) {
           var td = document.createElement("td");
           switch (j) {
             case 0:
@@ -51,6 +60,15 @@ function getChemicals()
               break;
             case 2:
               td.innerHTML = responseObject.chemicals[i].purpose;
+              break;
+            case 3:
+              td.innerHTML = responseObject.chemicals[i].company_name;
+              break;
+            case 4:
+              td.innerHTML = responseObject.chemicals[i].ingredients;
+              break;
+            case 5:
+              td.innerHTML = responseObject.chemicals[i].manual_link;
               break;
           }
           trow.appendChild(td);
