@@ -175,7 +175,7 @@ fn handle_request(
             },
         }
     } else if let Some(chemical_request_url) =
-        request.remove_prefix("/chemical")
+        request.remove_prefix("/chemicals")
     {
         match ChemicalRequest::from_rouille(&chemical_request_url) {
             Err(err) => rouille::Response::from(err),
