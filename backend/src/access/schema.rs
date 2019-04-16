@@ -19,8 +19,4 @@ table! {
 joinable!(user_access -> access (access_id));
 joinable!(user_access -> users (user_id));
 
-allow_tables_to_appear_in_same_query!(
-    access,
-    user_access,
-    users,
-);
+allow_tables_to_appear_in_same_query!(access, user_access, users,);

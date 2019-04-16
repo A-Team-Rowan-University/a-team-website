@@ -66,10 +66,13 @@ pub enum UserRequest {
 }
 
 impl UserRequest {
-    pub fn from_rouille(request: &rouille::Request) -> Result<UserRequest, WebdevError> {
+    pub fn from_rouille(
+        request: &rouille::Request,
+    ) -> Result<UserRequest, WebdevError> {
         trace!("Creating UserRequest from {:#?}", request);
 
-        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
+        let url_queries =
+            form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {

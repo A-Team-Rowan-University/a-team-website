@@ -34,14 +34,16 @@ pub struct PartialAccess {
 }
 
 pub enum AccessRequest {
-    GetAccess(u64), //id of access name searched
+    GetAccess(u64),                   //id of access name searched
     CreateAccess(NewAccess), //new access type of some name to be created
     UpdateAccess(u64, PartialAccess), //Contains id to be changed to new access_name
-    DeleteAccess(u64), //if of access to be deleted
+    DeleteAccess(u64),                //if of access to be deleted
 }
 
 impl AccessRequest {
-    pub fn from_rouille(request: &rouille::Request) -> Result<AccessRequest, WebdevError> {
+    pub fn from_rouille(
+        request: &rouille::Request,
+    ) -> Result<AccessRequest, WebdevError> {
         trace!("Creating AccessRequest from {:#?}", request);
 
         router!(request,
@@ -72,7 +74,6 @@ impl AccessRequest {
                 Err(WebdevError::new(WebdevErrorKind::NotFound))
             }
         ) //end router
-
     }
 }
 
@@ -84,13 +85,13 @@ pub enum AccessResponse {
 impl AccessResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            AccessResponse::OneAccess(access) => rouille::Response::json(&access),
+            AccessResponse::OneAccess(access) => {
+                rouille::Response::json(&access)
+            }
             AccessResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }
-
-
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct UserAccess {
@@ -124,18 +125,21 @@ pub struct SearchUserAccess {
 
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
-    GetAccess(u64), //get individual access entry from its id
+    GetAccess(u64),                 //get individual access entry from its id
     CheckAccess(u64, u64), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
     UpdateAccess(u64, PartialUserAccess), //entry to update with new information
-    DeleteAccess(u64), //entry to delete from database
+    DeleteAccess(u64),     //entry to delete from database
 }
 
 impl UserAccessRequest {
-    pub fn from_rouille(request: &rouille::Request) -> Result<UserAccessRequest, WebdevError> {
+    pub fn from_rouille(
+        request: &rouille::Request,
+    ) -> Result<UserAccessRequest, WebdevError> {
         trace!("Creating UserAccessRequest from {:#?}", request);
 
-        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
+        let url_queries =
+            form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
@@ -204,15 +208,19 @@ pub enum UserAccessResponse {
 impl UserAccessResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            UserAccessResponse::AccessState(state) => rouille::Response::text(if state {"true"} else {"false"}),
-            UserAccessResponse::ManyUserAccess(user_accesses) => rouille::Response::json(&user_accesses),
-            UserAccessResponse::OneUserAccess(user_access) => rouille::Response::json(&user_access),
+            UserAccessResponse::AccessState(state) => {
+                rouille::Response::text(if state { "true" } else { "false" })
+            }
+            UserAccessResponse::ManyUserAccess(user_accesses) => {
+                rouille::Response::json(&user_accesses)
+            }
+            UserAccessResponse::OneUserAccess(user_access) => {
+                rouille::Response::json(&user_access)
+            }
             UserAccessResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }
-
-
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct JoinedUserAccess {

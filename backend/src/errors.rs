@@ -40,7 +40,10 @@ impl WebdevError {
         WebdevError { kind, source: None }
     }
 
-    pub fn with_source(kind: WebdevErrorKind, source: Box<dyn Error>) -> WebdevError {
+    pub fn with_source(
+        kind: WebdevErrorKind,
+        source: Box<dyn Error>,
+    ) -> WebdevError {
         WebdevError {
             kind,
             source: Some(source),
@@ -94,7 +97,9 @@ impl From<WebdevError> for rouille::Response {
             WebdevErrorKind::NotFound => {
                 rouille::Response::text(e.to_string()).with_status_code(404)
             }
-            WebdevErrorKind::Format => rouille::Response::text(e.to_string()).with_status_code(400),
+            WebdevErrorKind::Format => {
+                rouille::Response::text(e.to_string()).with_status_code(400)
+            }
             WebdevErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
             }

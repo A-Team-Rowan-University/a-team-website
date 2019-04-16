@@ -19,11 +19,11 @@ use diesel::MysqlConnection;
 
 use dotenv::dotenv;
 
-mod errors;
 mod access;
-mod users;
-mod search;
 mod chemicals;
+mod errors;
+mod search;
+mod users;
 
 use web_dev::errors::WebdevError;
 use web_dev::errors::WebdevErrorKind;
@@ -34,7 +34,7 @@ use web_dev::users::requests::handle_user;
 use access::models::{AccessRequest, UserAccessRequest};
 use access::requests::{handle_access, handle_user_access};
 
-use chemicals::models::{ChemicalRequest, ChemicalInventoryRequest};
+use chemicals::models::{ChemicalInventoryRequest, ChemicalRequest};
 use chemicals::requests::{handle_chemical, handle_chemical_inventory};
 
 embed_migrations!();
@@ -42,8 +42,11 @@ embed_migrations!();
 fn main() {
     dotenv().ok();
 
-    simplelog::SimpleLogger::init(simplelog::LevelFilter::Trace, simplelog::Config::default())
-        .unwrap();
+    simplelog::SimpleLogger::init(
+        simplelog::LevelFilter::Trace,
+        simplelog::Config::default(),
+    )
+    .unwrap();
 
     info!("Connecting to database");
 
@@ -94,14 +97,19 @@ fn main() {
                     "POST, GET, DELETE, OPTIONS",
                 )
                 .with_additional_header("Access-Control-Allow-Origin", "*")
-                .with_additional_header("Access-Control-Allow-Headers", "X-PINGOTHER, Content-Type")
+                .with_additional_header(
+                    "Access-Control-Allow-Headers",
+                    "X-PINGOTHER, Content-Type",
+                )
                 .with_additional_header("Access-Control-Max-Age", "86400")
         } else {
             let current_connection = match connection_mutex.lock() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Could not lock database");
-                    return rouille::Response::from(WebdevError::new(WebdevErrorKind::Database));
+                    return rouille::Response::from(WebdevError::new(
+                        WebdevErrorKind::Database,
+                    ));
                 }
             };
 
@@ -119,40 +127,62 @@ fn handle_request(
     if let Some(user_request) = request.remove_prefix("/users") {
         match UserRequest::from_rouille(&user_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(user_request) => match handle_user(user_request, database_connection) {
-                Ok(user_response) => user_response.to_rouille(),
-                Err(err) => rouille::Response::from(err),
-            },
+            Ok(user_request) => {
+                match handle_user(user_request, database_connection) {
+                    Ok(user_response) => user_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
         }
     } else if let Some(access_request) = request.remove_prefix("/access") {
         match AccessRequest::from_rouille(&access_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(access_request) => match handle_access(access_request, database_connection) {
-                Ok(access_response) => access_response.to_rouille(),
-                Err(err) => rouille::Response::from(err),
-            },
+            Ok(access_request) => {
+                match handle_access(access_request, database_connection) {
+                    Ok(access_response) => access_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
         }
-    } else if let Some(user_access_request) = request.remove_prefix("/user_access") {
+    } else if let Some(user_access_request) =
+        request.remove_prefix("/user_access")
+    {
         match UserAccessRequest::from_rouille(&user_access_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(user_access_request) => match handle_user_access(user_access_request, database_connection) {
+            Ok(user_access_request) => match handle_user_access(
+                user_access_request,
+                database_connection,
+            ) {
                 Ok(user_access_response) => user_access_response.to_rouille(),
                 Err(err) => rouille::Response::from(err),
             },
         }
-    } else if let Some(chemical_request_url) = request.remove_prefix("/chemical") {
+    } else if let Some(chemical_request_url) =
+        request.remove_prefix("/chemical")
+    {
         match ChemicalRequest::from_rouille(&chemical_request_url) {
             Err(err) => rouille::Response::from(err),
-            Ok(chemical_request) => match handle_chemical(chemical_request, database_connection) {
-                Ok(chemical_response) => chemical_response.to_rouille(),
-                Err(err) => rouille::Response::from(err),
-            },
+            Ok(chemical_request) => {
+                match handle_chemical(chemical_request, database_connection) {
+                    Ok(chemical_response) => chemical_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
         }
-    } else if let Some(chem_inventory_request_url) = request.remove_prefix("/chemical_inventory") {
-        match ChemicalInventoryRequest::from_rouille(&chem_inventory_request_url) {
+    } else if let Some(chem_inventory_request_url) =
+        request.remove_prefix("/chemical_inventory")
+    {
+        match ChemicalInventoryRequest::from_rouille(
+            &chem_inventory_request_url,
+        ) {
             Err(err) => rouille::Response::from(err),
-            Ok(chem_inventory_request) => match handle_chemical_inventory(chem_inventory_request, database_connection) {
-                Ok(chem_inventory_response) => chem_inventory_response.to_rouille(),
+            Ok(chem_inventory_request) => match handle_chemical_inventory(
+                chem_inventory_request,
+                database_connection,
+            ) {
+                Ok(chem_inventory_response) => {
+                    chem_inventory_response.to_rouille()
+                }
                 Err(err) => rouille::Response::from(err),
             },
         }
