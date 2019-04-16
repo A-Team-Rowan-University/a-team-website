@@ -71,7 +71,9 @@ fn main() {
     debug!("Connected to database");
 
     info!("Running migrations");
-    embedded_migrations::run(&connection);
+    if let Err(e) = embedded_migrations::run(&connection) {
+        warn!("Could not run migrations: {}", e);
+    }
 
     let connection_mutex = Mutex::new(connection);
 
