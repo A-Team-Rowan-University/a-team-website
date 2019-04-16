@@ -38,11 +38,11 @@ pub struct NewChemical {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "chemical"]
 pub struct PartialChemical {
-    pub name: String,
-    pub purpose: String,
-    pub company_name: String,
-    pub ingredients: String,
-    pub manual_link: String,
+    pub name: Option<String>,
+    pub purpose: Option<String>,
+    pub company_name: Option<String>,
+    pub ingredients: Option<String>,
+    pub manual_link: Option<String>,
 }
 
 pub struct SearchChemical {
@@ -176,11 +176,11 @@ pub struct NewChemicalInventory {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "chemical_inventory"]
 pub struct PartialChemicalInventory {
-    pub purchaser_id: u64,
-    pub custodian_id: u64,
-    pub chemical_id: u64,
-    pub storage_location: String,
-    pub amount: String,
+    pub purchaser_id: Option<u64>,
+    pub custodian_id: Option<u64>,
+    pub chemical_id: Option<u64>,
+    pub storage_location: Option<String>,
+    pub amount: Option<String>,
 }
 
 pub struct SearchChemicalInventory {
