@@ -1,4 +1,4 @@
-function getChemicalinventory()
+function getChemicalInventory()
 {
   var xhttp = new XMLHttpRequest
 
@@ -19,28 +19,25 @@ function getChemicalinventory()
 
       // Table Headers
       var thd = document.createElement("thead");
-      for (var i = 0; i < 7; i++) {
+      for (var i = 0; i < 6; i++) {
         var th = document.createElement("th");
         switch (i) {
           case 0:
-            th.innerHTML = "Chemical ID";
+            th.innerHTML = "Chemical Inventory ID";
             break;
           case 1:
-            th.innerHTML = "Chemical Name";
+            th.innerHTML = "Purchaser ID";
             break;
           case 2:
-            th.innerHTML = "Company Name";
+            th.innerHTML = "Custodian ID";
             break;
           case 3:
-            th.innerHTML = "Ingredients";
+            th.innerHTML = "Chemical ID";
             break;
           case 4:
-            th.innerHTML = "Manual Link";
-            break;
-          case 5:
             th.innerHTML = "Storage Location";
             break;
-          case 6:
+          case 5:
             th.innerHTML = "Amount";
             break;
         }
@@ -50,31 +47,28 @@ function getChemicalinventory()
 
       // Table Body
       var tbod = document.createElement("tbody")
-      for (var i = 0; i < responseObject.chemicals.length; i++) {
+      for (var i = 0; i < responseObject.entries.length; i++) {
         var trow = document.createElement("tr");
-        for (var j = 0; j < 7; j++) {
+        for (var j = 0; j < 6; j++) {
           var td = document.createElement("td");
           switch (j) {
             case 0:
-              td.innerHTML = responseObject.chemicals[i].id;
+              td.innerHTML = responseObject.entries[i].id;
               break;
             case 1:
-              td.innerHTML = responseObject.chemicals[i].chemical_name;
+              td.innerHTML = responseObject.entries[i].purchaser_id;
               break;
             case 2:
-              td.innerHTML = responseObject.chemicals[i].company_name;
+              td.innerHTML = responseObject.entries[i].custodian_id;
               break;
             case 3:
-              th.innerHTML = responseObject.chemicals[i].ingredients;
+              td.innerHTML = responseObject.entries[i].chemical_id;
               break;
             case 4:
-              th.innerHTML = responseObject.chemicals[i].manual_link;
+              td.innerHTML = responseObject.entries[i].storage_location;
               break;
             case 5:
-              th.innerHTML = responseObject.chemicals[i].storage_location;
-              break;
-            case 6:
-              th.innerHTML = responseObject.chemicals[i].amount;
+              td.innerHTML = responseObject.entries[i].amount;
               break;
           }
           trow.appendChild(td);
@@ -87,6 +81,6 @@ function getChemicalinventory()
   };
 
   // Send Get Request
-  xhttp.open("GET", database, true);
+  xhttp.open("GET", database + "/", true);
   xhttp.send();
 }

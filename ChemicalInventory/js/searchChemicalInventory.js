@@ -3,30 +3,30 @@ function searchChemicals()
   var xhttp = new XMLHttpRequest
 
   //Grab input values + Define search type
-  var nameInput = document.getElementById("name").value;
-  var purposeInput = document.getElementById("purpose").value;
-  var companyInput = document.getElementById("company_name").value;
-  var ingredientsInput = document.getElementById("ingredients").value;
-  var manualInput = document.getElementById("manual_link").value;
+  var purchaser_idInput = document.getElementById("purchaser_id").value;
+  var custodian_idInput = document.getElementById("custodian_id").value;
+  var chemical_idInput = document.getElementById("chemical_id").value;
+  var storage_locationInput = document.getElementById("storage_location").value;
+  var manualInput = document.getElementById("amount").value;
 
   //Determine what values are searched + Check Search Type
-  var nameSearch = true;
-  var purposeSearch = true;
-  var companySearch = true;
-  var ingredientsSearch = true;
+  var purchaser_idSearch = true;
+  var custodian_idSearch = true;
+  var chemical_idSearch = true;
+  var storage_locationSearch = true;
   var manualSearch = true;
 
-  if(nameInput === "") {
-    nameSearch = false;
+  if(purchaser_idInput === "") {
+    purchaser_idSearch = false;
   }
-  if(purposeInput === "") {
-    purposeSearch = false;
+  if(custodian_idInput === "") {
+    custodian_idSearch = false;
   }
-  if(companyInput === "") {
-    companySearch = false;
+  if(chemical_idInput === "") {
+    chemical_idSearch = false;
   }
-  if(ingredientsInput === "") {
-    ingredientsSearch = false;
+  if(storage_locationInput === "") {
+    storage_locationSearch = false;
   }
   if(manualInput === "") {
     manualSearch = false;
@@ -52,22 +52,22 @@ function searchChemicals()
         var th = document.createElement("th");
         switch (i) {
           case 0:
-            th.innerHTML = "Chemical ID";
+            th.innerHTML = "Chemical Inventory ID";
             break;
           case 1:
-            th.innerHTML = "Chemical Name";
+            th.innerHTML = "Purchaser ID";
             break;
           case 2:
-            th.innerHTML = "Purpose";
+            th.innerHTML = "Custodian ID";
             break;
           case 3:
-            th.innerHTML = "Company Name";
+            th.innerHTML = "Chemical ID";
             break;
           case 4:
-            th.innerHTML = "Ingredients";
+            th.innerHTML = "Storage Location";
             break;
           case 5:
-            th.innerHTML = "Manual Link";
+            th.innerHTML = "Amount";
             break;
         }
         thd.appendChild(th);
@@ -76,28 +76,28 @@ function searchChemicals()
 
       // Table Body
       var tbod = document.createElement("tbody")
-      for (var i = 0; i < responseObject.chemicals.length; i++) {
+      for (var i = 0; i < responseObject.entries.length; i++) {
         var trow = document.createElement("tr");
         for (var j = 0; j < 6; j++) {
           var td = document.createElement("td");
           switch (j) {
             case 0:
-              td.innerHTML = responseObject.chemicals[i].id;
+              td.innerHTML = responseObject.entries[i].id;
               break;
             case 1:
-              td.innerHTML = responseObject.chemicals[i].name;
+              td.innerHTML = responseObject.entries[i].purchaser_id;
               break;
             case 2:
-              td.innerHTML = responseObject.chemicals[i].purpose;
+              td.innerHTML = responseObject.entries[i].custodian_id;
               break;
             case 3:
-              td.innerHTML = responseObject.chemicals[i].company_name;
+              td.innerHTML = responseObject.entries[i].chemical_id;
               break;
             case 4:
-              td.innerHTML = responseObject.chemicals[i].ingredients;
+              td.innerHTML = responseObject.entries[i].storage_location;
               break;
             case 5:
-              td.innerHTML = responseObject.chemicals[i].manual_link;
+              td.innerHTML = responseObject.entries[i].amount;
               break;
           }
           trow.appendChild(td);
@@ -110,38 +110,38 @@ function searchChemicals()
   };
 
   // Send Get Request
-  if(nameSearch || purposeSearch || companySearch || ingredientsSearch || manualSearch)
+  if(purchaser_idSearch || custodian_idSearch || chemical_idSearch || storage_locationSearch || manualSearch)
   {
     var searchString = "/?";
-    if(nameSearch) {
-      searchString += ("name=partial," + nameInput);
+    if(purchaser_idSearch) {
+      searchString += ("purchaser_id=partial," + purchaser_idInput);
     }
-    if(purposeSearch) {
+    if(custodian_idSearch) {
       if(searchString.indexOf("?") === searchString.length - 1) {
-        searchString += ("purpose=partial," + purposeInput);
+        searchString += ("custodian_id=partial," + custodian_idInput);
       } else {
-        searchString += ("&purpose=partial," + purposeInput);
+        searchString += ("&custodian_id=partial," + custodian_idInput);
       }
     }
-    if(companySearch) {
+    if(chemical_idSearch) {
       if(searchString.indexOf("?") === searchString.length - 1) {
-        searchString += ("company_name=partial," + companyInput);
+        searchString += ("chemical_id=partial," + chemical_idInput);
       } else {
-        searchString += ("&company_name=partial," + companyInput);
+        searchString += ("&chemical_id=partial," + chemical_idInput);
       }
     }
-    if(ingredientsSearch) {
+    if(storage_locationSearch) {
       if(searchString.indexOf("?") === searchString.length - 1) {
-        searchString += ("ingredients=partial," + ingredientsInput);
+        searchString += ("storage_location=partial," + storage_locationInput);
       } else {
-        searchString += ("&ingredients=partial," + ingredientsInput);
+        searchString += ("&storage_location=partial," + storage_locationInput);
       }
     }
     if(manualSearch) {
       if(searchString.indexOf("?") === searchString.length - 1) {
-        searchString += ("manual_link=partial," + manualInput);
+        searchString += ("amount=partial," + manualInput);
       } else {
-        searchString += ("&manual_link=partial," + manualInput);
+        searchString += ("&amount=partial," + manualInput);
       }
     }
     console.log(database + searchString);

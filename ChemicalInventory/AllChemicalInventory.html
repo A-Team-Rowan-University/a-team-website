@@ -4,15 +4,15 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width">
         <meta name="description" content="">
-        <title>Rowan University Databases | People Database</title>
+        <title>Rowan University Databases | Chemical Inventory</title>
         <link rel="stylesheet" href="../css/template.css">
-        <link rel="stylesheet" href="./css/AllUsers.css">
-        <script type="text/javascript" src="../js/env.js"></script>
+        <link rel="stylesheet" href="./css/AllChemicalInventory.css">
+        <script type="text/javascript" src="js/env.js"></script>
         <script type="text/javascript" src="../js/sidenav.js"></script>
-        <script type="text/javascript" src="../js/getUsers.js"></script>
+        <script type="text/javascript" src="js/getChemicalInventory.js"></script>
         <script>
             window.onload = function() {
-                getUsers();
+                getChemicalInventory();
             };
         </script>
     </head>
@@ -20,23 +20,16 @@
         <header>
             <div class="container">
                 <nav>
-                    <button class="navbutton" onclick="opennav();updateLinks();sideNavDropDown();">&#9776;</button>
+                    <button class="navbutton" onclick="opennav()">&#9776;</button>
                 </nav>
                 <div id="branding">
                     <img id="logo" src="../media/A-Team-Logo.png">
-                    <h1>People Database</h1>
+                    <h1>Chemical Inventory</h1>
                 </div>
             </div>
         </header>
 
-        <section id="table">
-            <div id="userReturn">
-                <table id="rtrndata"></table>
-            </div>
-        </section>
-
-        <!-- SIDENAV -->
-        <div id="sidenav" class="sidenav"><!-- the html in this div servers no purpose other than referance for chagning divs. to change future links see the siddnav.js-->
+        <div id="sidenav" class="sidenav">
             <div id = closebutton>
                 <a href="javascript:void(0)" class="closebtn" onclick="closenav()">&times;</a>
             </div>
@@ -67,6 +60,12 @@
                 </div>
             </div>
         </div>
-
+        <div id="content">
+            <div id="table">
+                <div id="userReturn">
+                    <table id="rtrndata"></table>
+                </div>
+            </div>
+            <div>
     </body>
 </html>

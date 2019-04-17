@@ -1,36 +1,3 @@
-/* Return Table */
-
-#table {
-  align-items: center;
-  display: flex;
-  justify-content: center;
-}
-
-#rtrndata {
-  border-collapse: collapse;
-  border-bottom: 1px solid black;
-  text-align: center;
-  font-size: 1.5em;
-  font-family: 'Trebuchet MS';
-}
-
-#rtrndata th {
-  background-color: #EEBB00;
-  color: #57150B;
-  padding: 1em;
-}
-
-#rtrndata td {
-  padding: 1em;
-}
-
-#rtrndata tr:nth-child(even) {
-  background-color: #f0f0f0;
-}
-
-#rtrndata tr:hover {
-  background-color: #EEEEEE;
-}
 
 /* Form Table + Buttons */
 input[type=text] {
