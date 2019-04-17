@@ -1,5 +1,0 @@
-POST http://localhost:8000/users/create
-
-{ "first_name": "timothy", "last_name": "hollabaut", "email": "hollabaut1@students.rowan.edu", "banner_id": 916246947 }
-
-###

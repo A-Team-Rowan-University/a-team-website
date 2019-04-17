@@ -1,3 +1,0 @@
-GET http://localhost:8000/users?first_name_exact=timothy&last_name_exact=hollabaut
-
-###
