@@ -1,6 +1,6 @@
 [submodule "resource-website-backend"]
-	path = resource-website-backend
+	path = backend
 	url = git@github.com:A-Team-Rowan-University/resource-website-backend.git
 [submodule "resource-website-frontend"]
-	path = resource-website-frontend
+	path = frontend
 	url = git@github.com:A-Team-Rowan-University/resource-website-frontend.git
