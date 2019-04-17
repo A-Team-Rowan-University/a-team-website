@@ -1,4 +1,4 @@
-## resource-website-backend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-backend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-backend)
+## resource-website/backend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-backend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-backend)
 Coded in Rust, manages database manipulation using AJAX requests from frontend.
 
 ### Dependencies:
