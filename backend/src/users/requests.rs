@@ -56,7 +56,7 @@ fn search_users(
     match user.first_name {
         Search::Partial(s) => {
             users_query = users_query
-                .filter(users_schema::first_name.like(format!("{}%", s)))
+                .filter(users_schema::first_name.like(format!("%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -69,7 +69,7 @@ fn search_users(
     match user.last_name {
         Search::Partial(s) => {
             users_query = users_query
-                .filter(users_schema::last_name.like(format!("{}%", s)))
+                .filter(users_schema::last_name.like(format!("%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -96,7 +96,7 @@ fn search_users(
     match user.email {
         NullableSearch::Partial(s) => {
             users_query =
-                users_query.filter(users_schema::email.like(format!("{}%", s)))
+                users_query.filter(users_schema::email.like(format!("%{}%", s)))
         }
 
         NullableSearch::Exact(s) => {

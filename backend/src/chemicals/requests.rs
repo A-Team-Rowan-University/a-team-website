@@ -63,7 +63,7 @@ fn search_chemical(
     match chemical_search.name {
         Search::Partial(s) => {
             chemical_query = chemical_query
-                .filter(chemical_schema::name.like(format!("{}%", s)))
+                .filter(chemical_schema::name.like(format!("%%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -76,7 +76,7 @@ fn search_chemical(
     match chemical_search.purpose {
         Search::Partial(s) => {
             chemical_query = chemical_query
-                .filter(chemical_schema::purpose.like(format!("{}%", s)))
+                .filter(chemical_schema::purpose.like(format!("%%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -90,7 +90,7 @@ fn search_chemical(
     match chemical_search.company_name {
         Search::Partial(s) => {
             chemical_query = chemical_query
-                .filter(chemical_schema::company_name.like(format!("{}%", s)))
+                .filter(chemical_schema::company_name.like(format!("%%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -104,7 +104,7 @@ fn search_chemical(
     match chemical_search.ingredients {
         Search::Partial(s) => {
             chemical_query = chemical_query
-                .filter(chemical_schema::ingredients.like(format!("{}%", s)))
+                .filter(chemical_schema::ingredients.like(format!("%%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -118,7 +118,7 @@ fn search_chemical(
     match chemical_search.manual_link {
         Search::Partial(s) => {
             chemical_query = chemical_query
-                .filter(chemical_schema::manual_link.like(format!("{}%", s)))
+                .filter(chemical_schema::manual_link.like(format!("%{}%", s)))
         }
 
         Search::Exact(s) => {
@@ -276,7 +276,7 @@ fn search_chemical_inventory(
         Search::Partial(s) => {
             chemical_inventory_query = chemical_inventory_query.filter(
                 chemical_inventory_schema::storage_location
-                    .like(format!("{}%", s)),
+                    .like(format!("%{}%", s)),
             )
         }
 
@@ -291,7 +291,7 @@ fn search_chemical_inventory(
     match chemical_inventory_search.amount {
         Search::Partial(s) => {
             chemical_inventory_query = chemical_inventory_query.filter(
-                chemical_inventory_schema::amount.like(format!("{}%", s)),
+                chemical_inventory_schema::amount.like(format!("%{}%", s)),
             )
         }
 

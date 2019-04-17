@@ -188,7 +188,7 @@ fn search_user_access(
     match user_access_search.permission_level {
         NullableSearch::Partial(s) => {
             user_access_query = user_access_query.filter(
-                user_access_schema::permission_level.like(format!("{}%", s)),
+                user_access_schema::permission_level.like(format!("%{}%", s)),
             )
         }
 

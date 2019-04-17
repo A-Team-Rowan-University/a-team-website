@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fmt;
 
+use log::error;
+
 use crate::search::SearchParseError;
 
 #[derive(Debug, Copy, Clone)]
@@ -93,6 +95,9 @@ impl From<SearchParseError> for WebdevError {
 
 impl From<WebdevError> for rouille::Response {
     fn from(e: WebdevError) -> rouille::Response {
+
+        error!("{:?} -> {:?}", e.kind(), e.source());
+
         match e.kind() {
             WebdevErrorKind::NotFound => {
                 rouille::Response::text(e.to_string()).with_status_code(404)
