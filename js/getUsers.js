@@ -19,7 +19,7 @@ function getUsers()
 
       // Table Headers
       var thd = document.createElement("thead");
-      for (var i = 0; i < 4; i++) {
+      for (var i = 0; i < 5; i++) {
         var th = document.createElement("th");
         switch (i) {
           case 0:
@@ -34,6 +34,9 @@ function getUsers()
           case 3:
             th.innerHTML = "Banner ID";
             break;
+          case 4:
+            th.innerHTML = "Email";
+            break;
         }
         thd.appendChild(th);
       }
@@ -43,7 +46,7 @@ function getUsers()
       var tbod = document.createElement("tbody")
       for (var i = 0; i < responseObject.users.length; i++) {
         var trow = document.createElement("tr");
-        for (var j = 0; j < 4; j++) {
+        for (var j = 0; j < 5; j++) {
           var td = document.createElement("td");
           switch (j) {
             case 0:
@@ -57,6 +60,9 @@ function getUsers()
               break;
             case 3:
               td.innerHTML = responseObject.users[i].banner_id;
+              break;
+            case 4:
+              td.innerHTML = responseObject.users[i].email;
               break;
           }
           trow.appendChild(td);
