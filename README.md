@@ -2,7 +2,7 @@
 
 The central server used for managing the databases of the ECE Apprengineering Team at Rowan University.
 
-## backend
+## backend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-backend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-backend)
 Coded in Rust, manages database manipulation using AJAX requests from frontend.
 
 ### Dependencies:
@@ -14,7 +14,7 @@ Coded in Rust, manages database manipulation using AJAX requests from frontend.
 * [log 0.4](https://github.com/rust-lang-nursery/log)
 * [simplelog](https://github.com/drakulix/simplelog.rs)
 
-## frontend
+## frontend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-frontend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-frontend)
 Coded in Elm, makes requests to the backend to access database and returns to the user.
 
 ### Dependencies:
