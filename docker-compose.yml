@@ -1,6 +1,7 @@
 version: "3.1"
 services:
   api:
+    build: ./backend
     image: webdev_api
     deploy:
       replicas: 1
@@ -24,6 +25,7 @@ services:
       MYSQL_DATABASE: web_dev
 
   frontend:
+    build: ./frontend
     image: webdev_frontend
     ports:
       - "80:80"
