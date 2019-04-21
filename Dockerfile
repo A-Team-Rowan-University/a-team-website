@@ -1,17 +1,34 @@
-# Use rust image
-FROM rust:1.33
+# select build image
+FROM rust:1.33 as build
 
-# Set working directory of rust app
-WORKDIR /usr/src/webdev
+# create a new empty shell project
+RUN USER=root cargo new --bin web_dev
+WORKDIR /web_dev
 
-# Copy current directory, into docker
-COPY . /usr/src/webdev
+# copy over your manifests
+COPY ./Cargo.lock ./Cargo.lock
+COPY ./Cargo.toml ./Cargo.toml
 
-# Build the app
+RUN mkdir src/bin
+RUN cp src/main.rs src/bin/csv_user_import.rs
+
+# this build step will cache your dependencies
+RUN cargo build --release
+RUN rm src/*.rs
+
+# copy your source tree
+COPY ./migrations ./migrations
+COPY ./src ./src
+
+# build for release
+RUN rm ./target/release/deps/web_dev*
 RUN cargo build --release
 
-# Make port 8080 available
-EXPOSE 8000:8000
+# our final base
+FROM rust:1.33
 
-# Run the app
-CMD ["target/release/web_dev"]
+# copy the build artifact from the build stage
+COPY --from=build /web_dev/target/release/web_dev /
+
+# set the startup command to run your binary
+CMD ["/web_dev"]
