@@ -10,8 +10,8 @@ use log::warn;
 
 use super::schema::users;
 
-use crate::errors::WebdevError;
-use crate::errors::WebdevErrorKind;
+use crate::errors::Error;
+use crate::errors::ErrorKind;
 
 use crate::search::NullableSearch;
 use crate::search::Search;
@@ -68,9 +68,7 @@ pub enum UserRequest {
 impl UserRequest {
     pub fn from_rouille(
         request: &rouille::Request,
-    ) -> Result<UserRequest, WebdevError> {
-        trace!("Creating UserRequest from {:#?}", request);
-
+    ) -> Result<UserRequest, Error> {
         let url_queries =
             form_urlencoded::parse(request.raw_query_string().as_bytes());
 
@@ -88,7 +86,7 @@ impl UserRequest {
                         "last_name" => last_name_search = Search::from_query(query.as_ref())?,
                         "banner_id" => banner_id_search = Search::from_query(query.as_ref())?,
                         "email" => email_search = NullableSearch::from_query(query.as_ref())?,
-                        _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
+                        _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
 
@@ -105,14 +103,14 @@ impl UserRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let new_user: NewUser = serde_json::from_reader(request_body)?;
 
                 Ok(UserRequest::CreateUser(new_user))
             },
 
             (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let update_user: PartialUser = serde_json::from_reader(request_body)?;
 
                 Ok(UserRequest::UpdateUser(id, update_user))
@@ -124,7 +122,7 @@ impl UserRequest {
 
             _ => {
                 warn!("Could not create a user request for the given rouille request");
-                Err(WebdevError::new(WebdevErrorKind::NotFound))
+                Err(Error::new(ErrorKind::NotFound))
             }
         )
     }
