@@ -2,5 +2,5 @@
 	path = backend/webdev_lib
 	url = git@github.com:A-Team-Rowan-University/resource-website-backend.git
 [submodule "resource-website-frontend"]
-	path = frontend
+	path = frontend/www
 	url = git@github.com:A-Team-Rowan-University/resource-website-frontend.git
