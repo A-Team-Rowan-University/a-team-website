@@ -8,3 +8,5 @@ pub mod access;
 pub mod errors;
 pub mod search;
 pub mod users;
+pub mod chemicals;
+

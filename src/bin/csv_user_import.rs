@@ -5,16 +5,14 @@ use dotenv::dotenv;
 use log::debug;
 use log::error;
 use log::info;
-use log::trace;
-use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
-use web_dev::users::models::{NewUser, UserRequest};
-use web_dev::users::requests;
+use webdev_lib::users::models::{NewUser, UserRequest};
+use webdev_lib::users::requests;
 
 #[derive(Serialize, Deserialize, Debug)]
 //Struct to take the data from the csv
-struct Csv_User {
+struct CsvUser {
     #[serde(rename = "Banner ID")]
     banner_id: i32,
     #[serde(rename = "Last Name")]
@@ -42,7 +40,7 @@ fn main() {
 
     let database_url = match env::var("DATABASE_URL") {
         Ok(url) => url,
-        Err(e) => {
+        Err(_e) => {
             error!("Could not read DATABASE_URL environment variable");
             return;
         }
@@ -83,7 +81,7 @@ fn main() {
     //Go through each item in the iterator
     for result in all_users.deserialize() {
         //Check to see if it's valid
-        let csv_user: Csv_User = match result {
+        let csv_user: CsvUser = match result {
             Ok(data) => data,
             Err(e) => {
                 error!("Bad data, {:?}", e);
@@ -99,7 +97,7 @@ fn main() {
         };
         //Import new user into database
         let import_user = UserRequest::CreateUser(new_user);
-        requests::handle_user(import_user, &connection);
+        requests::handle_user(import_user, &connection).unwrap();
         user_count = user_count + 1;
     }
     info!("Imported {} user(s)", user_count);
