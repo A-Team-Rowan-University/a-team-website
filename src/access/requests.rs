@@ -9,6 +9,7 @@ use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
 
 use crate::errors::{Error, ErrorKind};
+use google_signin;
 
 use crate::search::{NullableSearch, Search};
 
@@ -19,29 +20,109 @@ use super::models::{
     UserAccessResponse,
 };
 
+use crate::users::models::{SearchUser, User, UserList, UserRequest, UserResponse};
+use crate::users::requests::handle_user;
+
 use super::schema::access as access_schema;
 use super::schema::user_access as user_access_schema;
 use crate::users::schema::users as users_schema;
 
+pub fn get_user(id_token: &str, database_connection: &MysqlConnection) -> Option<u64> {
+    let mut client = google_signin::Client::new();
+    client.audiences.push(String::from(
+        "743489940041-kd5b4r3l4tiohluea0omifnhdf7db78t.apps.googleusercontent.com",
+    ));
+
+    let id_info = client.verify(id_token);
+
+    match id_info {
+        Ok(info) => match info.email {
+            Some(email) => {
+                let search_request = UserRequest::SearchUsers(SearchUser {
+                                        first_name: Search::NoSearch,
+                                        last_name: Search::NoSearch,
+                                        banner_id: Search::NoSearch,
+                                        email: NullableSearch::Exact(email),
+                                    });
+                match handle_user(search_request, Some(0), database_connection) {
+                    Ok(found_user) => match found_user {
+                        UserResponse::OneUser(user) => Some(user.id),
+                        UserResponse::ManyUsers(user_list) => Some(user_list.users[0].id),
+                        UserResponse::NoResponse => None,
+                    },
+                    Err(_e) => None,
+                }
+            },
+            None => None,
+        },
+        Err(_e) => None,
+    }
+}
+
+pub fn check_to_run(
+    requesting_user_id: Option<u64>,
+    access_type: &str,
+    database_connection: &MysqlConnection,
+) -> Result<(), Error> {
+    match requesting_user_id {
+        Some(user_id) => {
+            match check_user_access(user_id, String::from(access_type), database_connection) {
+                Ok(access) => {
+                    if access {
+                        Ok(())
+                    } else {
+                        Err(Error::new(ErrorKind::AccessDenied))
+                    }
+                }
+                Err(e) => Err(e),
+            }
+        }
+        None => Err(Error::new(ErrorKind::AccessDenied)),
+    }
+}
+
 pub fn handle_access(
     request: AccessRequest,
+    requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<AccessResponse, Error> {
     match request {
-        AccessRequest::GetAccess(id) => get_access(id, database_connection)
-            .map(|a| AccessResponse::OneAccess(a)),
+        AccessRequest::GetAccess(id) => {
+            match check_to_run(requesting_user, "GetAccess", database_connection) {
+                Ok(()) => {
+                    get_access(id, database_connection)
+                        .map(|a| AccessResponse::OneAccess(a))
+                },
+                Err(e) => Err(e),
+            }
+        },
         AccessRequest::CreateAccess(access) => {
-            create_access(access, database_connection)
-                .map(|a| AccessResponse::OneAccess(a))
-        }
+            match check_to_run(requesting_user, "CreateAccess", database_connection) {
+                Ok(()) => {
+                    create_access(access, database_connection)
+                        .map(|a| AccessResponse::OneAccess(a))
+                },
+                Err(e) => Err(e),
+            }
+        },
         AccessRequest::UpdateAccess(id, access) => {
-            update_access(id, access, database_connection)
-                .map(|_| AccessResponse::NoResponse)
-        }
+            match check_to_run(requesting_user, "UpdateAccess", database_connection) {
+                Ok(()) => {
+                    update_access(id, access, database_connection)
+                        .map(|_| AccessResponse::NoResponse)
+                },
+                Err(e) => Err(e),
+            }
+        },
         AccessRequest::DeleteAccess(id) => {
-            delete_access(id, database_connection)
-                .map(|_| AccessResponse::NoResponse)
-        }
+            match check_to_run(requesting_user, "DeleteAccess", database_connection) {
+                Ok(()) => {
+                    delete_access(id, database_connection)
+                        .map(|_| AccessResponse::NoResponse)
+                },
+                Err(e) => Err(e),
+            }
+        },
     }
 }
 
@@ -105,33 +186,59 @@ fn delete_access(
 
 pub fn handle_user_access(
     request: UserAccessRequest,
+    requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<UserAccessResponse, Error> {
     match request {
         UserAccessRequest::SearchAccess(user_access) => {
-            search_user_access(user_access, database_connection)
-                .map(|u| UserAccessResponse::ManyUserAccess(u))
-        }
+            match check_to_run(requesting_user, "GetUserAccess", database_connection) {
+                Ok(()) => {
+                    search_user_access(user_access, database_connection)
+                        .map(|u| UserAccessResponse::ManyUserAccess(u))
+                },
+                Err(e) => Err(e),
+            }
+        },
         UserAccessRequest::GetAccess(permission_id) => {
-            get_user_access(permission_id, database_connection)
-                .map(|a| UserAccessResponse::OneUserAccess(a))
-        }
-        UserAccessRequest::CheckAccess(user_id, access_id) => {
-            check_user_access(user_id, access_id, database_connection)
+            match check_to_run(requesting_user, "GetUserAccess", database_connection) {
+                Ok(()) => {
+                    get_user_access(permission_id, database_connection)
+                        .map(|a| UserAccessResponse::OneUserAccess(a))
+                },
+                Err(e) => Err(e),
+            }
+        },
+        UserAccessRequest::CheckAccess(user_id, access_name) => {
+            check_user_access(user_id, access_name, database_connection)
                 .map(|s| UserAccessResponse::AccessState(s))
-        }
+        },
         UserAccessRequest::CreateAccess(user_access) => {
-            create_user_access(user_access, database_connection)
-                .map(|a| UserAccessResponse::OneUserAccess(a))
-        }
+            match check_to_run(requesting_user, "CreateUserAccess", database_connection) {
+                Ok(()) => {
+                    create_user_access(user_access, database_connection)
+                        .map(|a| UserAccessResponse::OneUserAccess(a))
+                },
+                Err(e) => Err(e),
+            }
+        },
         UserAccessRequest::UpdateAccess(id, user_access) => {
-            update_user_access(id, user_access, database_connection)
-                .map(|_| UserAccessResponse::NoResponse)
-        }
+            match check_to_run(requesting_user, "UpdateUserAccess", database_connection) {
+                Ok(()) => {
+                    update_user_access(id, user_access, database_connection)
+                        .map(|_| UserAccessResponse::NoResponse)
+                },
+                Err(e) => Err(e),
+            }
+        },
         UserAccessRequest::DeleteAccess(id) => {
-            delete_user_access(id, database_connection)
-                .map(|_| UserAccessResponse::NoResponse)
-        }
+            match check_to_run(requesting_user, "DeleteUserAccess", database_connection) {
+                Ok(()) => {
+                    delete_user_access(id, database_connection)
+                        .map(|_| UserAccessResponse::NoResponse)
+                },
+                Err(e) => Err(e),
+            }
+        },
     }
 }
 
@@ -230,12 +337,28 @@ fn get_user_access(
 
 fn check_user_access(
     user_id: u64,
-    access_id: u64,
+    access_name: String,
     database_connection: &MysqlConnection,
 ) -> Result<bool, Error> {
+    //checks for root access as a user may have root but not specific permissions
+    if access_name != "RootAccess" {
+        match check_user_access(user_id, String::from("RootAccess"), database_connection) {
+            Ok(access) => {
+                if access {
+                    return Ok(true);
+                }
+            }
+            Err(_e) => {}
+        }
+    }
+
+
+    //continue with normal permissions check
     let found_user_accesses = user_access_schema::table
+        .inner_join(access_schema::table)
+        .select((user_access_schema::user_id, access_schema::access_name))
         .filter(user_access_schema::user_id.eq(user_id))
-        .filter(user_access_schema::access_id.eq(access_id))
+        .filter(access_schema::access_name.eq(access_name))
         .execute(database_connection)?;
 
     if found_user_accesses != 0 {

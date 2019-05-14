@@ -30,7 +30,7 @@ pub struct NewAccess {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "access"]
 pub struct PartialAccess {
-    pub access_name: String,
+    pub access_name: Option<String>,
 }
 
 pub enum AccessRequest {
@@ -110,8 +110,8 @@ pub struct NewUserAccess {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "user_access"]
 pub struct PartialUserAccess {
-    pub access_id: u64,
-    pub user_id: u64,
+    pub access_id: Option<u64>,
+    pub user_id: Option<u64>,
     pub permission_level: Option<Option<String>>,
 }
 
@@ -124,7 +124,7 @@ pub struct SearchUserAccess {
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
     GetAccess(u64),                 //get individual access entry from its id
-    CheckAccess(u64, u64), //entry allowing user of user_id to perform action of action_id
+    CheckAccess(u64, String), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
     UpdateAccess(u64, PartialUserAccess), //entry to update with new information
     DeleteAccess(u64),     //entry to delete from database
@@ -164,8 +164,8 @@ impl UserAccessRequest {
                 Ok(UserAccessRequest::GetAccess(permission_id))
             },
 
-            (GET) (/{user_id:u64}/{access_id: u64}) => {
-                Ok(UserAccessRequest::CheckAccess(user_id, access_id))
+            (GET) (/{user_id:u64}/{access_name: String}) => {
+                Ok(UserAccessRequest::CheckAccess(user_id, access_name))
             },
 
             (POST) (/) => {

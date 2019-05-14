@@ -10,6 +10,7 @@ pub enum ErrorKind {
     Database,
     Url,
     Body,
+    AccessDenied,
     NotFound,
     Unimplemented,
 }
@@ -28,6 +29,7 @@ impl std::fmt::Display for Error {
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
             ErrorKind::Unimplemented => write!(f, "Method not implemented"),
+            ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
         }
     }
 }
@@ -117,6 +119,9 @@ impl From<Error> for rouille::Response {
             ErrorKind::Body => {
                 rouille::Response::text(e.to_string_with_source())
                     .with_status_code(400)
+            }
+            ErrorKind::AccessDenied => {
+                rouille::Response::text(e.to_string()).with_status_code(401)
             }
             ErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
