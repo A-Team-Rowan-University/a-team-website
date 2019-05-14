@@ -25,6 +25,7 @@ use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
 use webdev_lib::access::models::{AccessRequest, UserAccessRequest};
+use webdev_lib::access::requests::get_user;
 use webdev_lib::access::requests::{handle_access, handle_user_access};
 
 use webdev_lib::chemicals::models::{ChemicalInventoryRequest, ChemicalRequest};
@@ -124,11 +125,17 @@ fn handle_request(
     request: &rouille::Request,
     database_connection: &MysqlConnection,
 ) -> rouille::Response {
+    let mut requested_user = None;
+
+    if let Some(id_token) = request.header("id_token") {
+        requested_user = get_user(id_token, database_connection);
+    }
+
     if let Some(user_request) = request.remove_prefix("/users") {
         match UserRequest::from_rouille(&user_request) {
             Err(err) => rouille::Response::from(err),
             Ok(user_request) => {
-                match handle_user(user_request, database_connection) {
+                match handle_user(user_request, requested_user, database_connection) {
                     Ok(user_response) => user_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -138,7 +145,7 @@ fn handle_request(
         match AccessRequest::from_rouille(&access_request) {
             Err(err) => rouille::Response::from(err),
             Ok(access_request) => {
-                match handle_access(access_request, database_connection) {
+                match handle_access(access_request, requested_user, database_connection) {
                     Ok(access_response) => access_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -151,6 +158,7 @@ fn handle_request(
             Err(err) => rouille::Response::from(err),
             Ok(user_access_request) => match handle_user_access(
                 user_access_request,
+                requested_user,
                 database_connection,
             ) {
                 Ok(user_access_response) => user_access_response.to_rouille(),
@@ -166,6 +174,7 @@ fn handle_request(
             Err(err) => rouille::Response::from(err),
             Ok(chem_inventory_request) => match handle_chemical_inventory(
                 chem_inventory_request,
+                requested_user,
                 database_connection,
             ) {
                 Ok(chem_inventory_response) => {
@@ -180,7 +189,7 @@ fn handle_request(
         match ChemicalRequest::from_rouille(&chemical_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(chemical_request) => {
-                match handle_chemical(chemical_request, database_connection) {
+                match handle_chemical(chemical_request, requested_user, database_connection) {
                     Ok(chemical_response) => chemical_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
