@@ -19,6 +19,8 @@ use crate::errors::WebdevErrorKind;
 use crate::search::NullableSearch;
 use crate::search::Search;
 
+use crate::access::requests::check_to_run;
+
 use crate::users::models::{
     NewUser, PartialUser, SearchUser, User, UserList, UserRequest, UserResponse,
 };
@@ -26,24 +28,55 @@ use crate::users::schema::users as users_schema;
 
 pub fn handle_user(
     request: UserRequest,
+    requested_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<UserResponse, WebdevError> {
     match request {
         UserRequest::SearchUsers(user) => {
-            search_users(user, database_connection)
-                .map(|u| UserResponse::ManyUsers(u))
+            match check_to_run(requested_user, "GetUsers", database_connection) {
+                Ok(()) => {
+                    search_users(user, database_connection)
+                        .map(|u| UserResponse::ManyUsers(u))
+                }
+                Err(e) => Err(e),
+            }
         }
         UserRequest::GetUser(id) => {
-            get_user(id, database_connection).map(|u| UserResponse::OneUser(u))
+            match check_to_run(requested_user, "GetUsers", database_connection) {
+                Ok(()) => {
+                    get_user(id, database_connection)
+                        .map(|u| UserResponse::OneUser(u))
+                },
+                Err(e) => Err(e),
+            }
         }
-        UserRequest::CreateUser(user) => create_user(user, database_connection)
-            .map(|u| UserResponse::OneUser(u)),
+        UserRequest::CreateUser(user) => {
+            match check_to_run(requested_user, "CreateUsers", database_connection) {
+                Ok(()) => {
+                    create_user(user, database_connection)
+                        .map(|u| UserResponse::OneUser(u))
+                },
+                Err(e) => Err(e),
+            }
+        }
         UserRequest::UpdateUser(id, user) => {
-            update_user(id, user, database_connection)
-                .map(|_| UserResponse::NoResponse)
+            match check_to_run(requested_user, "DeleteUsers", database_connection) {
+                Ok(()) => {
+                    update_user(id, user, database_connection)
+                        .map(|_| UserResponse::NoResponse)
+                }
+                Err(e) => Err(e),
+            }
         }
-        UserRequest::DeleteUser(id) => delete_user(id, database_connection)
-            .map(|_| UserResponse::NoResponse),
+        UserRequest::DeleteUser(id) => {
+            match check_to_run(requested_user, "GetUsers", database_connection) {
+                Ok(()) => {
+                    delete_user(id, database_connection)
+                        .map(|_| UserResponse::NoResponse)
+                },
+                Err(e) => Err(e),
+            }
+        }
     }
 }
 
