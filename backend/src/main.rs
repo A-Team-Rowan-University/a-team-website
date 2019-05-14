@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel_migrations;
 
-#[macro_use]
 extern crate diesel;
 
 use std::env;
@@ -19,8 +18,8 @@ use diesel::MysqlConnection;
 
 use dotenv::dotenv;
 
-use webdev_lib::errors::WebdevError;
-use webdev_lib::errors::WebdevErrorKind;
+use webdev_lib::errors::Error;
+use webdev_lib::errors::ErrorKind;
 
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
@@ -101,8 +100,8 @@ fn main() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Could not lock database");
-                    return rouille::Response::from(WebdevError::new(
-                        WebdevErrorKind::Database,
+                    return rouille::Response::from(Error::new(
+                        ErrorKind::Database,
                     ));
                 }
             };
