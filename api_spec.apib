@@ -1,0 +1,58 @@
+FORMAT: v1
+
+# Webdev Api
+
+## Data Structures
+### User
+ + id: 42 (number, required)
+ + first_name: Tim (string, required)
+ + last_name: Hollabaugh (string, required)
+ + banner_id: 916000000 (number, required)
+ + email: hollabaut1@students.rowan.edu (string)
+
+### New User
+ + first_name: Tim (string, required)
+ + last_name: Hollabaugh (string, required)
+ + banner_id: 916000000 (number, required)
+ + email: hollabaut1@students.rowan.edu (string)
+
+### Partial User
+ + first_name: Tim (string)
+ + last_name: Hollabaugh (string)
+ + banner_id: 916000000 (number)
+ + email: hollabaut1@students.rowan.edu (string)
+
+# Group Users
+The users
+
+## Users [/api/v1/users/]
+### List all users [GET]
+This lists all the users in the system
+ + Response 200 (application/json)
+   + Attributes
+     + users (array[User])
+
+### Create a user [POST]
+This creates a new user
+ + Request (application/json)
+   + Attributes (New User)
+ + Response 200 (application/json)
+   + Attributes (User)
+
+
+## User [/api/v1/users/{user_id}]
+ + Parameters
+   + user_id: 1 (required, number)
+
+### Get a single user [GET]
+ + Response 200 (application/json)
+   + Attributes (User)
+
+### Update a user [POST]
+ + Request (application/json)
+   + Attributes (Partial User)
+ + Response 204
+
+### Delete a user [DELETE]
+ + Response 204
+
