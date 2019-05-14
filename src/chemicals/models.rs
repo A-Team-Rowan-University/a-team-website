@@ -7,11 +7,11 @@ use serde::Serialize;
 
 use url::form_urlencoded;
 
-use log::{trace, warn};
+use log::warn;
 
 use crate::errors::{Error, ErrorKind};
 
-use crate::search::{NullableSearch, Search};
+use crate::search::Search;
 
 use super::schema::{chemical, chemical_inventory};
 

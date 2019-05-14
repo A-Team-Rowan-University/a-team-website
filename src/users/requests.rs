@@ -1,15 +1,11 @@
 use diesel;
-use diesel::mysql::Mysql;
 use diesel::mysql::MysqlConnection;
 use diesel::query_builder::AsQuery;
-use diesel::query_builder::BoxedSelectStatement;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
 
-use log::error;
-use log::info;
 use log::trace;
 use log::warn;
 

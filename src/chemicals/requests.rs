@@ -1,12 +1,9 @@
 use diesel;
 use diesel::mysql::types::Unsigned;
-use diesel::mysql::Mysql;
 use diesel::mysql::MysqlConnection;
 use diesel::query_builder::AsQuery;
-use diesel::query_builder::BoxedSelectStatement;
-use diesel::types;
+use diesel::sql_types;
 use diesel::ExpressionMethods;
-use diesel::NullableExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
@@ -160,7 +157,7 @@ fn create_chemical(
         .values(chemical)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
+    no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
     let mut inserted_chemicals = chemical_schema::table
         .filter(chemical_schema::id.eq(last_insert_id))
@@ -334,7 +331,7 @@ fn create_chemical_inventory(
         .values(inventory)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
+    no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
     let mut inserted_inventory_entries = chemical_inventory_schema::table
         .filter(chemical_inventory_schema::id.eq(last_insert_id))

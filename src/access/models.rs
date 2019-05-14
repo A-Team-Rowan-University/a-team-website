@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use url::form_urlencoded;
 
-use log::{trace, warn};
+use log::warn;
 
 use crate::errors::{Error, ErrorKind};
 

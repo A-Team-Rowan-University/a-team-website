@@ -1,11 +1,9 @@
 use diesel::Queryable;
 use rouille::router;
-use rouille::Request;
 use serde::Deserialize;
 use serde::Serialize;
 use url::form_urlencoded;
 
-use log::trace;
 use log::warn;
 
 use super::schema::users;
@@ -15,8 +13,6 @@ use crate::errors::ErrorKind;
 
 use crate::search::NullableSearch;
 use crate::search::Search;
-
-use crate::users::requests;
 
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct User {

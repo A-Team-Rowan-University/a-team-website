@@ -2,11 +2,8 @@ use diesel;
 use diesel::mysql::types::Unsigned;
 use diesel::mysql::Mysql;
 use diesel::mysql::MysqlConnection;
-use diesel::query_builder::AsQuery;
-use diesel::query_builder::BoxedSelectStatement;
-use diesel::types;
+use diesel::sql_types;
 use diesel::ExpressionMethods;
-use diesel::NullableExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
@@ -21,8 +18,6 @@ use super::models::{
     PartialUserAccess, SearchUserAccess, UserAccess, UserAccessRequest,
     UserAccessResponse,
 };
-
-use crate::users::models::{User, UserList};
 
 use super::schema::access as access_schema;
 use super::schema::user_access as user_access_schema;
@@ -72,7 +67,7 @@ fn create_access(
         .values(access)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
+    no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
     let mut inserted_accesses = access_schema::table
         .filter(access_schema::id.eq(last_insert_id))
@@ -270,7 +265,7 @@ fn create_user_access(
         .values(user_access)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
+    no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
     let mut inserted_accesses = user_access_schema::table
         .filter(user_access_schema::permission_id.eq(last_insert_id))
