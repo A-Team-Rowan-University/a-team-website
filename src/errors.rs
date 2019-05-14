@@ -44,10 +44,7 @@ impl Error {
         Error { kind, source: None }
     }
 
-    pub fn with_source(
-        kind: ErrorKind,
-        source: Box<dyn StdError>,
-    ) -> Error {
+    pub fn with_source(kind: ErrorKind, source: Box<dyn StdError>) -> Error {
         Error {
             kind,
             source: Some(source),
@@ -112,10 +109,12 @@ impl From<Error> for rouille::Response {
                 rouille::Response::text(e.to_string()).with_status_code(404)
             }
             ErrorKind::Url => {
-                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
+                rouille::Response::text(e.to_string_with_source())
+                    .with_status_code(400)
             }
             ErrorKind::Body => {
-                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
+                rouille::Response::text(e.to_string_with_source())
+                    .with_status_code(400)
             }
             ErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
