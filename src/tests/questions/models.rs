@@ -14,6 +14,7 @@ use super::schema::questions;
 #[derive(Queryable, Serialize, Deserialize)]
 pub struct Question {
     pub id: u64,
+    pub category_id: u64,
     pub title: String,
     pub correct_answer: String,
     pub incorrect_answer_1: String,
@@ -25,6 +26,7 @@ pub struct Question {
 #[table_name = "questions"]
 pub struct NewQuestion {
     pub title: String,
+    pub category_id: u64,
     pub correct_answer: String,
     pub incorrect_answer_1: String,
     pub incorrect_answer_2: String,
