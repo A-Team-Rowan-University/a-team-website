@@ -30,6 +30,9 @@ use webdev_lib::access::requests::{handle_access, handle_user_access};
 use webdev_lib::chemicals::models::{ChemicalInventoryRequest, ChemicalRequest};
 use webdev_lib::chemicals::requests::{handle_chemical, handle_chemical_inventory};
 
+use webdev_lib::tests::questions::models::QuestionRequest;
+use webdev_lib::tests::questions::requests::handle_question;
+
 embed_migrations!("./webdev_lib/migrations");
 
 fn main() {
@@ -175,6 +178,18 @@ fn handle_request(
             Ok(chemical_request) => {
                 match handle_chemical(chemical_request, database_connection) {
                     Ok(chemical_response) => chemical_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(question_request_url) =
+        request.remove_prefix("/questions")
+    {
+        match QuestionRequest::from_rouille(&question_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(question_request) => {
+                match handle_question(question_request, database_connection) {
+                    Ok(question_response) => question_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
             }
