@@ -11,7 +11,7 @@ use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
 
-use crate::errors::{WebdevError, WebdevErrorKind};
+use crate::errors::{Error, ErrorKind};
 
 use crate::search::Search;
 
@@ -29,7 +29,7 @@ use super::schema::chemical_inventory as chemical_inventory_schema;
 pub fn handle_chemical(
     request: ChemicalRequest,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalResponse, WebdevError> {
+) -> Result<ChemicalResponse, Error> {
     match request {
         ChemicalRequest::Search(chemical) => {
             search_chemical(chemical, database_connection)
@@ -57,7 +57,7 @@ pub fn handle_chemical(
 fn search_chemical(
     chemical_search: SearchChemical,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalList, WebdevError> {
+) -> Result<ChemicalList, Error> {
     let mut chemical_query = chemical_schema::table.as_query().into_boxed();
 
     match chemical_search.name {
@@ -141,21 +141,21 @@ fn search_chemical(
 fn get_chemical(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<Chemical, WebdevError> {
+) -> Result<Chemical, Error> {
     let mut found_chemical = chemical_schema::table
         .filter(chemical_schema::id.eq(id))
         .load::<Chemical>(database_connection)?;
 
     match found_chemical.pop() {
         Some(chemical) => Ok(chemical),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
 fn create_chemical(
     chemical: NewChemical,
     database_connection: &MysqlConnection,
-) -> Result<Chemical, WebdevError> {
+) -> Result<Chemical, Error> {
     diesel::insert_into(chemical_schema::table)
         .values(chemical)
         .execute(database_connection)?;
@@ -169,7 +169,7 @@ fn create_chemical(
     if let Some(inserted_chemical) = inserted_chemicals.pop() {
         Ok(inserted_chemical)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
@@ -177,7 +177,7 @@ fn update_chemical(
     id: u64,
     chemical: PartialChemical,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(chemical_schema::table)
         .filter(chemical_schema::id.eq(id))
         .set(&chemical)
@@ -188,7 +188,7 @@ fn update_chemical(
 fn delete_chemical(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(chemical_schema::table.filter(chemical_schema::id.eq(id)))
         .execute(database_connection)?;
 
@@ -198,7 +198,7 @@ fn delete_chemical(
 pub fn handle_chemical_inventory(
     request: ChemicalInventoryRequest,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventoryResponse, WebdevError> {
+) -> Result<ChemicalInventoryResponse, Error> {
     match request {
         ChemicalInventoryRequest::SearchInventory(inventory) => {
             search_chemical_inventory(inventory, database_connection)
@@ -226,7 +226,7 @@ pub fn handle_chemical_inventory(
 fn search_chemical_inventory(
     chemical_inventory_search: SearchChemicalInventory,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventoryList, WebdevError> {
+) -> Result<ChemicalInventoryList, Error> {
     let mut chemical_inventory_query =
         chemical_inventory_schema::table.as_query().into_boxed();
 
@@ -315,21 +315,21 @@ fn search_chemical_inventory(
 fn get_chemical_inventory(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventory, WebdevError> {
+) -> Result<ChemicalInventory, Error> {
     let mut found_inventory = chemical_inventory_schema::table
         .filter(chemical_inventory_schema::id.eq(id))
         .load::<ChemicalInventory>(database_connection)?;
 
     match found_inventory.pop() {
         Some(entry) => Ok(entry),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
 fn create_chemical_inventory(
     inventory: NewChemicalInventory,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventory, WebdevError> {
+) -> Result<ChemicalInventory, Error> {
     diesel::insert_into(chemical_inventory_schema::table)
         .values(inventory)
         .execute(database_connection)?;
@@ -343,7 +343,7 @@ fn create_chemical_inventory(
     if let Some(inserted_entry) = inserted_inventory_entries.pop() {
         Ok(inserted_entry)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
@@ -351,7 +351,7 @@ fn update_chemical_inventory(
     id: u64,
     inventory: PartialChemicalInventory,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(chemical_inventory_schema::table)
         .filter(chemical_inventory_schema::id.eq(id))
         .set(&inventory)
@@ -362,7 +362,7 @@ fn update_chemical_inventory(
 fn delete_chemical_inventory(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(
         chemical_inventory_schema::table
             .filter(chemical_inventory_schema::id.eq(id)),

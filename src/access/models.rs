@@ -9,7 +9,7 @@ use url::form_urlencoded;
 
 use log::{trace, warn};
 
-use crate::errors::{WebdevError, WebdevErrorKind};
+use crate::errors::{Error, ErrorKind};
 
 use crate::search::{NullableSearch, Search};
 
@@ -43,23 +43,21 @@ pub enum AccessRequest {
 impl AccessRequest {
     pub fn from_rouille(
         request: &rouille::Request,
-    ) -> Result<AccessRequest, WebdevError> {
-        trace!("Creating AccessRequest from {:#?}", request);
-
+    ) -> Result<AccessRequest, Error> {
         router!(request,
             (GET) (/{id: u64}) => {
                 Ok(AccessRequest::GetAccess(id))
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let new_access: NewAccess = serde_json::from_reader(request_body)?;
 
                 Ok(AccessRequest::CreateAccess(new_access))
             },
 
             (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let update_access: PartialAccess = serde_json::from_reader(request_body)?;
 
                 Ok(AccessRequest::UpdateAccess(id, update_access))
@@ -71,7 +69,7 @@ impl AccessRequest {
 
             _ => {
                 warn!("Could not create an access request for the given rouille request");
-                Err(WebdevError::new(WebdevErrorKind::NotFound))
+                Err(Error::new(ErrorKind::NotFound))
             }
         ) //end router
     }
@@ -135,9 +133,7 @@ pub enum UserAccessRequest {
 impl UserAccessRequest {
     pub fn from_rouille(
         request: &rouille::Request,
-    ) -> Result<UserAccessRequest, WebdevError> {
-        trace!("Creating UserAccessRequest from {:#?}", request);
-
+    ) -> Result<UserAccessRequest, Error> {
         let url_queries =
             form_urlencoded::parse(request.raw_query_string().as_bytes());
 
@@ -153,7 +149,7 @@ impl UserAccessRequest {
                         "access_id" => access_id_search = Search::from_query(query.as_ref())?,
                         "user_id" => user_id_search = Search::from_query(query.as_ref())?,
                         "permission_level" => permission_level_search = NullableSearch::from_query(query.as_ref())?,
-                        _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
+                        _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
 
@@ -173,14 +169,14 @@ impl UserAccessRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let new_user_access: NewUserAccess = serde_json::from_reader(request_body)?;
 
                 Ok(UserAccessRequest::CreateAccess(new_user_access))
             },
 
             (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let update_user_access: PartialUserAccess = serde_json::from_reader(request_body)?;
 
                 Ok(UserAccessRequest::UpdateAccess(id, update_user_access))
@@ -192,7 +188,7 @@ impl UserAccessRequest {
 
             _ => {
                 warn!("Could not create a user access request for the given rouille request");
-                Err(WebdevError::new(WebdevErrorKind::NotFound))
+                Err(Error::new(ErrorKind::NotFound))
             }
         ) //end router
     }

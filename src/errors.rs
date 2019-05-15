@@ -1,4 +1,4 @@
-use std::error::Error;
+use std::error::Error as StdError;
 use std::fmt;
 
 use log::error;
@@ -6,30 +6,32 @@ use log::error;
 use crate::search::SearchParseError;
 
 #[derive(Debug, Copy, Clone)]
-pub enum WebdevErrorKind {
+pub enum ErrorKind {
     Database,
-    Format,
+    Url,
+    Body,
     NotFound,
 }
 
 #[derive(Debug)]
-pub struct WebdevError {
-    kind: WebdevErrorKind,
-    source: Option<Box<dyn Error>>,
+pub struct Error {
+    kind: ErrorKind,
+    source: Option<Box<dyn StdError>>,
 }
 
-impl std::fmt::Display for WebdevError {
+impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.kind {
-            WebdevErrorKind::Database => write!(f, "Database error!"),
-            WebdevErrorKind::Format => write!(f, "Format error!"),
-            WebdevErrorKind::NotFound => write!(f, "Not found!"),
+            ErrorKind::Database => write!(f, "Database error!"),
+            ErrorKind::Url => write!(f, "Url parse error!"),
+            ErrorKind::Body => write!(f, "Body parse error!"),
+            ErrorKind::NotFound => write!(f, "Not found!"),
         }
     }
 }
 
-impl Error for WebdevError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
+impl StdError for Error {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self.source {
             Some(ref e) => Some(e.as_ref()),
             None => None,
@@ -37,75 +39,85 @@ impl Error for WebdevError {
     }
 }
 
-impl WebdevError {
-    pub fn new(kind: WebdevErrorKind) -> WebdevError {
-        WebdevError { kind, source: None }
+impl Error {
+    pub fn new(kind: ErrorKind) -> Error {
+        Error { kind, source: None }
     }
 
     pub fn with_source(
-        kind: WebdevErrorKind,
-        source: Box<dyn Error>,
-    ) -> WebdevError {
-        WebdevError {
+        kind: ErrorKind,
+        source: Box<dyn StdError>,
+    ) -> Error {
+        Error {
             kind,
             source: Some(source),
         }
     }
 
-    pub fn kind(&self) -> WebdevErrorKind {
+    pub fn kind(&self) -> ErrorKind {
         return self.kind;
     }
-}
 
-impl From<diesel::result::Error> for WebdevError {
-    fn from(d: diesel::result::Error) -> WebdevError {
-        WebdevError::with_source(WebdevErrorKind::Database, Box::new(d))
+    pub fn to_string_with_source(&self) -> String {
+        if let Some(source) = &self.source {
+            format!("{}:\n {}", self, source)
+        } else {
+            format!("{}", self)
+        }
     }
 }
 
-impl From<serde_json::Error> for WebdevError {
-    fn from(s: serde_json::Error) -> WebdevError {
-        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+impl From<diesel::result::Error> for Error {
+    fn from(d: diesel::result::Error) -> Error {
+        Error::with_source(ErrorKind::Database, Box::new(d))
     }
 }
 
-impl From<std::num::ParseIntError> for WebdevError {
-    fn from(s: std::num::ParseIntError) -> WebdevError {
-        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+impl From<serde_json::Error> for Error {
+    fn from(s: serde_json::Error) -> Error {
+        Error::with_source(ErrorKind::Body, Box::new(s))
     }
 }
 
-impl From<std::str::ParseBoolError> for WebdevError {
-    fn from(s: std::str::ParseBoolError) -> WebdevError {
-        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+impl From<std::num::ParseIntError> for Error {
+    fn from(s: std::num::ParseIntError) -> Error {
+        Error::with_source(ErrorKind::Url, Box::new(s))
     }
 }
 
-impl From<url::ParseError> for WebdevError {
-    fn from(s: url::ParseError) -> WebdevError {
-        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+impl From<std::str::ParseBoolError> for Error {
+    fn from(s: std::str::ParseBoolError) -> Error {
+        Error::with_source(ErrorKind::Url, Box::new(s))
     }
 }
 
-impl From<SearchParseError> for WebdevError {
-    fn from(s: SearchParseError) -> WebdevError {
-        WebdevError::with_source(WebdevErrorKind::Format, Box::new(s))
+impl From<url::ParseError> for Error {
+    fn from(s: url::ParseError) -> Error {
+        Error::with_source(ErrorKind::Url, Box::new(s))
     }
 }
 
-impl From<WebdevError> for rouille::Response {
-    fn from(e: WebdevError) -> rouille::Response {
+impl From<SearchParseError> for Error {
+    fn from(s: SearchParseError) -> Error {
+        Error::with_source(ErrorKind::Url, Box::new(s))
+    }
+}
 
+impl From<Error> for rouille::Response {
+    fn from(e: Error) -> rouille::Response {
         error!("{:?} -> {:?}", e.kind(), e.source());
 
         match e.kind() {
-            WebdevErrorKind::NotFound => {
+            ErrorKind::NotFound => {
                 rouille::Response::text(e.to_string()).with_status_code(404)
             }
-            WebdevErrorKind::Format => {
-                rouille::Response::text(e.to_string()).with_status_code(400)
+            ErrorKind::Url => {
+                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
             }
-            WebdevErrorKind::Database => {
+            ErrorKind::Body => {
+                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
+            }
+            ErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
             }
         }

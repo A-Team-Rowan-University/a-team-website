@@ -13,8 +13,8 @@ use log::info;
 use log::trace;
 use log::warn;
 
-use crate::errors::WebdevError;
-use crate::errors::WebdevErrorKind;
+use crate::errors::Error;
+use crate::errors::ErrorKind;
 
 use crate::search::NullableSearch;
 use crate::search::Search;
@@ -27,7 +27,7 @@ use crate::users::schema::users as users_schema;
 pub fn handle_user(
     request: UserRequest,
     database_connection: &MysqlConnection,
-) -> Result<UserResponse, WebdevError> {
+) -> Result<UserResponse, Error> {
     match request {
         UserRequest::SearchUsers(user) => {
             search_users(user, database_connection)
@@ -50,7 +50,7 @@ pub fn handle_user(
 fn search_users(
     user: SearchUser,
     database_connection: &MysqlConnection,
-) -> Result<UserList, WebdevError> {
+) -> Result<UserList, Error> {
     let mut users_query = users_schema::table.as_query().into_boxed();
 
     match user.first_name {
@@ -123,21 +123,21 @@ fn search_users(
 fn get_user(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<User, WebdevError> {
+) -> Result<User, Error> {
     let mut found_users = users_schema::table
         .filter(users_schema::id.eq(id))
         .load::<User>(database_connection)?;
 
     match found_users.pop() {
         Some(user) => Ok(user),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
 fn create_user(
     user: NewUser,
     database_connection: &MysqlConnection,
-) -> Result<User, WebdevError> {
+) -> Result<User, Error> {
     diesel::insert_into(users_schema::table)
         .values(user)
         .execute(database_connection)?;
@@ -149,7 +149,7 @@ fn create_user(
     if let Some(inserted_user) = inserted_users.pop() {
         Ok(inserted_user)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
@@ -157,7 +157,7 @@ fn update_user(
     id: u64,
     user: PartialUser,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(users_schema::table)
         .filter(users_schema::id.eq(id))
         .set(&user)
@@ -168,7 +168,7 @@ fn update_user(
 fn delete_user(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(users_schema::table.filter(users_schema::id.eq(id)))
         .execute(database_connection)?;
 

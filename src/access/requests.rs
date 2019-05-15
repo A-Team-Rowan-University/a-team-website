@@ -11,7 +11,7 @@ use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
 
-use crate::errors::{WebdevError, WebdevErrorKind};
+use crate::errors::{Error, ErrorKind};
 
 use crate::search::{NullableSearch, Search};
 
@@ -31,7 +31,7 @@ use crate::users::schema::users as users_schema;
 pub fn handle_access(
     request: AccessRequest,
     database_connection: &MysqlConnection,
-) -> Result<AccessResponse, WebdevError> {
+) -> Result<AccessResponse, Error> {
     match request {
         AccessRequest::GetAccess(id) => get_access(id, database_connection)
             .map(|a| AccessResponse::OneAccess(a)),
@@ -53,21 +53,21 @@ pub fn handle_access(
 fn get_access(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<Access, WebdevError> {
+) -> Result<Access, Error> {
     let mut found_access = access_schema::table
         .filter(access_schema::id.eq(id))
         .load::<Access>(database_connection)?;
 
     match found_access.pop() {
         Some(access) => Ok(access),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
 fn create_access(
     access: NewAccess,
     database_connection: &MysqlConnection,
-) -> Result<Access, WebdevError> {
+) -> Result<Access, Error> {
     diesel::insert_into(access_schema::table)
         .values(access)
         .execute(database_connection)?;
@@ -82,7 +82,7 @@ fn create_access(
     if let Some(inserted_access) = inserted_accesses.pop() {
         Ok(inserted_access)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
@@ -90,7 +90,7 @@ fn update_access(
     id: u64,
     access: PartialAccess,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(access_schema::table)
         .filter(access_schema::id.eq(id))
         .set(&access)
@@ -101,7 +101,7 @@ fn update_access(
 fn delete_access(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(access_schema::table.filter(access_schema::id.eq(id)))
         .execute(database_connection)?;
 
@@ -111,7 +111,7 @@ fn delete_access(
 pub fn handle_user_access(
     request: UserAccessRequest,
     database_connection: &MysqlConnection,
-) -> Result<UserAccessResponse, WebdevError> {
+) -> Result<UserAccessResponse, Error> {
     match request {
         UserAccessRequest::SearchAccess(user_access) => {
             search_user_access(user_access, database_connection)
@@ -143,7 +143,7 @@ pub fn handle_user_access(
 fn search_user_access(
     user_access_search: SearchUserAccess,
     database_connection: &MysqlConnection,
-) -> Result<JoinedUserAccessList, WebdevError> {
+) -> Result<JoinedUserAccessList, Error> {
     let mut user_access_query = user_access_schema::table
         .inner_join(access_schema::table)
         .inner_join(users_schema::table)
@@ -222,14 +222,14 @@ fn search_user_access(
 fn get_user_access(
     permission_id: u64,
     database_connection: &MysqlConnection,
-) -> Result<UserAccess, WebdevError> {
+) -> Result<UserAccess, Error> {
     let mut found_user_accesses = user_access_schema::table
         .filter(user_access_schema::permission_id.eq(permission_id))
         .load::<UserAccess>(database_connection)?;
 
     match found_user_accesses.pop() {
         Some(found_user_access) => Ok(found_user_access),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
@@ -237,7 +237,7 @@ fn check_user_access(
     user_id: u64,
     access_id: u64,
     database_connection: &MysqlConnection,
-) -> Result<bool, WebdevError> {
+) -> Result<bool, Error> {
     let found_user_accesses = user_access_schema::table
         .filter(user_access_schema::user_id.eq(user_id))
         .filter(user_access_schema::access_id.eq(access_id))
@@ -253,7 +253,7 @@ fn check_user_access(
 fn create_user_access(
     user_access: NewUserAccess,
     database_connection: &MysqlConnection,
-) -> Result<UserAccess, WebdevError> {
+) -> Result<UserAccess, Error> {
     //find if permission currently exists, should not duplicate (user_id, access_id) pairs
     let found_user_accesses = user_access_schema::table
         .filter(user_access_schema::user_id.eq(user_access.user_id))
@@ -261,7 +261,7 @@ fn create_user_access(
         .execute(database_connection)?;
 
     if found_user_accesses != 0 {
-        return Err(WebdevError::new(WebdevErrorKind::Database));
+        return Err(Error::new(ErrorKind::Database));
     }
 
     //permission most definitely does not exist at this point
@@ -280,7 +280,7 @@ fn create_user_access(
     if let Some(inserted_access) = inserted_accesses.pop() {
         Ok(inserted_access)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
@@ -288,7 +288,7 @@ fn update_user_access(
     id: u64,
     user_access: PartialUserAccess,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(user_access_schema::table)
         .filter(user_access_schema::permission_id.eq(id))
         .set(&user_access)
@@ -300,7 +300,7 @@ fn update_user_access(
 fn delete_user_access(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(
         user_access_schema::table
             .filter(user_access_schema::permission_id.eq(id)),
