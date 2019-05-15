@@ -109,7 +109,7 @@ impl UserRequest {
                 Ok(UserRequest::CreateUser(new_user))
             },
 
-            (POST) (/{id: u64}) => {
+            (PUT) (/{id: u64}) => {
                 let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let update_user: PartialUser = serde_json::from_reader(request_body)?;
 

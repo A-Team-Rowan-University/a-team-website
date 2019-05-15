@@ -248,7 +248,7 @@ impl ChemicalInventoryRequest {
                 Ok(ChemicalInventoryRequest::CreateInventory(new_chemical_inventory))
             },
 
-            (POST) (/{id: u64}) => {
+            (PUT) (/{id: u64}) => {
                 let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let update_chemical_inventory: PartialChemicalInventory = serde_json::from_reader(request_body)?;
 
