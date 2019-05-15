@@ -11,6 +11,7 @@ pub enum ErrorKind {
     Url,
     Body,
     NotFound,
+    Unimplemented,
 }
 
 #[derive(Debug)]
@@ -26,6 +27,7 @@ impl std::fmt::Display for Error {
             ErrorKind::Url => write!(f, "Url parse error!"),
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
+            ErrorKind::Unimplemented => write!(f, "Method not implemented"),
         }
     }
 }
@@ -118,6 +120,9 @@ impl From<Error> for rouille::Response {
             }
             ErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
+            }
+            ErrorKind::Unimplemented => {
+                rouille::Response::text(e.to_string()).with_status_code(501)
             }
         }
     }
