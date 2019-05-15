@@ -8,7 +8,8 @@ use crate::errors::Error;
 use crate::errors::ErrorKind;
 
 use crate::tests::question_categories::models::{
-    NewQuestionCategory, QuestionCategory, QuestionCategoryList, QuestionCategoryRequest, QuestionCategoryResponse,
+    NewQuestionCategory, QuestionCategory, QuestionCategoryList,
+    QuestionCategoryRequest, QuestionCategoryResponse,
 };
 use crate::tests::question_categories::schema::question_categories as question_categories_schema;
 
@@ -35,8 +36,9 @@ pub fn handle_question_category(
 fn get_question_categories(
     database_connection: &MysqlConnection,
 ) -> Result<QuestionCategoryList, Error> {
-    let found_question_categories = question_categories_schema::table
-        .load::<QuestionCategory>(database_connection)?;
+    let found_question_categories =
+        question_categories_schema::table
+            .load::<QuestionCategory>(database_connection)?;
 
     Ok(QuestionCategoryList {
         question_categories: found_question_categories,

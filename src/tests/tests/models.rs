@@ -9,20 +9,60 @@ use log::warn;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
+use super::schema::test_question_categories;
 use super::schema::tests;
 
-#[derive(Queryable, Serialize, Deserialize)]
-pub struct Test {
+#[derive(Queryable, Debug)]
+pub struct RawTest {
     pub id: u64,
     pub creator_id: u64,
     pub name: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable)]
 #[table_name = "tests"]
-pub struct NewTest {
+pub struct NewRawTest {
     pub creator_id: u64,
     pub name: String,
+}
+
+#[derive(Queryable, Insertable, Debug)]
+#[table_name = "test_question_categories"]
+pub struct RawTestQuestionCategory {
+    pub test_id: u64,
+    pub question_category_id: u64,
+    pub number_of_questions: u32,
+}
+
+#[derive(Queryable, Debug)]
+pub struct JoinedTest {
+    pub id: u64,
+    pub creator_id: u64,
+    pub name: String,
+    pub test_id: u64,
+    pub question_category_id: u64,
+    pub number_of_questions: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Test {
+    pub id: u64,
+    pub creator_id: u64,
+    pub name: String,
+    pub questions: Vec<TestQuestionCategory>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct TestQuestionCategory {
+    pub question_category_id: u64,
+    pub number_of_questions: u32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct NewTest {
+    pub name: String,
+    pub creator_id: u64,
+    pub questions: Vec<TestQuestionCategory>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -32,6 +72,7 @@ pub struct TestList {
 
 pub enum TestRequest {
     GetTests,
+    GetTest(u64),
     CreateTest(NewTest),
     DeleteTest(u64),
 }
@@ -43,6 +84,10 @@ impl TestRequest {
         router!(request,
             (GET) (/) => {
                 Ok(TestRequest::GetTests)
+            },
+
+            (GET) (/{id: u64}) => {
+                Ok(TestRequest::GetTest(id))
             },
 
             (POST) (/) => {
@@ -73,12 +118,8 @@ pub enum TestResponse {
 impl TestResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            TestResponse::OneTest(test) => {
-                rouille::Response::json(&test)
-            }
-            TestResponse::ManyTests(tests) => {
-                rouille::Response::json(&tests)
-            }
+            TestResponse::OneTest(test) => rouille::Response::json(&test),
+            TestResponse::ManyTests(tests) => rouille::Response::json(&tests),
             TestResponse::NoResponse => rouille::Response::empty_204(),
         }
     }

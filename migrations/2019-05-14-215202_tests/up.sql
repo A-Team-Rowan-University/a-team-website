@@ -28,3 +28,18 @@ CREATE TABLE tests (
     ON UPDATE CASCADE
 );
 
+CREATE TABLE test_question_categories (
+    test_id BIGINT UNSIGNED NOT NULL,
+    question_category_id BIGINT UNSIGNED NOT NULL,
+    number_of_questions INT UNSIGNED NOT NULL,
+    PRIMARY KEY (test_id, question_category_id),
+    FOREIGN KEY (test_id)
+      REFERENCES tests(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+    FOREIGN KEY (question_category_id)
+      REFERENCES question_categories(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE
+);
+
