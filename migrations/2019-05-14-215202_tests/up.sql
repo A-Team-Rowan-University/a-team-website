@@ -18,3 +18,13 @@ CREATE TABLE questions (
     ON UPDATE CASCADE
 );
 
+CREATE TABLE tests (
+  id SERIAL PRIMARY KEY,
+  creator_id BIGINT UNSIGNED NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  FOREIGN KEY (creator_id)
+    REFERENCES users(id)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+);
+
