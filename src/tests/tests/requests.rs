@@ -7,6 +7,8 @@ use diesel::RunQueryDsl;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
+use crate::access::requests::check_to_run;
+
 use crate::tests::tests::models::{
     JoinedTest, NewRawTest, NewTest, RawTest, RawTestQuestionCategory, Test,
     TestList, TestQuestionCategory, TestRequest, TestResponse,
@@ -16,19 +18,44 @@ use crate::tests::tests::schema::tests as tests_schema;
 
 pub fn handle_test(
     request: TestRequest,
+    requested_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<TestResponse, Error> {
     match request {
         TestRequest::GetTests => {
+            check_to_run(
+                requested_user,
+                "GetTests",
+                database_connection,
+            )?;
             get_tests(database_connection).map(|u| TestResponse::ManyTests(u))
         }
         TestRequest::GetTest(id) => {
+            check_to_run(
+                requested_user,
+                "GetTests",
+                database_connection,
+            )?;
             get_test(id, database_connection).map(|u| TestResponse::OneTest(u))
         }
-        TestRequest::CreateTest(test) => create_test(test, database_connection)
-            .map(|u| TestResponse::OneTest(u)),
-        TestRequest::DeleteTest(id) => delete_test(id, database_connection)
-            .map(|_| TestResponse::NoResponse),
+        TestRequest::CreateTest(test) => {
+            check_to_run(
+                requested_user,
+                "CreateTests",
+                database_connection,
+            )?;
+            create_test(test, database_connection)
+            .map(|u| TestResponse::OneTest(u))
+        }
+        TestRequest::DeleteTest(id) => {
+            check_to_run(
+                requested_user,
+                "DeleteTests",
+                database_connection,
+            )?;
+            delete_test(id, database_connection)
+            .map(|_| TestResponse::NoResponse)
+        }
     }
 }
 

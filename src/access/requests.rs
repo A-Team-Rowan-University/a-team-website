@@ -11,6 +11,7 @@ use diesel::TextExpressionMethods;
 use google_signin;
 
 use log::trace;
+use log::debug;
 use log::warn;
 
 use crate::errors::{Error, ErrorKind};
@@ -83,6 +84,7 @@ pub fn check_to_run(
     access_type: &str,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
+    trace!("Checking if user {:?} has {}", requesting_user_id, access_type);
     match requesting_user_id {
         Some(user_id) => {
             match check_user_access(
@@ -92,6 +94,7 @@ pub fn check_to_run(
             ) {
                 Ok(access) => {
                     if access {
+                        debug!("Access granted!");
                         Ok(())
                     } else {
                         Err(Error::new(ErrorKind::AccessDenied))
@@ -166,8 +169,11 @@ fn first_access(
     id_token: &str,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-
-    trace!("First access requested for user: {:?}, id_token: {}", requesting_user, id_token);
+    trace!(
+        "First access requested for user: {:?}, id_token: {}",
+        requesting_user,
+        id_token
+    );
 
     let search = SearchUserAccess {
         access_id: Search::NoSearch,

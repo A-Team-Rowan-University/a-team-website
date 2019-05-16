@@ -43,3 +43,19 @@ CREATE TABLE test_question_categories (
       ON UPDATE CASCADE
 );
 
+INSERT INTO access (access_name) VALUES
+  ("GetQuestions"),
+  ("CreateQuestions"),
+  ("UpdateQuestions"),
+  ("DeleteQuestions"),
+
+  ("GetQuestionCategories"),
+  ("CreateQuestionCategories"),
+  ("UpdateQuestionCategories"),
+  ("DeleteQuestionCategories"),
+
+  ("GetTests"),
+  ("CreateTests"),
+  ("UpdateTests"),
+  ("DeleteTests");
+
