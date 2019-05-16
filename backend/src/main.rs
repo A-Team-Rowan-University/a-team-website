@@ -8,6 +8,7 @@ use std::sync::Mutex;
 use std::thread;
 use std::time;
 
+use log::trace;
 use log::debug;
 use log::error;
 use log::info;
@@ -128,7 +129,10 @@ fn handle_request(
     let mut requested_user = None;
 
     if let Some(id_token) = request.header("id_token") {
+        trace!("Got id_token: {}", id_token);
         requested_user = get_user(id_token, database_connection);
+    } else {
+        trace!("No id_token header!");
     }
 
     if let Some(user_request) = request.remove_prefix("/users") {
