@@ -32,6 +32,10 @@ use webdev_lib::chemicals::requests::{handle_chemical, handle_chemical_inventory
 
 use webdev_lib::tests::questions::models::QuestionRequest;
 use webdev_lib::tests::questions::requests::handle_question;
+use webdev_lib::tests::question_categories::models::QuestionCategoryRequest;
+use webdev_lib::tests::question_categories::requests::handle_question_category;
+use webdev_lib::tests::tests::models::TestRequest;
+use webdev_lib::tests::tests::requests::handle_test;
 
 embed_migrations!("./webdev_lib/migrations");
 
@@ -190,6 +194,30 @@ fn handle_request(
             Ok(question_request) => {
                 match handle_question(question_request, database_connection) {
                     Ok(question_response) => question_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(question_category_request_url) =
+        request.remove_prefix("/question_categories")
+    {
+        match QuestionCategoryRequest::from_rouille(&question_category_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(question_category_request) => {
+                match handle_question_category(question_category_request, database_connection) {
+                    Ok(question_category_response) => question_category_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(test_request_url) =
+        request.remove_prefix("/tests")
+    {
+        match TestRequest::from_rouille(&test_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(test_request) => {
+                match handle_test(test_request, database_connection) {
+                    Ok(test_response) => test_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
             }
