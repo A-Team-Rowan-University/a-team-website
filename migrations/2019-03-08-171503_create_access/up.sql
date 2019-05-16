@@ -48,6 +48,6 @@ CREATE TABLE user_access (
 );
 
 INSERT INTO user_access(access_id, user_id, permission_level)
-    SELECT (select access.id as access_id from access where access.name = "RootAccess"),
-           (select users.id as user_id from users where user.id = 0),
+    SELECT (select access.id as access_id from access where access.access_name = "RootAccess"),
+           (select users.id as user_id from users where users.id = 0),
            (select "RootAccess" as permission_level);

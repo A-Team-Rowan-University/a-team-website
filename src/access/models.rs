@@ -38,6 +38,7 @@ pub enum AccessRequest {
     CreateAccess(NewAccess), //new access type of some name to be created
     UpdateAccess(u64, PartialAccess), //Contains id to be changed to new access_name
     DeleteAccess(u64),                //if of access to be deleted
+    FirstAccess(String),
 }
 
 impl AccessRequest {
@@ -65,6 +66,14 @@ impl AccessRequest {
 
             (DELETE) (/{id: u64}) => {
                 Ok(AccessRequest::DeleteAccess(id))
+            },
+
+            (GET) (/first) => {
+                if let Some(id_token) = request.header("id_token") {
+                    Ok(AccessRequest::FirstAccess(id_token.to_string()))
+                } else {
+                    Err(Error::new(ErrorKind::AccessDenied))
+                }
             },
 
             _ => {
@@ -127,7 +136,7 @@ pub enum UserAccessRequest {
     CheckAccess(u64, String), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
     UpdateAccess(u64, PartialUserAccess), //entry to update with new information
-    DeleteAccess(u64),     //entry to delete from database
+    DeleteAccess(u64),        //entry to delete from database
 }
 
 impl UserAccessRequest {

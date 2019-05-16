@@ -32,50 +32,60 @@ pub fn handle_chemical(
 ) -> Result<ChemicalResponse, Error> {
     match request {
         ChemicalRequest::Search(chemical) => {
-            match check_to_run(requested_user, "GetChemical", database_connection) {
-                Ok(()) => {
-                    search_chemical(chemical, database_connection)
-                        .map(|c| ChemicalResponse::ManyChemical(c))
-                },
+            match check_to_run(
+                requested_user,
+                "GetChemical",
+                database_connection,
+            ) {
+                Ok(()) => search_chemical(chemical, database_connection)
+                    .map(|c| ChemicalResponse::ManyChemical(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::GetChemical(id) => {
-            match check_to_run(requested_user, "GetChemical", database_connection) {
-                Ok(()) => {
-                    get_chemical(id, database_connection)
-                        .map(|c| ChemicalResponse::OneChemical(c))
-                },
+            match check_to_run(
+                requested_user,
+                "GetChemical",
+                database_connection,
+            ) {
+                Ok(()) => get_chemical(id, database_connection)
+                    .map(|c| ChemicalResponse::OneChemical(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::CreateChemical(chemical) => {
-            match check_to_run(requested_user, "CreateChemical", database_connection) {
-                Ok(()) => {
-                    create_chemical(chemical, database_connection)
-                        .map(|c| ChemicalResponse::OneChemical(c))
-                },
+            match check_to_run(
+                requested_user,
+                "CreateChemical",
+                database_connection,
+            ) {
+                Ok(()) => create_chemical(chemical, database_connection)
+                    .map(|c| ChemicalResponse::OneChemical(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::UpdateChemical(id, chemical) => {
-            match check_to_run(requested_user, "UpdateChemical", database_connection) {
-                Ok(()) => {
-                    update_chemical(id, chemical, database_connection)
-                        .map(|_| ChemicalResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "UpdateChemical",
+                database_connection,
+            ) {
+                Ok(()) => update_chemical(id, chemical, database_connection)
+                    .map(|_| ChemicalResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::DeleteChemical(id) => {
-            match check_to_run(requested_user, "DeleteChemical", database_connection) {
-                Ok(()) => {
-                    delete_chemical(id, database_connection)
-                        .map(|_| ChemicalResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "DeleteChemical",
+                database_connection,
+            ) {
+                Ok(()) => delete_chemical(id, database_connection)
+                    .map(|_| ChemicalResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
     }
 }
 
@@ -227,50 +237,72 @@ pub fn handle_chemical_inventory(
 ) -> Result<ChemicalInventoryResponse, Error> {
     match request {
         ChemicalInventoryRequest::SearchInventory(inventory) => {
-            match check_to_run(requested_user, "GetChemicalInventory", database_connection) {
+            match check_to_run(
+                requested_user,
+                "GetChemicalInventory",
+                database_connection,
+            ) {
                 Ok(()) => {
                     search_chemical_inventory(inventory, database_connection)
-                        .map(|c| ChemicalInventoryResponse::ManyInventoryEntries(c))
-                },
+                        .map(|c| {
+                            ChemicalInventoryResponse::ManyInventoryEntries(c)
+                        })
+                }
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::GetInventory(id) => {
-            match check_to_run(requested_user, "GetChemicalInventory", database_connection) {
-                Ok(()) => {
-                    get_chemical_inventory(id, database_connection)
-                        .map(|c| ChemicalInventoryResponse::OneInventoryEntry(c))
-                },
+            match check_to_run(
+                requested_user,
+                "GetChemicalInventory",
+                database_connection,
+            ) {
+                Ok(()) => get_chemical_inventory(id, database_connection)
+                    .map(|c| ChemicalInventoryResponse::OneInventoryEntry(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::CreateInventory(inventory) => {
-            match check_to_run(requested_user, "CreateChemicalInventory", database_connection) {
+            match check_to_run(
+                requested_user,
+                "CreateChemicalInventory",
+                database_connection,
+            ) {
                 Ok(()) => {
                     create_chemical_inventory(inventory, database_connection)
-                        .map(|c| ChemicalInventoryResponse::OneInventoryEntry(c))
-                },
+                        .map(|c| {
+                            ChemicalInventoryResponse::OneInventoryEntry(c)
+                        })
+                }
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::UpdateInventory(id, inventory) => {
-            match check_to_run(requested_user, "UpdateChemicalInventory", database_connection) {
-                Ok(()) => {
-                    update_chemical_inventory(id, inventory, database_connection)
-                        .map(|_| ChemicalInventoryResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "UpdateChemicalInventory",
+                database_connection,
+            ) {
+                Ok(()) => update_chemical_inventory(
+                    id,
+                    inventory,
+                    database_connection,
+                )
+                .map(|_| ChemicalInventoryResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::DeleteInventory(id) => {
-            match check_to_run(requested_user, "DeleteChemicalInventory", database_connection) {
-                Ok(()) => {
-                    delete_chemical_inventory(id, database_connection)
-                        .map(|_| ChemicalInventoryResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "DeleteChemicalInventory",
+                database_connection,
+            ) {
+                Ok(()) => delete_chemical_inventory(id, database_connection)
+                    .map(|_| ChemicalInventoryResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
     }
 }
 

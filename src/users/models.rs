@@ -14,7 +14,7 @@ use crate::errors::ErrorKind;
 use crate::search::NullableSearch;
 use crate::search::Search;
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Debug, Queryable, Serialize, Deserialize)]
 pub struct User {
     pub id: u64,
     pub first_name: String,
@@ -32,7 +32,7 @@ pub struct NewUser {
     pub email: Option<String>,
 }
 
-#[derive(AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name = "users"]
 pub struct PartialUser {
     pub first_name: Option<String>,
@@ -41,6 +41,7 @@ pub struct PartialUser {
     pub email: Option<Option<String>>,
 }
 
+#[derive(Debug)]
 pub struct SearchUser {
     pub first_name: Search<String>,
     pub last_name: Search<String>,
@@ -48,11 +49,12 @@ pub struct SearchUser {
     pub email: NullableSearch<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserList {
     pub users: Vec<User>,
 }
 
+#[derive(Debug)]
 pub enum UserRequest {
     SearchUsers(SearchUser),
     GetUser(u64),
@@ -124,6 +126,7 @@ impl UserRequest {
     }
 }
 
+#[derive(Debug)]
 pub enum UserResponse {
     OneUser(User),
     ManyUsers(UserList),

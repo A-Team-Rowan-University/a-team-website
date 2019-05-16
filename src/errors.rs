@@ -98,6 +98,12 @@ impl From<url::ParseError> for Error {
     }
 }
 
+impl From<google_signin::Error> for Error {
+    fn from(e: google_signin::Error) -> Error {
+        Error::with_source(ErrorKind::AccessDenied, Box::new(e))
+    }
+}
+
 impl From<SearchParseError> for Error {
     fn from(s: SearchParseError) -> Error {
         Error::with_source(ErrorKind::Url, Box::new(s))
