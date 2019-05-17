@@ -205,7 +205,7 @@ fn handle_request(
         match QuestionRequest::from_rouille(&question_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(question_request) => {
-                match handle_question(question_request, database_connection) {
+                match handle_question(question_request, requested_user, database_connection) {
                     Ok(question_response) => question_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -217,7 +217,7 @@ fn handle_request(
         match QuestionCategoryRequest::from_rouille(&question_category_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(question_category_request) => {
-                match handle_question_category(question_category_request, database_connection) {
+                match handle_question_category(question_category_request, requested_user, database_connection) {
                     Ok(question_category_response) => question_category_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -229,7 +229,7 @@ fn handle_request(
         match TestRequest::from_rouille(&test_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(test_request) => {
-                match handle_test(test_request, database_connection) {
+                match handle_test(test_request, requested_user, database_connection) {
                     Ok(test_response) => test_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
