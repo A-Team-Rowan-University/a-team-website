@@ -126,7 +126,7 @@ pub struct SearchUserAccess {
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
     GetAccess(u64),                 //get individual access entry from its id
-    CheckAccess(u64, String), //entry allowing user of user_id to perform action of action_id
+    CheckAccess(String), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
     UpdateAccess(u64, PartialUserAccess), //entry to update with new information
     DeleteAccess(u64),     //entry to delete from database
@@ -168,8 +168,8 @@ impl UserAccessRequest {
                 Ok(UserAccessRequest::GetAccess(permission_id))
             },
 
-            (GET) (/{user_id:u64}/{access_name: String}) => {
-                Ok(UserAccessRequest::CheckAccess(user_id, access_name))
+            (GET) (/check/{access_name: String}) => {
+                Ok(UserAccessRequest::CheckAccess(access_name))
             },
 
             (POST) (/) => {

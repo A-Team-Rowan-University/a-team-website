@@ -68,20 +68,15 @@ pub fn check_to_run(
     access_type: &str,
     database_connection: &MysqlConnection,
 ) -> Result<(), WebdevError> {
-    match requesting_user_id {
-        Some(user_id) => {
-            match check_user_access(user_id, String::from(access_type), database_connection) {
-                Ok(access) => {
-                    if access {
-                        Ok(())
-                    } else {
-                        Err(WebdevError::new(WebdevErrorKind::AccessDenied))
-                    }
-                }
-                Err(e) => Err(e),
+    match check_user_access(requesting_user_id, String::from(access_type), database_connection) {
+        Ok(access) => {
+            if access {
+                Ok(())
+            } else {
+                Err(WebdevError::new(WebdevErrorKind::AccessDenied))
             }
         }
-        None => Err(WebdevError::new(WebdevErrorKind::AccessDenied)),
+        Err(e) => Err(e),
     }
 }
 
@@ -212,8 +207,8 @@ pub fn handle_user_access(
                 Err(e) => Err(e),
             }
         },
-        UserAccessRequest::CheckAccess(user_id, access_name) => {
-            check_user_access(user_id, access_name, database_connection)
+        UserAccessRequest::CheckAccess(access_name) => {
+            check_user_access(requesting_user, access_name, database_connection)
                 .map(|s| UserAccessResponse::AccessState(s))
         },
         UserAccessRequest::CreateAccess(user_access) => {
@@ -340,13 +335,13 @@ fn get_user_access(
 }
 
 fn check_user_access(
-    user_id: u64,
+    requesting_user: Option<u64>,
     access_name: String,
     database_connection: &MysqlConnection,
 ) -> Result<bool, WebdevError> {
     //checks for root access as a user may have root but not specific permissions
     if access_name != "RootAccess" {
-        match check_user_access(user_id, String::from("RootAccess"), database_connection) {
+        match check_user_access(requesting_user, String::from("RootAccess"), database_connection) {
             Ok(access) => {
                 if access {
                     return Ok(true);
@@ -356,19 +351,23 @@ fn check_user_access(
         }
     }
 
+    match requesting_user {
+        Some(user_id) => {
+            //continue with normal permissions check
+            let found_user_accesses = user_access_schema::table
+                .inner_join(access_schema::table)
+                .select((user_access_schema::user_id, access_schema::access_name))
+                .filter(user_access_schema::user_id.eq(user_id))
+                .filter(access_schema::access_name.eq(access_name))
+                .execute(database_connection)?;
 
-    //continue with normal permissions check
-    let found_user_accesses = user_access_schema::table
-        .inner_join(access_schema::table)
-        .select((user_access_schema::user_id, access_schema::access_name))
-        .filter(user_access_schema::user_id.eq(user_id))
-        .filter(access_schema::access_name.eq(access_name))
-        .execute(database_connection)?;
-
-    if found_user_accesses != 0 {
-        Ok(true)
-    } else {
-        Ok(false)
+            if found_user_accesses != 0 {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
+        },
+        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
     }
 }
 
