@@ -28,5 +28,5 @@ docker-compose up -d --build
 notify-send "Docker build OK"
 
 echo "==> Backend Logs"
-docker logs resource-website_api_1 -f
+docker logs resource-website_api_1 -f | tee log
 
