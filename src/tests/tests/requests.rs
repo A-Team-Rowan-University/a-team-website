@@ -44,7 +44,7 @@ pub fn handle_test(
                 "CreateTests",
                 database_connection,
             )?;
-            create_test(test, database_connection)
+            create_test(test, requested_user, database_connection)
             .map(|u| TestResponse::OneTest(u))
         }
         TestRequest::DeleteTest(id) => {
@@ -100,10 +100,17 @@ fn get_tests(database_connection: &MysqlConnection) -> Result<TestList, Error> {
 
 fn create_test(
     test: NewTest,
+    requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<Test, Error> {
+
+    let creator_id = match requesting_user {
+        Some(user) => user,
+        None => return Err(Error::new(ErrorKind::AccessDenied))
+    };
+
     let new_raw_test = NewRawTest {
-        creator_id: test.creator_id,
+        creator_id: creator_id,
         name: test.name,
     };
 

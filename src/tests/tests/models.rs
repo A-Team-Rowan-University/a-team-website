@@ -61,7 +61,6 @@ pub struct TestQuestionCategory {
 #[derive(Serialize, Deserialize)]
 pub struct NewTest {
     pub name: String,
-    pub creator_id: u64,
     pub questions: Vec<TestQuestionCategory>,
 }
 
