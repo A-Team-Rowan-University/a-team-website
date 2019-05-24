@@ -15,8 +15,8 @@ use log::warn;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
-use super::schema::test_sessions;
 use super::schema::test_session_registrations;
+use super::schema::test_sessions;
 
 #[derive(Queryable, Debug)]
 pub struct RawTestSession {
@@ -57,23 +57,6 @@ pub struct NewRawTestSessionRegistration {
     pub opened_test: Option<NaiveDateTime>,
     pub submitted_test: Option<NaiveDateTime>,
 }
-
-/*
-#[derive(Queryable, Debug)]
-pub struct JoinedTestSession {
-    pub id: u64,
-    pub test_id: u64,
-    pub name: String,
-    pub registrations_enabled: bool,
-    pub opening_enabled: bool,
-    pub submissions_enabled: bool,
-    pub test_session_registration_id: Option<u64>,
-    pub taker_id: Option<u64>,
-    pub registered: Option<NaiveDateTime>,
-    pub opened_test: Option<Option<NaiveDateTime>>,
-    pub submitted_test: Option<Option<NaiveDateTime>>,
-}
-*/
 
 #[derive(Queryable, Debug)]
 pub struct JoinedTestSession {

@@ -12,6 +12,7 @@ pub enum ErrorKind {
     Body,
     AccessDenied,
     NotFound,
+    RegisteredTwiceForTest,
     Unimplemented,
 }
 
@@ -29,6 +30,9 @@ impl std::fmt::Display for Error {
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
             ErrorKind::Unimplemented => write!(f, "Method not implemented"),
+            ErrorKind::RegisteredTwiceForTest => {
+                write!(f, "Registered twice for a test")
+            }
             ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
         }
     }
@@ -131,6 +135,9 @@ impl From<Error> for rouille::Response {
             }
             ErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
+            }
+            ErrorKind::RegisteredTwiceForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
             }
             ErrorKind::Unimplemented => {
                 rouille::Response::text(e.to_string()).with_status_code(501)

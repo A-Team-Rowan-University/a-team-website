@@ -123,16 +123,19 @@ fn create_test(
 
         let inserted_test_question_categories =
             test_question_categories_schema::table
-            .filter(
-                test_question_categories_schema::test_id.eq(raw_inserted_test.id)
-            )
-            .load::<RawTestQuestionCategory>(database_connection)?
-            .iter()
-            .map(|raw_test_question_category| TestQuestionCategory {
-                number_of_questions: raw_test_question_category.number_of_questions,
-                question_category_id: raw_test_question_category.question_category_id,
-            })
-            .collect();
+                .filter(
+                    test_question_categories_schema::test_id
+                        .eq(raw_inserted_test.id),
+                )
+                .load::<RawTestQuestionCategory>(database_connection)?
+                .iter()
+                .map(|raw_test_question_category| TestQuestionCategory {
+                    number_of_questions: raw_test_question_category
+                        .number_of_questions,
+                    question_category_id: raw_test_question_category
+                        .question_category_id,
+                })
+                .collect();
 
         let inserted_test = Test {
             id: raw_inserted_test.id,
