@@ -43,6 +43,36 @@ CREATE TABLE test_question_categories (
       ON UPDATE CASCADE
 );
 
+CREATE TABLE test_sessions (
+    id SERIAL PRIMARY KEY,
+    test_id BIGINT UNSIGNED NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    registrations_enabled TINYINT NOT NULL,
+    opening_enabled TINYINT NOT NULL,
+    submissions_enabled TINYINT NOT NULL,
+    FOREIGN KEY (test_id)
+      REFERENCES tests(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE
+);
+
+CREATE TABLE test_session_registrations (
+    id SERIAL PRIMARY KEY,
+    test_session_id BIGINT UNSIGNED NOT NULL,
+    taker_id BIGINT UNSIGNED NOT NULL,
+    registered TIMESTAMP NOT NULL,
+    opened_test TIMESTAMP,
+    submitted_test TIMESTAMP,
+    FOREIGN KEY (test_session_id)
+      REFERENCES test_sessions(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+    FOREIGN KEY (taker_id)
+      REFERENCES users(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE
+);
+
 INSERT INTO access (access_name) VALUES
   ("GetQuestions"),
   ("CreateQuestions"),
@@ -57,5 +87,15 @@ INSERT INTO access (access_name) VALUES
   ("GetTests"),
   ("CreateTests"),
   ("UpdateTests"),
-  ("DeleteTests");
+  ("DeleteTests"),
+
+  ("GetTestSessions"),
+  ("CreateTestSessions"),
+  ("UpdateTestSessions"),
+  ("DeleteTestSessions"),
+
+  ("GetTestSessionRegistrations"),
+  ("CreateTestSessionRegistrations"),
+  ("UpdateTestSessionRegistrations"),
+  ("DeleteTestSessionRegistrations");
 

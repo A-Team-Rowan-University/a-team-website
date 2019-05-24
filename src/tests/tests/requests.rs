@@ -23,38 +23,22 @@ pub fn handle_test(
 ) -> Result<TestResponse, Error> {
     match request {
         TestRequest::GetTests => {
-            check_to_run(
-                requested_user,
-                "GetTests",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "GetTests", database_connection)?;
             get_tests(database_connection).map(|u| TestResponse::ManyTests(u))
         }
         TestRequest::GetTest(id) => {
-            check_to_run(
-                requested_user,
-                "GetTests",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "GetTests", database_connection)?;
             get_test(id, database_connection).map(|u| TestResponse::OneTest(u))
         }
         TestRequest::CreateTest(test) => {
-            check_to_run(
-                requested_user,
-                "CreateTests",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "CreateTests", database_connection)?;
             create_test(test, requested_user, database_connection)
-            .map(|u| TestResponse::OneTest(u))
+                .map(|u| TestResponse::OneTest(u))
         }
         TestRequest::DeleteTest(id) => {
-            check_to_run(
-                requested_user,
-                "DeleteTests",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "DeleteTests", database_connection)?;
             delete_test(id, database_connection)
-            .map(|_| TestResponse::NoResponse)
+                .map(|_| TestResponse::NoResponse)
         }
     }
 }
@@ -103,10 +87,9 @@ fn create_test(
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<Test, Error> {
-
     let creator_id = match requesting_user {
         Some(user) => user,
-        None => return Err(Error::new(ErrorKind::AccessDenied))
+        None => return Err(Error::new(ErrorKind::AccessDenied)),
     };
 
     let new_raw_test = NewRawTest {
@@ -138,7 +121,27 @@ fn create_test(
             .values(test_question_categories)
             .execute(database_connection)?;
 
-        Err(Error::new(ErrorKind::Unimplemented))
+        let inserted_test_question_categories =
+            test_question_categories_schema::table
+            .filter(
+                test_question_categories_schema::test_id.eq(raw_inserted_test.id)
+            )
+            .load::<RawTestQuestionCategory>(database_connection)?
+            .iter()
+            .map(|raw_test_question_category| TestQuestionCategory {
+                number_of_questions: raw_test_question_category.number_of_questions,
+                question_category_id: raw_test_question_category.question_category_id,
+            })
+            .collect();
+
+        let inserted_test = Test {
+            id: raw_inserted_test.id,
+            creator_id: raw_inserted_test.creator_id,
+            name: raw_inserted_test.name,
+            questions: inserted_test_question_categories,
+        };
+
+        Ok(inserted_test)
     } else {
         Err(Error::new(ErrorKind::Database))
     }

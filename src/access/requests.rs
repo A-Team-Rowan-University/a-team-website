@@ -10,8 +10,8 @@ use diesel::TextExpressionMethods;
 
 use google_signin;
 
-use log::trace;
 use log::debug;
+use log::trace;
 use log::warn;
 
 use crate::errors::{Error, ErrorKind};
@@ -84,7 +84,11 @@ pub fn check_to_run(
     access_type: &str,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    trace!("Checking if user {:?} has {}", requesting_user_id, access_type);
+    trace!(
+        "Checking if user {:?} has {}",
+        requesting_user_id,
+        access_type
+    );
     match requesting_user_id {
         Some(user_id) => {
             match check_user_access(
