@@ -13,6 +13,8 @@ pub enum ErrorKind {
     AccessDenied,
     NotFound,
     RegisteredTwiceForTest,
+    OpenedTestNotRegistered,
+    OpenedTestTwice,
     Unimplemented,
 }
 
@@ -33,6 +35,10 @@ impl std::fmt::Display for Error {
             ErrorKind::RegisteredTwiceForTest => {
                 write!(f, "Registered twice for a test")
             }
+            ErrorKind::OpenedTestNotRegistered => {
+                write!(f, "Opened a test not registerd for")
+            }
+            ErrorKind::OpenedTestTwice => write!(f, "Opened a test twice"),
             ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
         }
     }
@@ -137,6 +143,12 @@ impl From<Error> for rouille::Response {
                 rouille::Response::text(e.to_string()).with_status_code(500)
             }
             ErrorKind::RegisteredTwiceForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::OpenedTestNotRegistered => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::OpenedTestTwice => {
                 rouille::Response::text(e.to_string()).with_status_code(409)
             }
             ErrorKind::Unimplemented => {

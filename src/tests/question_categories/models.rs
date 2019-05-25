@@ -30,6 +30,7 @@ pub struct QuestionCategoryList {
 
 pub enum QuestionCategoryRequest {
     GetQuestionCategories,
+    GetQuestionCategory(u64),
     CreateQuestionCategory(NewQuestionCategory),
     DeleteQuestionCategory(u64),
 }
@@ -41,6 +42,10 @@ impl QuestionCategoryRequest {
         router!(request,
             (GET) (/) => {
                 Ok(QuestionCategoryRequest::GetQuestionCategories)
+            },
+
+            (GET) (/{id: u64}) => {
+                Ok(QuestionCategoryRequest::GetQuestionCategory(id))
             },
 
             (POST) (/) => {

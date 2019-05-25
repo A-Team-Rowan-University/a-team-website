@@ -15,6 +15,9 @@ use log::warn;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
+use crate::tests::questions::models::AnonymousQuestionList;
+use crate::tests::questions::models::ResponseQuestionList;
+
 use super::schema::test_session_registrations;
 use super::schema::test_sessions;
 
@@ -46,6 +49,7 @@ pub struct RawTestSessionRegistration {
     pub registered: NaiveDateTime,
     pub opened_test: Option<NaiveDateTime>,
     pub submitted_test: Option<NaiveDateTime>,
+    pub score: Option<f32>,
 }
 
 #[derive(Insertable, Debug)]
@@ -56,6 +60,17 @@ pub struct NewRawTestSessionRegistration {
     pub registered: NaiveDateTime,
     pub opened_test: Option<NaiveDateTime>,
     pub submitted_test: Option<NaiveDateTime>,
+    pub score: Option<f32>,
+}
+
+#[derive(Debug, AsChangeset, Serialize, Deserialize)]
+#[table_name = "test_session_registrations"]
+pub struct PartialRawTestSessionRegistration {
+    pub taker_id: Option<u64>,
+    pub registered: Option<NaiveDateTime>,
+    pub opened_test: Option<Option<NaiveDateTime>>,
+    pub submitted_test: Option<Option<NaiveDateTime>>,
+    pub score: Option<Option<f32>>,
 }
 
 #[derive(Queryable, Debug)]
@@ -93,6 +108,7 @@ pub struct TestSessionRegistration {
     pub registered: DateTime<Local>,
     pub opened_test: Option<DateTime<Local>>,
     pub submitted_test: Option<DateTime<Local>>,
+    pub score: Option<f32>,
 }
 
 pub enum TestSessionRequest {
@@ -101,6 +117,8 @@ pub enum TestSessionRequest {
     CreateTestSession(NewTestSession),
     DeleteTestSession(u64),
     Register(u64),
+    Open(u64),
+    Submit(u64, ResponseQuestionList),
 }
 
 impl TestSessionRequest {
@@ -131,10 +149,23 @@ impl TestSessionRequest {
                 Ok(TestSessionRequest::Register(id))
             },
 
-            (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_question: NewTestSession = serde_json::from_reader(request_body)?;
+            (GET) (/{id: u64}/open) => {
+                Ok(TestSessionRequest::Open(id))
+            },
 
+            (POST) (/{id: u64}/submit) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let respose_questions: ResponseQuestionList =
+                    serde_json::from_reader(request_body)?;
+                Ok(TestSessionRequest::Submit(id, respose_questions))
+            },
+
+            (POST) (/) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_question: NewTestSession =
+                    serde_json::from_reader(request_body)?;
                 Ok(TestSessionRequest::CreateTestSession(new_question))
             },
 
@@ -153,16 +184,20 @@ impl TestSessionRequest {
 pub enum TestSessionResponse {
     OneTestSession(TestSession),
     ManyTestSessions(TestSessionList),
+    AnonymousQuestions(AnonymousQuestionList),
     NoResponse,
 }
 
 impl TestSessionResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            TestSessionResponse::OneTestSession(question) => {
-                rouille::Response::json(&question)
+            TestSessionResponse::OneTestSession(test_session) => {
+                rouille::Response::json(&test_session)
             }
-            TestSessionResponse::ManyTestSessions(questions) => {
+            TestSessionResponse::ManyTestSessions(test_sessions) => {
+                rouille::Response::json(&test_sessions)
+            }
+            TestSessionResponse::AnonymousQuestions(questions) => {
                 rouille::Response::json(&questions)
             }
             TestSessionResponse::NoResponse => rouille::Response::empty_204(),

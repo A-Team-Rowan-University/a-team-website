@@ -17,6 +17,7 @@ table! {
         registered -> Timestamp,
         opened_test -> Nullable<Timestamp>,
         submitted_test -> Nullable<Timestamp>,
+        score -> Nullable<Float>,
     }
 }
 

@@ -63,6 +63,7 @@ CREATE TABLE test_session_registrations (
     registered TIMESTAMP NOT NULL,
     opened_test TIMESTAMP,
     submitted_test TIMESTAMP,
+    score FLOAT,
     FOREIGN KEY (test_session_id)
       REFERENCES test_sessions(id)
       ON DELETE CASCADE

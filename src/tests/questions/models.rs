@@ -38,6 +38,32 @@ pub struct QuestionList {
     pub questions: Vec<Question>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AnonymousQuestion {
+    pub id: u64,
+    pub title: String,
+    pub answer_1: String,
+    pub answer_2: String,
+    pub answer_3: String,
+    pub answer_4: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct AnonymousQuestionList {
+    pub questions: Vec<AnonymousQuestion>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseQuestion {
+    pub id: u64,
+    pub answer: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ResponseQuestionList {
+    pub questions: Vec<ResponseQuestion>,
+}
+
 pub enum QuestionRequest {
     GetQuestions,
     CreateQuestion(NewQuestion),

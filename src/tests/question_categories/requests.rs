@@ -30,6 +30,15 @@ pub fn handle_question_category(
             get_question_categories(database_connection)
                 .map(|u| QuestionCategoryResponse::ManyQuestionCategories(u))
         }
+        QuestionCategoryRequest::GetQuestionCategory(id) => {
+            check_to_run(
+                requested_user,
+                "GetQuestionCategories",
+                database_connection,
+            )?;
+            get_question_category(id, database_connection)
+                .map(|u| QuestionCategoryResponse::OneQuestionCategory(u))
+        }
         QuestionCategoryRequest::CreateQuestionCategory(question_category) => {
             check_to_run(
                 requested_user,
@@ -48,6 +57,21 @@ pub fn handle_question_category(
             delete_question_category(id, database_connection)
                 .map(|_| QuestionCategoryResponse::NoResponse)
         }
+    }
+}
+
+fn get_question_category(
+    id: u64,
+    database_connection: &MysqlConnection,
+) -> Result<QuestionCategory, Error> {
+    let mut found_question_categories = question_categories_schema::table
+        .filter(question_categories_schema::id.eq(id))
+        .load::<QuestionCategory>(database_connection)?;
+
+    if let Some(question_category) = found_question_categories.pop() {
+        Ok(question_category)
+    } else {
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
