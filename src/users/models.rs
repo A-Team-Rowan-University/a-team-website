@@ -80,10 +80,14 @@ impl UserRequest {
 
                 for (field, query) in url_queries {
                     match field.as_ref() {
-                        "first_name" => first_name_search = Search::from_query(query.as_ref())?,
-                        "last_name" => last_name_search = Search::from_query(query.as_ref())?,
-                        "banner_id" => banner_id_search = Search::from_query(query.as_ref())?,
-                        "email" => email_search = NullableSearch::from_query(query.as_ref())?,
+                        "first_name" => first_name_search =
+                            Search::from_query(query.as_ref())?,
+                        "last_name" => last_name_search =
+                            Search::from_query(query.as_ref())?,
+                        "banner_id" => banner_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "email" => email_search =
+                            NullableSearch::from_query(query.as_ref())?,
                         _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
@@ -101,16 +105,18 @@ impl UserRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_user: NewUser = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_user: NewUser =
+                    serde_json::from_reader(request_body)?;
                 Ok(UserRequest::CreateUser(new_user))
             },
 
-            (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let update_user: PartialUser = serde_json::from_reader(request_body)?;
-
+            (PUT) (/{id: u64}) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let update_user: PartialUser
+                    = serde_json::from_reader(request_body)?;
                 Ok(UserRequest::UpdateUser(id, update_user))
             },
 

@@ -178,7 +178,7 @@ impl TestSessionRequest {
                 Ok(TestSessionRequest::CreateTestSession(new_question))
             },
 
-            (POST) (/{id: u64}) => {
+            (PUT) (/{id: u64}) => {
                 let request_body = request.data()
                     .ok_or(Error::new(ErrorKind::Body))?;
                 let partial_test_session: PartialTestSession =

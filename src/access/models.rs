@@ -155,9 +155,12 @@ impl UserAccessRequest {
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
-                        "access_id" => access_id_search = Search::from_query(query.as_ref())?,
-                        "user_id" => user_id_search = Search::from_query(query.as_ref())?,
-                        "permission_level" => permission_level_search = NullableSearch::from_query(query.as_ref())?,
+                        "access_id" => access_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "user_id" => user_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "permission_level" => permission_level_search =
+                            NullableSearch::from_query(query.as_ref())?,
                         _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
@@ -178,16 +181,18 @@ impl UserAccessRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_user_access: NewUserAccess = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_user_access: NewUserAccess =
+                    serde_json::from_reader(request_body)?;
                 Ok(UserAccessRequest::CreateAccess(new_user_access))
             },
 
-            (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let update_user_access: PartialUserAccess = serde_json::from_reader(request_body)?;
-
+            (PUT) (/{id: u64}) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let update_user_access: PartialUserAccess =
+                    serde_json::from_reader(request_body)?;
                 Ok(UserAccessRequest::UpdateAccess(id, update_user_access))
             },
 
