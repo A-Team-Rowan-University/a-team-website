@@ -9,21 +9,43 @@ use log::warn;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
+use crate::tests::questions::models::NewQuestion;
+use crate::tests::questions::models::Question;
+
 use super::schema::question_categories;
 
-#[derive(Queryable, Serialize, Deserialize)]
-pub struct QuestionCategory {
+#[derive(Queryable, Serialize, Deserialize, Debug)]
+pub struct RawQuestionCategory {
     pub id: u64,
     pub title: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "question_categories"]
-pub struct NewQuestionCategory {
+pub struct NewRawQuestionCategory {
     pub title: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Queryable, Debug)]
+pub struct JoinedQuestionCategory {
+    pub question_category: RawQuestionCategory,
+    pub question: Option<Question>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct QuestionCategory {
+    pub id: u64,
+    pub title: String,
+    pub questions: Vec<Question>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NewQuestionCategory {
+    pub title: String,
+    pub questions: Vec<NewQuestion>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct QuestionCategoryList {
     pub question_categories: Vec<QuestionCategory>,
 }

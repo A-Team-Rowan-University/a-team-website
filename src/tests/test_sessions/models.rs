@@ -96,6 +96,14 @@ pub struct NewTestSession {
     pub name: String,
 }
 
+#[derive(AsChangeset, Serialize, Deserialize, Debug)]
+#[table_name = "test_sessions"]
+pub struct PartialTestSession {
+    pub registrations_enabled: Option<bool>,
+    pub opening_enabled: Option<bool>,
+    pub submissions_enabled: Option<bool>,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct TestSessionList {
     pub test_sessions: Vec<TestSession>,
@@ -115,6 +123,7 @@ pub enum TestSessionRequest {
     GetTestSessions(Option<u64>),
     GetTestSession(u64),
     CreateTestSession(NewTestSession),
+    UpdateTestSession(u64, PartialTestSession),
     DeleteTestSession(u64),
     Register(u64),
     Open(u64),
@@ -167,6 +176,14 @@ impl TestSessionRequest {
                 let new_question: NewTestSession =
                     serde_json::from_reader(request_body)?;
                 Ok(TestSessionRequest::CreateTestSession(new_question))
+            },
+
+            (POST) (/{id: u64}) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let partial_test_session: PartialTestSession =
+                    serde_json::from_reader(request_body)?;
+                Ok(TestSessionRequest::UpdateTestSession(id, partial_test_session))
             },
 
             (DELETE) (/{id: u64}) => {

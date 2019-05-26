@@ -11,7 +11,7 @@ use crate::errors::ErrorKind;
 
 use super::schema::questions;
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Clone, Debug)]
 pub struct Question {
     pub id: u64,
     pub category_id: u64,
@@ -22,9 +22,9 @@ pub struct Question {
     pub incorrect_answer_3: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "questions"]
-pub struct NewQuestion {
+pub struct NewRawQuestion {
     pub title: String,
     pub category_id: u64,
     pub correct_answer: String,
@@ -33,7 +33,16 @@ pub struct NewQuestion {
     pub incorrect_answer_3: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NewQuestion {
+    pub title: String,
+    pub correct_answer: String,
+    pub incorrect_answer_1: String,
+    pub incorrect_answer_2: String,
+    pub incorrect_answer_3: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct QuestionList {
     pub questions: Vec<Question>,
 }
@@ -48,25 +57,25 @@ pub struct AnonymousQuestion {
     pub answer_4: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AnonymousQuestionList {
     pub questions: Vec<AnonymousQuestion>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseQuestion {
     pub id: u64,
     pub answer: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ResponseQuestionList {
     pub questions: Vec<ResponseQuestion>,
 }
 
 pub enum QuestionRequest {
     GetQuestions,
-    CreateQuestion(NewQuestion),
+    CreateQuestion(NewRawQuestion),
     DeleteQuestion(u64),
 }
 
@@ -80,9 +89,10 @@ impl QuestionRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_question: NewQuestion = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_question: NewRawQuestion =
+                    serde_json::from_reader(request_body)?;
                 Ok(QuestionRequest::CreateQuestion(new_question))
             },
 

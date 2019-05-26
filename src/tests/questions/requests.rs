@@ -10,7 +10,8 @@ use crate::errors::ErrorKind;
 use crate::access::requests::check_to_run;
 
 use crate::tests::questions::models::{
-    NewQuestion, Question, QuestionList, QuestionRequest, QuestionResponse,
+    NewQuestion, NewRawQuestion, Question, QuestionList, QuestionRequest,
+    QuestionResponse,
 };
 use crate::tests::questions::schema::questions as questions_schema;
 
@@ -58,7 +59,7 @@ fn get_questions(
 }
 
 fn create_question(
-    question: NewQuestion,
+    question: NewRawQuestion,
     database_connection: &MysqlConnection,
 ) -> Result<Question, Error> {
     diesel::insert_into(questions_schema::table)
