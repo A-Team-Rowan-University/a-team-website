@@ -63,7 +63,7 @@ pub struct NewRawTestSessionRegistration {
     pub score: Option<f32>,
 }
 
-#[derive(Debug, AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, AsChangeset)]
 #[table_name = "test_session_registrations"]
 pub struct PartialRawTestSessionRegistration {
     pub taker_id: Option<u64>,

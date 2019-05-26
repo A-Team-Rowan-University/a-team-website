@@ -10,7 +10,7 @@ use crate::errors::ErrorKind;
 use crate::access::requests::check_to_run;
 
 use crate::tests::questions::models::{
-    NewQuestion, NewRawQuestion, Question, QuestionList, QuestionRequest,
+    NewRawQuestion, Question, QuestionList, QuestionRequest,
     QuestionResponse,
 };
 use crate::tests::questions::schema::questions as questions_schema;

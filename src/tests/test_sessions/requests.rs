@@ -21,8 +21,8 @@ use crate::access::requests::check_to_run;
 
 use crate::tests::test_sessions::models::{
     JoinedTestSession, NewRawTestSession, NewRawTestSessionRegistration,
-    NewTestSession, PartialRawTestSessionRegistration, RawTestSession,
-    RawTestSessionRegistration, TestSession, TestSessionList, PartialTestSession,
+    NewTestSession, PartialRawTestSessionRegistration, PartialTestSession,
+    RawTestSession, RawTestSessionRegistration, TestSession, TestSessionList,
     TestSessionRegistration, TestSessionRequest, TestSessionResponse,
 };
 
@@ -120,42 +120,48 @@ fn register(
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    if let Some(user_id) = requested_user {
-        let existing_open_registrations =
-            test_session_registrations_schema::table
-                .filter(
-                    test_session_registrations_schema::taker_id
-                        .eq(user_id)
-                        .and(
-                            test_session_registrations_schema::opened_test
-                                .is_null(),
-                        )
-                        .or(test_session_registrations_schema::submitted_test
-                            .is_null()),
-                )
-                .load::<RawTestSessionRegistration>(database_connection)?;
+    let test_session = get_test_session(test_session_id, database_connection)?;
 
-        if existing_open_registrations.len() == 0 {
-            let new_raw_test_session_registration =
-                NewRawTestSessionRegistration {
-                    test_session_id: test_session_id,
-                    taker_id: user_id,
-                    registered: Local::now().naive_local(),
-                    opened_test: None,
-                    submitted_test: None,
-                    score: None,
-                };
+    if test_session.registrations_enabled {
+        if let Some(user_id) = requested_user {
+            let existing_open_registrations =
+                test_session_registrations_schema::table
+                    .filter(
+                        test_session_registrations_schema::taker_id
+                            .eq(user_id)
+                            .and(
+                                test_session_registrations_schema::opened_test
+                                    .is_null(),
+                            )
+                            .or(test_session_registrations_schema::submitted_test
+                                .is_null()),
+                    )
+                    .load::<RawTestSessionRegistration>(database_connection)?;
 
-            diesel::insert_into(test_session_registrations_schema::table)
-                .values(new_raw_test_session_registration)
-                .execute(database_connection)?;
+            if existing_open_registrations.len() == 0 {
+                let new_raw_test_session_registration =
+                    NewRawTestSessionRegistration {
+                        test_session_id: test_session_id,
+                        taker_id: user_id,
+                        registered: Local::now().naive_local(),
+                        opened_test: None,
+                        submitted_test: None,
+                        score: None,
+                    };
 
-            Ok(())
+                diesel::insert_into(test_session_registrations_schema::table)
+                    .values(new_raw_test_session_registration)
+                    .execute(database_connection)?;
+
+                Ok(())
+            } else {
+                Err(Error::new(ErrorKind::RegisteredTwiceForTest))
+            }
         } else {
-            Err(Error::new(ErrorKind::RegisteredTwiceForTest))
+            Err(Error::new(ErrorKind::AccessDenied))
         }
     } else {
-        Err(Error::new(ErrorKind::AccessDenied))
+        Err(Error::new(ErrorKind::RegistrationClosedForTest))
     }
 }
 
@@ -165,131 +171,143 @@ fn open(
     database_connection: &MysqlConnection,
 ) -> Result<AnonymousQuestionList, Error> {
     if let Some(user_id) = requested_user {
-        let existing_open_registrations =
-            test_session_registrations_schema::table
-                .filter(
-                    test_session_registrations_schema::taker_id
-                        .eq(user_id)
-                        .and(
-                            test_session_registrations_schema::opened_test
-                                .is_null(),
-                        )
-                        .and(
-                            test_session_registrations_schema::submitted_test
-                                .is_null(),
-                        ),
-                )
-                .load::<RawTestSessionRegistration>(database_connection)?;
+        let test_session =
+            get_test_session(test_session_id, database_connection)?;
+        if test_session.opening_enabled {
+            let existing_open_registrations =
+                test_session_registrations_schema::table
+                    .filter(
+                        test_session_registrations_schema::taker_id
+                            .eq(user_id)
+                            .and(
+                                test_session_registrations_schema::opened_test
+                                    .is_null(),
+                            )
+                            .and(
+                                test_session_registrations_schema::submitted_test
+                                    .is_null(),
+                            ),
+                    )
+                    .load::<RawTestSessionRegistration>(database_connection)?;
 
-        if existing_open_registrations.len() == 1 {
-            let test_session =
-                get_test_session(test_session_id, database_connection)?;
+            if existing_open_registrations.len() == 1 {
+                let test_session =
+                    get_test_session(test_session_id, database_connection)?;
 
-            let test_request = TestRequest::GetTest(test_session.test_id);
-            let test_response =
-                handle_test(test_request, Some(0), database_connection)?;
-            let test = match test_response {
-                TestResponse::OneTest(test) => test,
-                TestResponse::ManyTests(mut tests) => match tests.tests.pop() {
-                    Some(test) => test,
-                    None => return Err(Error::new(ErrorKind::Database)),
-                },
-                TestResponse::NoResponse => {
-                    return Err(Error::new(ErrorKind::Database))
-                }
-            };
-
-            let mut all_questions = Vec::new();
-
-            for test_question_category in test.questions {
-                let question_category_request =
-                    QuestionCategoryRequest::GetQuestionCategory(
-                        test_question_category.question_category_id,
-                    );
-                let question_category_response = handle_question_category(
-                    question_category_request,
-                    Some(0),
-                    database_connection,
-                )?;
-                let question_category = match question_category_response {
-                    QuestionCategoryResponse::OneQuestionCategory(qc) => qc,
-                    QuestionCategoryResponse::ManyQuestionCategories(
-                        mut qcs,
-                    ) => match qcs.question_categories.pop() {
-                        Some(qc) => qc,
+                let test_request = TestRequest::GetTest(test_session.test_id);
+                let test_response =
+                    handle_test(test_request, Some(0), database_connection)?;
+                let test = match test_response {
+                    TestResponse::OneTest(test) => test,
+                    TestResponse::ManyTests(mut tests) => match tests
+                        .tests
+                        .pop()
+                    {
+                        Some(test) => test,
                         None => return Err(Error::new(ErrorKind::Database)),
                     },
-                    QuestionCategoryResponse::NoResponse => {
+                    TestResponse::NoResponse => {
                         return Err(Error::new(ErrorKind::Database))
                     }
                 };
 
-                let questions = questions_schema::table
-                    .filter(
-                        questions_schema::category_id.eq(question_category.id),
-                    )
-                    .load::<Question>(database_connection)?;
+                let mut all_questions = Vec::new();
 
-                let mut chosen_questions: Vec<_> = questions
-                    .choose_multiple(
-                        &mut rand::thread_rng(),
-                        test_question_category.number_of_questions as usize,
-                    )
-                    .into_iter()
-                    .map(|q| {
-                        let mut answers = [
-                            q.correct_answer.clone(),
-                            q.incorrect_answer_1.clone(),
-                            q.incorrect_answer_2.clone(),
-                            q.incorrect_answer_3.clone(),
-                        ];
-
-                        answers.shuffle(&mut rand::thread_rng());
-
-                        AnonymousQuestion {
-                            id: q.id,
-                            title: q.title.clone(),
-                            answer_1: answers[0].clone(),
-                            answer_2: answers[1].clone(),
-                            answer_3: answers[2].clone(),
-                            answer_4: answers[3].clone(),
+                for test_question_category in test.questions {
+                    let question_category_request =
+                        QuestionCategoryRequest::GetQuestionCategory(
+                            test_question_category.question_category_id,
+                        );
+                    let question_category_response = handle_question_category(
+                        question_category_request,
+                        Some(0),
+                        database_connection,
+                    )?;
+                    let question_category = match question_category_response {
+                        QuestionCategoryResponse::OneQuestionCategory(qc) => qc,
+                        QuestionCategoryResponse::ManyQuestionCategories(
+                            mut qcs,
+                        ) => match qcs.question_categories.pop() {
+                            Some(qc) => qc,
+                            None => {
+                                return Err(Error::new(ErrorKind::Database))
+                            }
+                        },
+                        QuestionCategoryResponse::NoResponse => {
+                            return Err(Error::new(ErrorKind::Database))
                         }
-                    })
-                    .collect();
+                    };
 
-                all_questions.append(&mut chosen_questions);
-            }
-
-            let partial_raw_test_session_registration =
-                PartialRawTestSessionRegistration {
-                    taker_id: None,
-                    registered: None,
-                    opened_test: Some(Some(Local::now().naive_local())),
-                    submitted_test: None,
-                    score: None,
-                };
-
-            diesel::update(test_session_registrations_schema::table)
-                .set(&partial_raw_test_session_registration)
-                .filter(
-                    test_session_registrations_schema::taker_id
-                        .eq(user_id)
-                        .and(
-                            test_session_registrations_schema::test_session_id
-                                .eq(test_session_id),
+                    let questions = questions_schema::table
+                        .filter(
+                            questions_schema::category_id
+                                .eq(question_category.id),
                         )
-                        .and(
-                            test_session_registrations_schema::opened_test
-                                .is_null(),
-                        ),
-                )
-                .execute(database_connection)?;
+                        .load::<Question>(database_connection)?;
 
-            Ok(AnonymousQuestionList {
-                questions: all_questions,
-            })
+                    let mut chosen_questions: Vec<_> = questions
+                        .choose_multiple(
+                            &mut rand::thread_rng(),
+                            test_question_category.number_of_questions as usize,
+                        )
+                        .into_iter()
+                        .map(|q| {
+                            let mut answers = [
+                                q.correct_answer.clone(),
+                                q.incorrect_answer_1.clone(),
+                                q.incorrect_answer_2.clone(),
+                                q.incorrect_answer_3.clone(),
+                            ];
+
+                            answers.shuffle(&mut rand::thread_rng());
+
+                            AnonymousQuestion {
+                                id: q.id,
+                                title: q.title.clone(),
+                                answer_1: answers[0].clone(),
+                                answer_2: answers[1].clone(),
+                                answer_3: answers[2].clone(),
+                                answer_4: answers[3].clone(),
+                            }
+                        })
+                        .collect();
+
+                    all_questions.append(&mut chosen_questions);
+                }
+
+                let partial_raw_test_session_registration =
+                    PartialRawTestSessionRegistration {
+                        taker_id: None,
+                        registered: None,
+                        opened_test: Some(Some(Local::now().naive_local())),
+                        submitted_test: None,
+                        score: None,
+                    };
+
+                diesel::update(test_session_registrations_schema::table)
+                    .set(&partial_raw_test_session_registration)
+                    .filter(
+                        test_session_registrations_schema::taker_id
+                            .eq(user_id)
+                            .and(
+                                test_session_registrations_schema::test_session_id
+                                    .eq(test_session_id),
+                            )
+                            .and(
+                                test_session_registrations_schema::opened_test
+                                    .is_null(),
+                            ),
+                    )
+                    .execute(database_connection)?;
+
+                Ok(AnonymousQuestionList {
+                    questions: all_questions,
+                })
+            } else {
+                Err(Error::new(ErrorKind::OpenedTestTwice))
+            }
         } else {
-            Err(Error::new(ErrorKind::OpenedTestTwice))
+            Err(Error::new(ErrorKind::OpeningClosedForTest))
         }
     } else {
         Err(Error::new(ErrorKind::AccessDenied))
@@ -303,97 +321,86 @@ fn submit(
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
     if let Some(user_id) = requested_user {
-        let existing_open_registrations =
-            test_session_registrations_schema::table
-                .filter(
-                    test_session_registrations_schema::taker_id
-                        .eq(user_id)
-                        .and(
-                            test_session_registrations_schema::opened_test
-                                .is_not_null(),
-                        )
-                        .and(
-                            test_session_registrations_schema::submitted_test
-                                .is_null(),
-                        ),
-                )
-                .load::<RawTestSessionRegistration>(database_connection)?;
+        let test_session =
+            get_test_session(test_session_id, database_connection)?;
+        if test_session.submissions_enabled {
+            let existing_open_registrations =
+                test_session_registrations_schema::table
+                    .filter(
+                        test_session_registrations_schema::taker_id
+                            .eq(user_id)
+                            .and(
+                                test_session_registrations_schema::opened_test
+                                    .is_not_null(),
+                            )
+                            .and(
+                                test_session_registrations_schema::submitted_test
+                                    .is_null(),
+                            ),
+                    )
+                    .load::<RawTestSessionRegistration>(database_connection)?;
 
-        if existing_open_registrations.len() == 1 {
-            let test_session =
-                get_test_session(test_session_id, database_connection)?;
+            if existing_open_registrations.len() == 1 {
+                let n_questions = response_questions.questions.len();
 
-            let test_request = TestRequest::GetTest(test_session.test_id);
-            let test_response =
-                handle_test(test_request, Some(0), database_connection)?;
-            let test = match test_response {
-                TestResponse::OneTest(test) => test,
-                TestResponse::ManyTests(mut tests) => match tests.tests.pop() {
-                    Some(test) => test,
-                    None => return Err(Error::new(ErrorKind::Database)),
-                },
-                TestResponse::NoResponse => {
-                    return Err(Error::new(ErrorKind::Database))
+                if n_questions == 0 {
+                    return Err(Error::new(ErrorKind::Body));
                 }
-            };
 
-            let n_questions = response_questions.questions.len();
+                let mut n_correct = 0;
 
-            if n_questions == 0 {
-                return Err(Error::new(ErrorKind::Body));
-            }
+                for response_question in response_questions.questions {
+                    let mut questions = questions_schema::table
+                        .filter(questions_schema::id.eq(response_question.id))
+                        .load::<Question>(database_connection)?;
 
-            let mut n_correct = 0;
-
-            for response_question in response_questions.questions {
-                let mut questions = questions_schema::table
-                    .filter(questions_schema::id.eq(response_question.id))
-                    .load::<Question>(database_connection)?;
-
-                if let Some(question) = questions.pop() {
-                    if question.correct_answer == response_question.answer {
-                        n_correct += 1;
+                    if let Some(question) = questions.pop() {
+                        if question.correct_answer == response_question.answer {
+                            n_correct += 1;
+                        }
+                    } else {
+                        return Err(Error::new(ErrorKind::Database));
                     }
-                } else {
-                    return Err(Error::new(ErrorKind::Database));
                 }
+
+                let score = n_correct as f32 / n_questions as f32;
+
+                trace!("Score: {}", score);
+
+                let partial_raw_test_session_registration =
+                    PartialRawTestSessionRegistration {
+                        taker_id: None,
+                        registered: None,
+                        opened_test: None,
+                        submitted_test: Some(Some(Local::now().naive_local())),
+                        score: Some(Some(score)),
+                    };
+
+                diesel::update(test_session_registrations_schema::table)
+                    .filter(
+                        test_session_registrations_schema::taker_id
+                            .eq(user_id)
+                            .and(
+                                test_session_registrations_schema::test_session_id
+                                    .eq(test_session_id),
+                            )
+                            .and(
+                                test_session_registrations_schema::opened_test
+                                    .is_not_null(),
+                            )
+                            .and(
+                                test_session_registrations_schema::score.is_null(),
+                            ),
+                    )
+                    .set(&partial_raw_test_session_registration)
+                    .execute(database_connection)?;
+
+                Ok(())
+            } else {
+                Err(Error::new(ErrorKind::OpenedTestTwice))
             }
-
-            let score = n_correct as f32 / n_questions as f32;
-
-            trace!("Score: {}", score);
-
-            let partial_raw_test_session_registration =
-                PartialRawTestSessionRegistration {
-                    taker_id: None,
-                    registered: None,
-                    opened_test: None,
-                    submitted_test: Some(Some(Local::now().naive_local())),
-                    score: Some(Some(score)),
-                };
-
-            diesel::update(test_session_registrations_schema::table)
-                .filter(
-                    test_session_registrations_schema::taker_id
-                        .eq(user_id)
-                        .and(
-                            test_session_registrations_schema::test_session_id
-                                .eq(test_session_id),
-                        )
-                        .and(
-                            test_session_registrations_schema::opened_test
-                                .is_not_null(),
-                        )
-                        .and(
-                            test_session_registrations_schema::score.is_null(),
-                        ),
-                )
-                .set(&partial_raw_test_session_registration)
-                .execute(database_connection)?;
-
-            Ok(())
         } else {
-            Err(Error::new(ErrorKind::OpenedTestTwice))
+            Err(Error::new(ErrorKind::SubmissionsClosedForTest))
         }
     } else {
         Err(Error::new(ErrorKind::AccessDenied))

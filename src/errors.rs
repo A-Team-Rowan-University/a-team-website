@@ -13,8 +13,11 @@ pub enum ErrorKind {
     AccessDenied,
     NotFound,
     RegisteredTwiceForTest,
+    RegistrationClosedForTest,
     OpenedTestNotRegistered,
     OpenedTestTwice,
+    OpeningClosedForTest,
+    SubmissionsClosedForTest,
     Unimplemented,
 }
 
@@ -35,10 +38,19 @@ impl std::fmt::Display for Error {
             ErrorKind::RegisteredTwiceForTest => {
                 write!(f, "Registered twice for a test")
             }
+            ErrorKind::RegistrationClosedForTest => {
+                write!(f, "The test session is closed for registration")
+            }
             ErrorKind::OpenedTestNotRegistered => {
                 write!(f, "Opened a test not registerd for")
             }
             ErrorKind::OpenedTestTwice => write!(f, "Opened a test twice"),
+            ErrorKind::OpeningClosedForTest => {
+                write!(f, "The test session is closed")
+            }
+            ErrorKind::SubmissionsClosedForTest => {
+                write!(f, "The test session is closed for submissions")
+            }
             ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
         }
     }
@@ -145,10 +157,19 @@ impl From<Error> for rouille::Response {
             ErrorKind::RegisteredTwiceForTest => {
                 rouille::Response::text(e.to_string()).with_status_code(409)
             }
+            ErrorKind::RegistrationClosedForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
             ErrorKind::OpenedTestNotRegistered => {
                 rouille::Response::text(e.to_string()).with_status_code(409)
             }
             ErrorKind::OpenedTestTwice => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::OpeningClosedForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::SubmissionsClosedForTest => {
                 rouille::Response::text(e.to_string()).with_status_code(409)
             }
             ErrorKind::Unimplemented => {
