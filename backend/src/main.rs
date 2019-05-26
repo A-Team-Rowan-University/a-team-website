@@ -8,10 +8,10 @@ use std::sync::Mutex;
 use std::thread;
 use std::time;
 
-use log::trace;
 use log::debug;
 use log::error;
 use log::info;
+use log::trace;
 use log::warn;
 
 use diesel::prelude::*;
@@ -29,13 +29,19 @@ use webdev_lib::access::models::{AccessRequest, UserAccessRequest};
 use webdev_lib::access::requests::get_user;
 use webdev_lib::access::requests::{handle_access, handle_user_access};
 
-use webdev_lib::chemicals::models::{ChemicalInventoryRequest, ChemicalRequest};
-use webdev_lib::chemicals::requests::{handle_chemical, handle_chemical_inventory};
+use webdev_lib::chemicals::models::{
+    ChemicalInventoryRequest, ChemicalRequest,
+};
+use webdev_lib::chemicals::requests::{
+    handle_chemical, handle_chemical_inventory,
+};
 
-use webdev_lib::tests::questions::models::QuestionRequest;
-use webdev_lib::tests::questions::requests::handle_question;
 use webdev_lib::tests::question_categories::models::QuestionCategoryRequest;
 use webdev_lib::tests::question_categories::requests::handle_question_category;
+use webdev_lib::tests::questions::models::QuestionRequest;
+use webdev_lib::tests::questions::requests::handle_question;
+use webdev_lib::tests::test_sessions::models::TestSessionRequest;
+use webdev_lib::tests::test_sessions::requests::handle_test_session;
 use webdev_lib::tests::tests::models::TestRequest;
 use webdev_lib::tests::tests::requests::handle_test;
 
@@ -139,7 +145,11 @@ fn handle_request(
         match UserRequest::from_rouille(&user_request) {
             Err(err) => rouille::Response::from(err),
             Ok(user_request) => {
-                match handle_user(user_request, requested_user, database_connection) {
+                match handle_user(
+                    user_request,
+                    requested_user,
+                    database_connection,
+                ) {
                     Ok(user_response) => user_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -149,7 +159,11 @@ fn handle_request(
         match AccessRequest::from_rouille(&access_request) {
             Err(err) => rouille::Response::from(err),
             Ok(access_request) => {
-                match handle_access(access_request, requested_user, database_connection) {
+                match handle_access(
+                    access_request,
+                    requested_user,
+                    database_connection,
+                ) {
                     Ok(access_response) => access_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -193,7 +207,11 @@ fn handle_request(
         match ChemicalRequest::from_rouille(&chemical_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(chemical_request) => {
-                match handle_chemical(chemical_request, requested_user, database_connection) {
+                match handle_chemical(
+                    chemical_request,
+                    requested_user,
+                    database_connection,
+                ) {
                     Ok(chemical_response) => chemical_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -205,7 +223,11 @@ fn handle_request(
         match QuestionRequest::from_rouille(&question_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(question_request) => {
-                match handle_question(question_request, requested_user, database_connection) {
+                match handle_question(
+                    question_request,
+                    requested_user,
+                    database_connection,
+                ) {
                     Ok(question_response) => question_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -214,23 +236,51 @@ fn handle_request(
     } else if let Some(question_category_request_url) =
         request.remove_prefix("/question_categories")
     {
-        match QuestionCategoryRequest::from_rouille(&question_category_request_url) {
+        match QuestionCategoryRequest::from_rouille(
+            &question_category_request_url,
+        ) {
             Err(err) => rouille::Response::from(err),
             Ok(question_category_request) => {
-                match handle_question_category(question_category_request, requested_user, database_connection) {
-                    Ok(question_category_response) => question_category_response.to_rouille(),
+                match handle_question_category(
+                    question_category_request,
+                    requested_user,
+                    database_connection,
+                ) {
+                    Ok(question_category_response) => {
+                        question_category_response.to_rouille()
+                    }
                     Err(err) => rouille::Response::from(err),
                 }
             }
         }
-    } else if let Some(test_request_url) =
-        request.remove_prefix("/tests")
-    {
+    } else if let Some(test_request_url) = request.remove_prefix("/tests") {
         match TestRequest::from_rouille(&test_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(test_request) => {
-                match handle_test(test_request, requested_user, database_connection) {
+                match handle_test(
+                    test_request,
+                    requested_user,
+                    database_connection,
+                ) {
                     Ok(test_response) => test_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(test_session_request_url) =
+        request.remove_prefix("/test_sessions")
+    {
+        match TestSessionRequest::from_rouille(&test_session_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(test_session_request) => {
+                match handle_test_session(
+                    test_session_request,
+                    requested_user,
+                    database_connection,
+                ) {
+                    Ok(test_session_response) => {
+                        test_session_response.to_rouille()
+                    }
                     Err(err) => rouille::Response::from(err),
                 }
             }
