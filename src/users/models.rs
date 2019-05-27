@@ -117,6 +117,7 @@ impl UserRequest {
                     .ok_or(Error::new(ErrorKind::Body))?;
                 let update_user: PartialUser
                     = serde_json::from_reader(request_body)?;
+
                 Ok(UserRequest::UpdateUser(id, update_user))
             },
 
