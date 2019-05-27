@@ -19,7 +19,7 @@ use crate::errors::{Error, ErrorKind};
 use crate::search::{NullableSearch, Search};
 
 use super::models::{
-    Access, AccessRequest, AccessResponse, JoinedUserAccess,
+    Access, AccessList, AccessRequest, AccessResponse, JoinedUserAccess,
     JoinedUserAccessList, NewAccess, NewUserAccess, PartialAccess,
     PartialUserAccess, SearchUserAccess, UserAccess, UserAccessRequest,
     UserAccessResponse,
@@ -333,6 +333,10 @@ pub fn handle_user_access(
                 Err(e) => Err(e),
             }
         }
+        UserAccessRequest::GetCurrentUserAccess => {
+            get_current_user_access(requesting_user, database_connection)
+                .map(|u| UserAccessResponse::ManyAccess(u))
+        }
         UserAccessRequest::GetAccess(permission_id) => {
             match check_to_run(
                 requesting_user,
@@ -464,6 +468,28 @@ fn search_user_access(
 
     Ok(joined_list)
 }
+
+fn get_current_user_access(
+    requesting_user: Option<u64>,
+    database_connection: &MysqlConnection,
+) -> Result<AccessList, Error> {
+    if let Some(user_id) = requesting_user {
+
+        let accesses = access_schema::table
+            .inner_join(user_access_schema::table)
+            .select((
+                access_schema::id,
+                access_schema::access_name,
+            ))
+            .filter(user_access_schema::user_id.eq(user_id))
+            .load::<Access>(database_connection)?;
+
+        Ok(AccessList { accesses })
+    } else {
+        Err(Error::new(ErrorKind::AccessDenied))
+    }
+}
+
 
 fn get_user_access(
     permission_id: u64,
