@@ -1,6 +1,16 @@
 import React from 'react'
 import GoogleLogin from 'react-google-login';
-import '../styles/template.css'
+import config from './Config';
+import '../styles/template.css';
+
+export interface Access {
+    id: number;
+    access_name: string;
+}
+
+interface AccessList {
+    accesses: Access[];
+}
 
 export interface SignedInUser {
     id_token: string;
@@ -8,6 +18,7 @@ export interface SignedInUser {
     last_name: string;
     email: string;
     profile_image_url: string;
+    access: Access[];
 }
 
 interface Props {
@@ -24,9 +35,23 @@ export class SignInButton extends React.Component<Props, State> {
         this.state = { user: undefined };
     }
 
-    onSignIn(googleUser: any) {
+    async onSignIn(googleUser: any) {
         let profile = googleUser.getBasicProfile();
         let auth = googleUser.getAuthResponse();
+
+        let id_token = auth.id_token;
+
+        const headers = new Headers();
+        headers.append("id_token", id_token);
+
+        const init: RequestInit = {
+            method: "GET",
+            headers: headers,
+        };
+
+        let response = await fetch(config.api_url + "/tests/", init);
+
+        let access_list: AccessList = await response.json();
 
         let user: SignedInUser = {
             id_token: auth.id_token,
@@ -34,6 +59,7 @@ export class SignInButton extends React.Component<Props, State> {
             last_name: profile.getFamilyName(),
             email: profile.getEmail(),
             profile_image_url: profile.getImageUrl(),
+            access: access_list.accesses,
         }
 
         this.props.onSignIn(user);
