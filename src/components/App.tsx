@@ -1,46 +1,27 @@
 import React from 'react';
-//import logo from '../resources/images/A-Team-Logo.png';
-import {SignInButton} from './SignIn'
-import {SignedInUser} from './SignIn'
-import '../styles/App.css';
+import SafetyTest, {SafetyTestProps}  from './SafetyTest'
+import Question, {QuestionProps}  from './Question'
 
-interface Props {
-
+const q1Props: QuestionProps = {
+    id: 1,
+    question: 'What is 2+2?',
+    choices: [
+        {id:1 , text:'1'},
+        {id:2 , text:'2'},
+        {id:3 , text:'3'},
+        {id:4 , text:'4'},
+    ]
 }
 
-interface State {
-    user?: SignedInUser;
-}
+const question1 = React.createElement(Question, q1Props)
+const questions = [new Question(q1Props)]
 
-export default class App extends React.Component<Props, State> {
-
-    constructor(props: Props) {
-        super(props);
-        this.state = { user: undefined };
-    }
-
-    onSignIn(user: SignedInUser) {
-        console.log(this);
-        this.setState((state, props) => ({user}));
-    }
-
-    renderPage() {
-        if (this.state.user) {
-            return (
-                <p> You are signed in! </p>
-            )
-        } else {
-            return (
-                <p> You are not logged in! </p>
-            )
-        }
-    }
-
+export default class App extends React.Component {
     render() {
         return (
-            <div className="App">
-                <SignInButton onSignIn={this.onSignIn.bind(this)} />
-                { this.renderPage() }
+            <div className="App header">
+                <h1>Safety Test</h1>
+                <Question {...q1Props}/>
             </div>
         )
     }
