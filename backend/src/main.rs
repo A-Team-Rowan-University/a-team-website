@@ -107,7 +107,7 @@ fn main() {
                 .with_additional_header("Access-Control-Allow-Origin", "*")
                 .with_additional_header(
                     "Access-Control-Allow-Headers",
-                    "X-PINGOTHER, Content-Type",
+                    "X-PINGOTHER, Content-Type, id_token",
                 )
                 .with_additional_header("Access-Control-Max-Age", "86400")
         } else {
