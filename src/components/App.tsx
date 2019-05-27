@@ -2,6 +2,7 @@ import React from 'react';
 //import logo from '../resources/images/A-Team-Logo.png';
 import {SignInButton} from './SignIn'
 import {SignedInUser} from './SignIn'
+import Tests from './Tests'
 import '../styles/App.css';
 
 interface Props {
@@ -27,7 +28,7 @@ export default class App extends React.Component<Props, State> {
     renderPage() {
         if (this.state.user) {
             return (
-                <p> You are signed in! </p>
+                <Tests user={this.state.user}/>
             )
         } else {
             return (
