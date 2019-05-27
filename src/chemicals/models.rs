@@ -7,11 +7,11 @@ use serde::Serialize;
 
 use url::form_urlencoded;
 
-use log::{trace, warn};
+use log::warn;
 
 use crate::errors::{Error, ErrorKind};
 
-use crate::search::{NullableSearch, Search};
+use crate::search::Search;
 
 use super::schema::{chemical, chemical_inventory};
 
@@ -219,10 +219,14 @@ impl ChemicalInventoryRequest {
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
-                        "purchaser_id" => purchaser_id_search = Search::from_query(query.as_ref())?,
-                        "custodian_id" => custodian_id_search = Search::from_query(query.as_ref())?,
-                        "chemical_id" => chemical_id_search = Search::from_query(query.as_ref())?,
-                        "storage_location" => storage_location_search = Search::from_query(query.as_ref())?,
+                        "purchaser_id" => purchaser_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "custodian_id" => custodian_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "chemical_id" => chemical_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "storage_location" => storage_location_search
+                            = Search::from_query(query.as_ref())?,
                         "amount" => amount_search = Search::from_query(query.as_ref())?,
                         _ => return Err(Error::new(ErrorKind::Url)),
                     }
@@ -242,17 +246,23 @@ impl ChemicalInventoryRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_chemical_inventory: NewChemicalInventory = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_chemical_inventory: NewChemicalInventory =
+                    serde_json::from_reader(request_body)?;
                 Ok(ChemicalInventoryRequest::CreateInventory(new_chemical_inventory))
             },
 
             (PUT) (/{id: u64}) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let update_chemical_inventory: PartialChemicalInventory = serde_json::from_reader(request_body)?;
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let update_chemical_inventory: PartialChemicalInventory =
+                    serde_json::from_reader(request_body)?;
 
-                Ok(ChemicalInventoryRequest::UpdateInventory(id, update_chemical_inventory))
+                Ok(ChemicalInventoryRequest::UpdateInventory(
+                        id,
+                        update_chemical_inventory
+                ))
             },
 
             (DELETE) (/{id: u64}) => {
@@ -260,7 +270,7 @@ impl ChemicalInventoryRequest {
             },
 
             _ => {
-                warn!("Could not create a chemical inventory request for the given rouille request");
+                warn!("Could not create a chemical inventory request");
                 Err(Error::new(ErrorKind::NotFound))
             }
         ) //end router

@@ -10,7 +10,15 @@ pub enum ErrorKind {
     Database,
     Url,
     Body,
+    AccessDenied,
     NotFound,
+    RegisteredTwiceForTest,
+    RegistrationClosedForTest,
+    OpenedTestNotRegistered,
+    OpenedTestTwice,
+    OpeningClosedForTest,
+    SubmissionsClosedForTest,
+    Unimplemented,
 }
 
 #[derive(Debug)]
@@ -26,6 +34,24 @@ impl std::fmt::Display for Error {
             ErrorKind::Url => write!(f, "Url parse error!"),
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
+            ErrorKind::Unimplemented => write!(f, "Method not implemented"),
+            ErrorKind::RegisteredTwiceForTest => {
+                write!(f, "Registered twice for a test")
+            }
+            ErrorKind::RegistrationClosedForTest => {
+                write!(f, "The test session is closed for registration")
+            }
+            ErrorKind::OpenedTestNotRegistered => {
+                write!(f, "Opened a test not registerd for")
+            }
+            ErrorKind::OpenedTestTwice => write!(f, "Opened a test twice"),
+            ErrorKind::OpeningClosedForTest => {
+                write!(f, "The test session is closed")
+            }
+            ErrorKind::SubmissionsClosedForTest => {
+                write!(f, "The test session is closed for submissions")
+            }
+            ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
         }
     }
 }
@@ -44,10 +70,7 @@ impl Error {
         Error { kind, source: None }
     }
 
-    pub fn with_source(
-        kind: ErrorKind,
-        source: Box<dyn StdError>,
-    ) -> Error {
+    pub fn with_source(kind: ErrorKind, source: Box<dyn StdError>) -> Error {
         Error {
             kind,
             source: Some(source),
@@ -97,6 +120,12 @@ impl From<url::ParseError> for Error {
     }
 }
 
+impl From<google_signin::Error> for Error {
+    fn from(e: google_signin::Error) -> Error {
+        Error::with_source(ErrorKind::AccessDenied, Box::new(e))
+    }
+}
+
 impl From<SearchParseError> for Error {
     fn from(s: SearchParseError) -> Error {
         Error::with_source(ErrorKind::Url, Box::new(s))
@@ -112,13 +141,39 @@ impl From<Error> for rouille::Response {
                 rouille::Response::text(e.to_string()).with_status_code(404)
             }
             ErrorKind::Url => {
-                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
+                rouille::Response::text(e.to_string_with_source())
+                    .with_status_code(400)
             }
             ErrorKind::Body => {
-                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
+                rouille::Response::text(e.to_string_with_source())
+                    .with_status_code(400)
+            }
+            ErrorKind::AccessDenied => {
+                rouille::Response::text(e.to_string()).with_status_code(401)
             }
             ErrorKind::Database => {
                 rouille::Response::text(e.to_string()).with_status_code(500)
+            }
+            ErrorKind::RegisteredTwiceForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::RegistrationClosedForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::OpenedTestNotRegistered => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::OpenedTestTwice => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::OpeningClosedForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::SubmissionsClosedForTest => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::Unimplemented => {
+                rouille::Response::text(e.to_string()).with_status_code(501)
             }
         }
     }

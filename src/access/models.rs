@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use url::form_urlencoded;
 
-use log::{trace, warn};
+use log::warn;
 
 use crate::errors::{Error, ErrorKind};
 
@@ -30,7 +30,7 @@ pub struct NewAccess {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "access"]
 pub struct PartialAccess {
-    pub access_name: String,
+    pub access_name: Option<String>,
 }
 
 pub enum AccessRequest {
@@ -38,6 +38,7 @@ pub enum AccessRequest {
     CreateAccess(NewAccess), //new access type of some name to be created
     UpdateAccess(u64, PartialAccess), //Contains id to be changed to new access_name
     DeleteAccess(u64),                //if of access to be deleted
+    FirstAccess(String),
 }
 
 impl AccessRequest {
@@ -65,6 +66,14 @@ impl AccessRequest {
 
             (DELETE) (/{id: u64}) => {
                 Ok(AccessRequest::DeleteAccess(id))
+            },
+
+            (GET) (/first) => {
+                if let Some(id_token) = request.header("id_token") {
+                    Ok(AccessRequest::FirstAccess(id_token.to_string()))
+                } else {
+                    Err(Error::new(ErrorKind::AccessDenied))
+                }
             },
 
             _ => {
@@ -110,8 +119,8 @@ pub struct NewUserAccess {
 #[derive(AsChangeset, Serialize, Deserialize)]
 #[table_name = "user_access"]
 pub struct PartialUserAccess {
-    pub access_id: u64,
-    pub user_id: u64,
+    pub access_id: Option<u64>,
+    pub user_id: Option<u64>,
     pub permission_level: Option<Option<String>>,
 }
 
@@ -124,10 +133,10 @@ pub struct SearchUserAccess {
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
     GetAccess(u64),                 //get individual access entry from its id
-    CheckAccess(u64, u64), //entry allowing user of user_id to perform action of action_id
+    CheckAccess(u64, String), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
     UpdateAccess(u64, PartialUserAccess), //entry to update with new information
-    DeleteAccess(u64),     //entry to delete from database
+    DeleteAccess(u64),        //entry to delete from database
 }
 
 impl UserAccessRequest {
@@ -146,9 +155,12 @@ impl UserAccessRequest {
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
-                        "access_id" => access_id_search = Search::from_query(query.as_ref())?,
-                        "user_id" => user_id_search = Search::from_query(query.as_ref())?,
-                        "permission_level" => permission_level_search = NullableSearch::from_query(query.as_ref())?,
+                        "access_id" => access_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "user_id" => user_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "permission_level" => permission_level_search =
+                            NullableSearch::from_query(query.as_ref())?,
                         _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
@@ -164,21 +176,23 @@ impl UserAccessRequest {
                 Ok(UserAccessRequest::GetAccess(permission_id))
             },
 
-            (GET) (/{user_id:u64}/{access_id: u64}) => {
-                Ok(UserAccessRequest::CheckAccess(user_id, access_id))
+            (GET) (/{user_id:u64}/{access_name: String}) => {
+                Ok(UserAccessRequest::CheckAccess(user_id, access_name))
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_user_access: NewUserAccess = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_user_access: NewUserAccess =
+                    serde_json::from_reader(request_body)?;
                 Ok(UserAccessRequest::CreateAccess(new_user_access))
             },
 
             (PUT) (/{id: u64}) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let update_user_access: PartialUserAccess = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let update_user_access: PartialUserAccess =
+                    serde_json::from_reader(request_body)?;
                 Ok(UserAccessRequest::UpdateAccess(id, update_user_access))
             },
 

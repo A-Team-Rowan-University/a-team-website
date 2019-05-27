@@ -1,11 +1,9 @@
 use diesel::Queryable;
 use rouille::router;
-use rouille::Request;
 use serde::Deserialize;
 use serde::Serialize;
 use url::form_urlencoded;
 
-use log::trace;
 use log::warn;
 
 use super::schema::users;
@@ -16,9 +14,7 @@ use crate::errors::ErrorKind;
 use crate::search::NullableSearch;
 use crate::search::Search;
 
-use crate::users::requests;
-
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Debug, Queryable, Serialize, Deserialize)]
 pub struct User {
     pub id: u64,
     pub first_name: String,
@@ -36,7 +32,7 @@ pub struct NewUser {
     pub email: Option<String>,
 }
 
-#[derive(AsChangeset, Serialize, Deserialize)]
+#[derive(Debug, AsChangeset, Serialize, Deserialize)]
 #[table_name = "users"]
 pub struct PartialUser {
     pub first_name: Option<String>,
@@ -45,6 +41,7 @@ pub struct PartialUser {
     pub email: Option<Option<String>>,
 }
 
+#[derive(Debug)]
 pub struct SearchUser {
     pub first_name: Search<String>,
     pub last_name: Search<String>,
@@ -52,11 +49,12 @@ pub struct SearchUser {
     pub email: NullableSearch<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserList {
     pub users: Vec<User>,
 }
 
+#[derive(Debug)]
 pub enum UserRequest {
     SearchUsers(SearchUser),
     GetUser(u64),
@@ -82,10 +80,14 @@ impl UserRequest {
 
                 for (field, query) in url_queries {
                     match field.as_ref() {
-                        "first_name" => first_name_search = Search::from_query(query.as_ref())?,
-                        "last_name" => last_name_search = Search::from_query(query.as_ref())?,
-                        "banner_id" => banner_id_search = Search::from_query(query.as_ref())?,
-                        "email" => email_search = NullableSearch::from_query(query.as_ref())?,
+                        "first_name" => first_name_search =
+                            Search::from_query(query.as_ref())?,
+                        "last_name" => last_name_search =
+                            Search::from_query(query.as_ref())?,
+                        "banner_id" => banner_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "email" => email_search =
+                            NullableSearch::from_query(query.as_ref())?,
                         _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
@@ -103,15 +105,18 @@ impl UserRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let new_user: NewUser = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_user: NewUser =
+                    serde_json::from_reader(request_body)?;
                 Ok(UserRequest::CreateUser(new_user))
             },
 
             (PUT) (/{id: u64}) => {
-                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
-                let update_user: PartialUser = serde_json::from_reader(request_body)?;
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let update_user: PartialUser
+                    = serde_json::from_reader(request_body)?;
 
                 Ok(UserRequest::UpdateUser(id, update_user))
             },
@@ -128,6 +133,7 @@ impl UserRequest {
     }
 }
 
+#[derive(Debug)]
 pub enum UserResponse {
     OneUser(User),
     ManyUsers(UserList),
