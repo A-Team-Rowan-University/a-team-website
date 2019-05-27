@@ -1,4 +1,5 @@
 import React from 'react'
+import {Row, Col, ToggleButton, ButtonGroup, Container} from 'react-bootstrap'
 
 export default class Question extends React.Component<QuestionProps, QuestionState> {
 
@@ -8,6 +9,7 @@ export default class Question extends React.Component<QuestionProps, QuestionSta
     }
 
     onChoiceClicked(e: React.MouseEvent<HTMLElement>) {
+        e.preventDefault();
         this.updateSelectedChoice(parseInt(e.currentTarget.id))
     }
 
@@ -22,13 +24,21 @@ export default class Question extends React.Component<QuestionProps, QuestionSta
 
     render() {
         return (
-            <div id={this.props.id.toString()} className="question">
-                <h1>{this.props.question}</h1>
-                {
-                this.props.choices.map((choice: Choice): any =>
-                <div id={choice.id.toString()} key={choice.id.toString()} className="choice" onClick={this.onChoiceClicked.bind(this)}>{choice.text}</div>)
-                }
-            </div>
+            <Container id={this.props.id.toString()} className="question">
+                <Row className="justify-content-center">
+                    <h2>{this.props.question}</h2>
+                </Row>
+                <Row className="justify-content-center">
+                    {
+                    this.props.choices.map((choice: Choice): any =>
+                    <Col xs={12} md={2} id={choice.id.toString()} key={choice.id.toString()} className="choice" onClick={this.onChoiceClicked.bind(this)}>
+                        <ButtonGroup toggle>
+                            <ToggleButton type="checkbox" value={choice.id} checked={this.state.selectedChoice === choice.id}>{choice.text}</ToggleButton>
+                        </ButtonGroup>
+                    </Col>)
+                    }
+                </Row>
+            </Container>
         )
 }
 }
