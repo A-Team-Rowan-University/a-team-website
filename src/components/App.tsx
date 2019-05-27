@@ -1,19 +1,48 @@
 import React from 'react';
-import SafetyTest, {SafteyTestProps} from './SafetyTest'
-import Question, {QuestionProps}  from './Question'
-import Container from 'react-bootstrap/Container'
-import Row from 'react-bootstrap/Row'
-import Col from 'react-bootstrap/Col'
+//import logo from '../resources/images/A-Team-Logo.png';
+import {SignInButton} from './SignIn'
+import {SignedInUser} from './SignIn'
+import Tests from './Tests'
+import '../styles/App.css';
 
-export default class App extends React.Component {
+interface Props {
+
+}
+
+interface State {
+    user?: SignedInUser;
+}
+
+export default class App extends React.Component<Props, State> {
+
+    constructor(props: Props) {
+        super(props);
+        this.state = { user: undefined };
+    }
+
+    onSignIn(user: SignedInUser) {
+        console.log(this);
+        this.setState((state, props) => ({user}));
+    }
+
+    renderPage() {
+        if (this.state.user) {
+            return (
+                <Tests user={this.state.user}/>
+            )
+        } else {
+            return (
+                <p> You are not logged in! </p>
+            )
+        }
+    }
+
     render() {
         return (
-            <Container className="App header justify-content-center">
-                <Row className="justify-content-center">
-                    <h1>Safety Test</h1>
-                </Row>
-                <SafetyTest />
-            </Container>
+            <div className="App">
+                <SignInButton onSignIn={this.onSignIn.bind(this)} />
+                { this.renderPage() }
+            </div>
         )
     }
 }

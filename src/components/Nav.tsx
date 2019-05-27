@@ -1,5 +1,4 @@
 import React, { MouseEvent } from 'react'
-//import logo from '../resources/images/A-Team-Logo.png'
 import 'purecss/build/pure.css';
 
 export default class Nav extends React.Component {
