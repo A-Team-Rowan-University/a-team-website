@@ -49,7 +49,7 @@ export class SignInButton extends React.Component<Props, State> {
             headers: headers,
         };
 
-        let response = await fetch(config.api_url + "/tests/", init);
+        let response = await fetch(config.api_url + "/user_access/current", init);
 
         let access_list: AccessList = await response.json();
 

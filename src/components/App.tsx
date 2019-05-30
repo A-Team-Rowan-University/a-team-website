@@ -1,5 +1,6 @@
 import React from 'react';
 //import logo from '../resources/images/A-Team-Logo.png';
+import {Container} from 'react-bootstrap'
 import {SignInButton} from './SignIn'
 import {SignedInUser} from './SignIn'
 import Tests from './Tests'
@@ -41,7 +42,9 @@ export default class App extends React.Component<Props, State> {
         return (
             <div className="App">
                 <SignInButton onSignIn={this.onSignIn.bind(this)} />
-                { this.renderPage() }
+                <Container>
+                    { this.renderPage() }
+                </Container>
             </div>
         )
     }
