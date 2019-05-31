@@ -76,6 +76,24 @@ export default class Tests extends React.Component<TestProps, TestState> {
         }
     }
 
+    createOnRemove(test: Test) {
+        return async () => {
+            const headers = new Headers();
+            headers.append("id_token", this.props.user.id_token);
+
+            const init: RequestInit = {
+                method: "DELETE",
+                headers: headers,
+            };
+
+            let response = await fetch(config.api_url + "/tests/" + test.id, init);
+
+            let testList: TestList = await response.json();
+
+            this.setState({tests: testList.tests})
+        };
+    }
+
     componentDidMount() {
         this.timer = window.setInterval(() => this.onTimeout(), 1000)
     }
@@ -99,6 +117,10 @@ export default class Tests extends React.Component<TestProps, TestState> {
                     { this.state.tests.map((test) =>  (
                         <ListGroup.Item key={test.id.toString()}>
                             <h5>{test.name}</h5>
+                            <Button
+                                variant="danger"
+                                onClick={this.createOnRemove(test)}
+                            >Remove</Button>
                         </ListGroup.Item>
                     ))}
                 </ListGroup>
