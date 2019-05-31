@@ -69,7 +69,7 @@ export default class Tests extends React.Component<Props, State> {
     render() {
         return (
             <div>
-                { this.state.tests.map((test) => <p>{test.name}</p>) }
+                { this.state.tests.map((test, i) => <p key={i}>{test.name}</p>) }
             </div>
         )
     }
