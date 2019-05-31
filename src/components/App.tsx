@@ -3,12 +3,12 @@ import React from 'react';
 import {Container} from 'react-bootstrap'
 import {SignInButton} from './SignIn'
 import {SignedInUser} from './SignIn'
-import Tests from './Tests'
+import {Tests, NewTestForm} from './Tests'
 import Navigation from './Nav'
 import Cookies from 'universal-cookie'
 import config from '../config'
 import Dashboard from './Dashboard'
-import { BrowserRouter as Router} from 'react-router-dom'
+import { BrowserRouter as Router, Route, Link} from 'react-router-dom'
 
 const cookies = new Cookies()
 
@@ -69,11 +69,14 @@ export default class App extends React.Component<Props, State> {
 
     render() {
         return (
-            <div className="App">
-                <Navigation />
-                <SignInButton onSignIn={this.onSignIn.bind(this)} />
-                <Dashboard />
-            </div>
+            <Router>
+                <div className="App">
+                    <Navigation />
+                    <SignInButton onSignIn={this.onSignIn.bind(this)} />
+                </div>
+                <Route path="/tests/" component={Tests} />
+                <Route path="/tests/new" compnent={NewTestForm} />
+            </Router>
         )
     }
 }

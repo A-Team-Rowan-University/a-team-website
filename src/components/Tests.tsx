@@ -17,6 +17,7 @@ import config from './Config'
 import {NewTestSessionForm} from './TestSessions'
 //import '../styles/template.css'
 
+
 interface TestQuestionCategory {
     number_of_questions: number;
     question_category_id: number;
@@ -44,11 +45,10 @@ interface TestProps {
 
 interface TestState {
     creating_test: boolean;
-    creating_test_session: boolean;
     tests: Test[];
 }
 
-export default class Tests extends React.Component<TestProps, TestState> {
+export class Tests extends React.Component<TestProps, TestState> {
     timer?: number;
 
     constructor(props: TestProps) {
@@ -144,12 +144,6 @@ export default class Tests extends React.Component<TestProps, TestState> {
                     onCreate={this.onCreate.bind(this)}
                 />
             )
-        } else if (this.state.creating_test_session) {
-            return (
-                <NewTestSessionForm
-                    user={this.props.user}
-
-            )
         } else {
             return this.renderTestList();
         }
@@ -188,7 +182,7 @@ interface NewTestFormState {
     validated: boolean;
 }
 
-class NewTestForm extends React.Component<NewTestFormProps, NewTestFormState> {
+export class NewTestForm extends React.Component<NewTestFormProps, NewTestFormState> {
     constructor(props: NewTestFormProps) {
         super(props);
         this.state = { name: "", questions: [] , all_categories: [] , validated: false};
