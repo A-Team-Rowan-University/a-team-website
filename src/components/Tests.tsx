@@ -14,6 +14,7 @@ import {
 } from 'react-bootstrap'
 import {SignedInUser} from './SignIn'
 import config from './Config'
+import {NewTestSessionForm} from './TestSessions'
 //import '../styles/template.css'
 
 interface TestQuestionCategory {
@@ -21,7 +22,7 @@ interface TestQuestionCategory {
     question_category_id: number;
 }
 
-interface Test {
+export interface Test {
     id: number;
     creator_id: number;
     name: string;
@@ -33,7 +34,7 @@ interface NewTest {
     questions: TestQuestionCategory[];
 }
 
-interface TestList {
+export interface TestList {
     tests: Test[]
 }
 
@@ -43,6 +44,7 @@ interface TestProps {
 
 interface TestState {
     creating_test: boolean;
+    creating_test_session: boolean;
     tests: Test[];
 }
 
@@ -141,6 +143,12 @@ export default class Tests extends React.Component<TestProps, TestState> {
                     user={this.props.user}
                     onCreate={this.onCreate.bind(this)}
                 />
+            )
+        } else if (this.state.creating_test_session) {
+            return (
+                <NewTestSessionForm
+                    user={this.props.user}
+
             )
         } else {
             return this.renderTestList();
