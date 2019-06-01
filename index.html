@@ -3,6 +3,8 @@
     <head>
         <meta charset="UTF-8">
         <title>Hello</title>
+        <script src="https://apis.google.com/js/platform.js" async defer></script>
+        <meta name="google-signin-client_id" content="918184954544-jm1aufr31fi6sdjs1140p7p3rouaka14.apps.googleusercontent.com">
         <script src="main.js"></script>
     </head>
 
@@ -10,8 +12,33 @@
         <div id="elm"></div>
         <script>
             var app = Elm.Main.init({
-                node: document.getElementById('elm')
+                node: document.getElementById('elm'),
+                flags: {},
             });
+            console.log(app);
+
+            function onSignIn(googleUser) {
+                var profile = googleUser.getBasicProfile();
+                console.log('ID: ' + profile.getId());
+                console.log('Name: ' + profile.getName());
+                console.log('Image URL: ' + profile.getImageUrl());
+                console.log('Email: ' + profile.getEmail());
+                console.log('Token:' + googleUser.getAuthResponse().id_token);
+
+                console.log("GoogleUser: " + googleUser);
+                console.log("Basic Profile: " + googleUser.getBasicProfile());
+                console.log("Auth response: " + googleUser.getAuthResponse());
+
+                let signed_in_user = {
+                    first_name: profile.getGivenName(),
+                    last_name: profile.getFamilyName(),
+                    email: profile.getEmail(),
+                    profile_url: profile.getImageUrl(),
+                    id_token: googleUser.getAuthResponse().id_token
+                };
+
+                app.ports.signIn.send(signed_in_user)
+            }
         </script>
     </body>
 </html>
