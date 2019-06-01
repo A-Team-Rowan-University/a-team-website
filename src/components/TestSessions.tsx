@@ -1,4 +1,3 @@
-
 import React from 'react'
 import {
     Container,
@@ -12,8 +11,8 @@ import {
     ListGroup,
     Alert,
 } from 'react-bootstrap'
-import {SignedInUser} from './SignIn'
-import {Test, TestList} from './Tests'
+import {SignedInUser} from '../types'
+//import {Test, TestList} from './Tests'
 import config from './Config'
 //import '../styles/template.css'
 

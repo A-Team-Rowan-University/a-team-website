@@ -12,9 +12,8 @@ import {
     ListGroup,
     Alert,
 } from 'react-bootstrap'
-import {SignedInUser} from './SignIn'
+import {SignedInUser} from '../types'
 import config from './Config'
-import {NewTestSessionForm} from './TestSessions'
 //import '../styles/template.css'
 
 
@@ -39,43 +38,39 @@ export interface TestList {
     tests: Test[]
 }
 
-interface TestProps {
+interface Props {
     user: SignedInUser;
+    onNewTest?: () => void;
 }
 
-interface TestState {
-    creating_test: boolean;
+interface State {
     tests: Test[];
 }
 
-export class Tests extends React.Component<TestProps, TestState> {
+export class TestList extends React.Component<Props, State> {
     timer?: number;
 
-    constructor(props: TestProps) {
+    constructor(props: Props) {
         super(props);
         this.state = {
-            creating_test: false,
             tests: [],
         };
     }
 
     async onTimeout() {
+        const headers = new Headers();
+        headers.append("id_token", this.props.user.id_token);
 
-        if (!this.state.creating_test) {
-            const headers = new Headers();
-            headers.append("id_token", this.props.user.id_token);
+        const init: RequestInit = {
+            method: "GET",
+            headers: headers,
+        };
 
-            const init: RequestInit = {
-                method: "GET",
-                headers: headers,
-            };
+        let response = await fetch(config.api_url + "/tests/", init);
 
-            let response = await fetch(config.api_url + "/tests/", init);
+        let testList: TestList = await response.json();
 
-            let testList: TestList = await response.json();
-
-            this.setState({tests: testList.tests})
-        }
+        this.setState({tests: testList.tests})
     }
 
     createOnRemove(test: Test) {
@@ -105,11 +100,9 @@ export class Tests extends React.Component<TestProps, TestState> {
     }
 
     createTest() {
-        this.setState({creating_test: true});
     }
 
     onCreate() {
-        this.setState({creating_test: false});
     }
 
     renderTestList() {
@@ -137,19 +130,11 @@ export class Tests extends React.Component<TestProps, TestState> {
     }
 
     render() {
-        if (this.state.creating_test) {
-            return (
-                <NewTestForm
-                    user={this.props.user}
-                    onCreate={this.onCreate.bind(this)}
-                />
-            )
-        } else {
-            return this.renderTestList();
-        }
+        return this.renderTestList();
     }
 }
 
+    /*
 interface Question {
     id: number,
     category_id: number,
@@ -345,4 +330,5 @@ export class NewTestForm extends React.Component<NewTestFormProps, NewTestFormSt
         )
     }
 }
+*/
 

@@ -2,15 +2,11 @@ import React from 'react';
 //import logo from '../resources/images/A-Team-Logo.png';
 import {Container} from 'react-bootstrap'
 import {SignInButton} from './SignIn'
-import {SignedInUser} from './SignIn'
-import {Tests, NewTestForm} from './Tests'
-import Navigation from './Nav'
+import {SignedInUser} from '../types'
 import Cookies from 'universal-cookie'
 import config from '../config'
 import Dashboard from './Dashboard'
 import { BrowserRouter as Router, Route, Link} from 'react-router-dom'
-
-const cookies = new Cookies()
 
 interface Props {
 
@@ -30,53 +26,23 @@ export default class App extends React.Component<Props, State> {
     onSignIn(user: SignedInUser) {
         console.log(this);
         this.setState((state, props) => ({user}));
-        cookies.set('id_token', user.id_token, { path: '/' })
     }
 
-    async renderPage() {
+    renderPage() {
         if(this.state.user){
-            return ( <Tests user={this.state.user} />)
+            return ( <p>You are signed in as {this.state.user.first_name}</p>)
         }
         else {
-            const id_token = cookies.get('id_token')
-
-            const headers = new Headers();
-            headers.append("id_token", id_token);
-
-            const init: RequestInit = {
-                method: "GET",
-                headers: headers,
-            };
-
-            let response = await fetch(config.api_url + "/tests/", init);
-
-            if(response.ok) {
-                const headers = new Headers();
-                const init: RequestInit = {
-                    method: "GET",
-                    headers: headers,
-                };
-
-                let response = await fetch(`https://www.googleapis.com/oauth2/v2/tokeninfo?id_token=${id_token}`, init);
-                return ( <p> You are logged in! </p> )
-            }
-            else
-            {
-                return ( <p> You are not logged in! </p> )
-            }
+            return ( <p> You are not logged in! </p> )
         }
     }
 
     render() {
         return (
-            <Router>
-                <div className="App">
-                    <Navigation />
-                    <SignInButton onSignIn={this.onSignIn.bind(this)} />
-                </div>
-                <Route path="/tests/" component={Tests} />
-                <Route path="/tests/new" compnent={NewTestForm} />
-            </Router>
+            <div className="App">
+                <SignInButton onSignIn={this.onSignIn.bind(this)} />
+            </div>
         )
     }
 }
+

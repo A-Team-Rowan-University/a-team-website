@@ -1,25 +1,8 @@
 import React from 'react'
 import GoogleLogin from 'react-google-login';
+import { SignedInUser } from '../types';
+import { AccessList } from '../types/backend';
 import config from './Config';
-import '../styles/template.css';
-
-export interface Access {
-    id: number;
-    access_name: string;
-}
-
-interface AccessList {
-    accesses: Access[];
-}
-
-export interface SignedInUser {
-    id_token: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    profile_image_url: string;
-    access: Access[];
-}
 
 interface Props {
     onSignIn: (user: SignedInUser) => void;
