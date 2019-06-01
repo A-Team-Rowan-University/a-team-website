@@ -1,4 +1,4 @@
-port module Main exposing (Model, Msg(..), SignInUser, init, main, signIn, subscriptions, update, view)
+port module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
 
 import Browser
 import Html exposing (Html, button, div, img, input, pre, text)
@@ -9,6 +9,7 @@ import Json.Decode exposing (Decoder, decodeValue, field, int, list, map5, nulla
 import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
+import SignIn exposing (SignInModel(..), SignInMsg, SignInUser, signInSubscriptions, updateSignIn, viewSignIn)
 
 
 main =
@@ -21,24 +22,12 @@ main =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions _ =
-    signIn SignIn
-
-
-port signIn : (E.Value -> msg) -> Sub msg
+subscriptions model =
+    Sub.map GotSignInMsg (signInSubscriptions model.signin)
 
 
 
 -- MODEL
-
-
-type alias SignInUser =
-    { first_name : String
-    , last_name : String
-    , email : String
-    , profile_url : String
-    , id_token : String
-    }
 
 
 type alias User =
@@ -48,12 +37,6 @@ type alias User =
     , email : Maybe String
     , banner_id : Int
     }
-
-
-type SignInModel
-    = SignedIn SignInUser
-    | SignedOut
-    | SignInFailure Json.Decode.Error
 
 
 type UserListModel
@@ -82,30 +65,19 @@ init _ =
 
 
 type Msg
-    = SignIn E.Value
+    = GotSignInMsg SignInMsg
     | GotUsers (Result Http.Error (List User))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SignIn user_json ->
-            case decodeValue signedInUserDecoder user_json of
-                Ok user ->
-                    ( { model | signin = SignedIn user }
-                    , Http.request
-                        { method = "GET"
-                        , headers = [ header "id_token" user.id_token ]
-                        , url = "http://localhost/api/v1/users/"
-                        , body = emptyBody
-                        , expect = Http.expectJson GotUsers userListDecoder
-                        , timeout = Nothing
-                        , tracker = Nothing
-                        }
-                    )
-
-                Err e ->
-                    ( { model | signin = SignInFailure e }, Cmd.none )
+        GotSignInMsg signin_msg ->
+            let
+                ( signInModel, signInCmd ) =
+                    updateSignIn signin_msg model.signin
+            in
+            ( { model | signin = signInModel }, Cmd.map GotSignInMsg signInCmd )
 
         GotUsers users_result ->
             ( case users_result of
@@ -116,16 +88,6 @@ update msg model =
                     { model | userlist = NetworkError e }
             , Cmd.none
             )
-
-
-signedInUserDecoder : Decoder SignInUser
-signedInUserDecoder =
-    map5 SignInUser
-        (field "first_name" string)
-        (field "last_name" string)
-        (field "email" string)
-        (field "profile_url" string)
-        (field "id_token" string)
 
 
 userDecoder : Decoder User
@@ -159,24 +121,7 @@ viewUser user =
 view : Model -> Html Msg
 view model =
     div []
-        [ div
-            [ class "g-signin2"
-            , attribute "data-onsuccess" "onSignIn"
-            ]
-            []
-        , case model.signin of
-            SignedIn user ->
-                div []
-                    [ div [] [ text (user.first_name ++ " " ++ user.last_name) ]
-                    , img [ src user.profile_url ] []
-                    , pre [] [ text user.id_token ]
-                    ]
-
-            SignedOut ->
-                div [] [ text "Not signed in" ]
-
-            SignInFailure _ ->
-                div [] [ text "Failed to sign in" ]
+        [ Html.map GotSignInMsg (viewSignIn model.signin)
         , case model.userlist of
             Loading ->
                 text "Loading users..."
