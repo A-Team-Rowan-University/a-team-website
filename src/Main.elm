@@ -1,10 +1,11 @@
-port module Main exposing (Model(..), Msg(..), SignInUser, init, main, signIn, subscriptions, update, view)
+port module Main exposing (Model, Msg(..), SignInUser, init, main, signIn, subscriptions, update, view)
 
 import Browser
-import Html exposing (Html, button, div, img, input, text)
+import Html exposing (Html, button, div, img, input, pre, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
-import Json.Decode exposing (Decoder, decodeValue, field, map5, string)
+import Http exposing (emptyBody, header)
+import Json.Decode exposing (Decoder, decodeValue, field, int, list, map5, nullable, string)
 import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
@@ -40,15 +41,40 @@ type alias SignInUser =
     }
 
 
-type Model
+type alias User =
+    { id : Int
+    , first_name : String
+    , last_name : String
+    , email : Maybe String
+    , banner_id : Int
+    }
+
+
+type SignInModel
     = SignedIn SignInUser
     | SignedOut
     | SignInFailure Json.Decode.Error
 
 
-init : () -> ( Model, Cmd msg )
+type UserListModel
+    = Loading
+    | UserList (List User)
+    | NetworkError Http.Error
+
+
+type alias Model =
+    { signin : SignInModel
+    , userlist : UserListModel
+    }
+
+
+init : () -> ( Model, Cmd Msg )
 init _ =
-    ( SignedOut, Cmd.none )
+    ( { signin = SignedOut
+      , userlist = Loading
+      }
+    , Cmd.none
+    )
 
 
 
@@ -57,18 +83,37 @@ init _ =
 
 type Msg
     = SignIn E.Value
+    | GotUsers (Result Http.Error (List User))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SignIn user_json ->
-            ( case decodeValue signedInUserDecoder user_json of
+            case decodeValue signedInUserDecoder user_json of
                 Ok user ->
-                    SignedIn user
+                    ( { model | signin = SignedIn user }
+                    , Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" user.id_token ]
+                        , url = "http://localhost/api/v1/users/"
+                        , body = emptyBody
+                        , expect = Http.expectJson GotUsers userListDecoder
+                        , timeout = Nothing
+                        , tracker = Nothing
+                        }
+                    )
 
                 Err e ->
-                    SignInFailure e
+                    ( { model | signin = SignInFailure e }, Cmd.none )
+
+        GotUsers users_result ->
+            ( case users_result of
+                Ok users ->
+                    { model | userlist = UserList users }
+
+                Err e ->
+                    { model | userlist = NetworkError e }
             , Cmd.none
             )
 
@@ -83,8 +128,32 @@ signedInUserDecoder =
         (field "id_token" string)
 
 
+userDecoder : Decoder User
+userDecoder =
+    map5 User
+        (field "id" int)
+        (field "first_name" string)
+        (field "last_name" string)
+        (field "email" (nullable string))
+        (field "banner_id" int)
+
+
+userListDecoder : Decoder (List User)
+userListDecoder =
+    field "users" (list userDecoder)
+
+
 
 -- VIEW
+
+
+viewUser : User -> Html Msg
+viewUser user =
+    div []
+        [ div [] [ text (user.first_name ++ " " ++ user.last_name) ]
+        , div [] [ text (Maybe.withDefault "No email" user.email) ]
+        , div [] [ text (String.fromInt user.banner_id) ]
+        ]
 
 
 view : Model -> Html Msg
@@ -95,19 +164,26 @@ view model =
             , attribute "data-onsuccess" "onSignIn"
             ]
             []
-        , case model of
+        , case model.signin of
             SignedIn user ->
                 div []
-                    [ div [] [ text user.first_name ]
-                    , div [] [ text user.last_name ]
-                    , div [] [ text user.email ]
+                    [ div [] [ text (user.first_name ++ " " ++ user.last_name) ]
                     , img [ src user.profile_url ] []
-                    , div [] [ text user.id_token ]
+                    , pre [] [ text user.id_token ]
                     ]
 
             SignedOut ->
                 div [] [ text "Not signed in" ]
 
             SignInFailure _ ->
-                div [] [ text "Sign in failure" ]
+                div [] [ text "Failed to sign in" ]
+        , case model.userlist of
+            Loading ->
+                text "Loading users..."
+
+            UserList users ->
+                div [] (List.map viewUser users)
+
+            NetworkError e ->
+                text "Network error loading users!"
         ]
