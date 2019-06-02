@@ -79,31 +79,29 @@ updateSignIn msg model =
 
 viewSignIn : SignInModel -> Html SignInMsg
 viewSignIn model =
-    span [ class "is-pulled-right", class "box" ]
-        [ case model of
-            SignedIn user ->
-                span [ class "level" ]
-                    [ div [ class "level-left" ]
-                        [ p [ class "has-text-left", class "level-item" ]
-                            [ text (user.first_name ++ " " ++ user.last_name) ]
-                        ]
-                    , div [ class "level-right" ]
-                        [ div [ class "image is-32x32", class "level-item" ]
-                            [ img [ src user.profile_url ] [] ]
-                        ]
+    case model of
+        SignedIn user ->
+            span [ class "level" ]
+                [ div [ class "level-left" ]
+                    [ p [ class "has-text-left", class "level-item" ]
+                        [ text (user.first_name ++ " " ++ user.last_name) ]
                     ]
-
-            SignedOut ->
-                div [ class "level-item" ]
-                    [ div []
-                        [ div
-                            [ class "g-signin2"
-                            , attribute "data-onsuccess" "onSignIn"
-                            ]
-                            []
-                        ]
+                , div [ class "level-right" ]
+                    [ div [ class "image is-32x32", class "level-item" ]
+                        [ img [ src user.profile_url ] [] ]
                     ]
+                ]
 
-            SignInFailure _ ->
-                div [] [ text "Failed to sign in" ]
-        ]
+        SignedOut ->
+            div [ class "level-item" ]
+                [ div []
+                    [ div
+                        [ class "g-signin2"
+                        , attribute "data-onsuccess" "onSignIn"
+                        ]
+                        []
+                    ]
+                ]
+
+        SignInFailure _ ->
+            div [] [ text "Failed to sign in" ]

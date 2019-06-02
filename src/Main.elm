@@ -1,7 +1,7 @@
 port module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
 
 import Browser
-import Html exposing (Html, button, div, img, input, pre, text)
+import Html exposing (Html, a, button, div, h1, img, input, nav, pre, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (emptyBody, header)
@@ -45,16 +45,21 @@ type UserListModel
     | NetworkError Http.Error
 
 
+type PageModel
+    = PageUserList UserListModel
+    | PageHome
+
+
 type alias Model =
     { signin : SignInModel
-    , userlist : UserListModel
+    , page : PageModel
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { signin = SignedOut
-      , userlist = Loading
+      , page = PageHome
       }
     , Cmd.none
     )
@@ -82,10 +87,10 @@ update msg model =
         GotUsers users_result ->
             ( case users_result of
                 Ok users ->
-                    { model | userlist = UserList users }
+                    { model | page = PageUserList (UserList users) }
 
                 Err e ->
-                    { model | userlist = NetworkError e }
+                    { model | page = PageUserList (NetworkError e) }
             , Cmd.none
             )
 
@@ -118,17 +123,63 @@ viewUser user =
         ]
 
 
+viewPageUserList : UserListModel -> Html Msg
+viewPageUserList user_list =
+    case user_list of
+        Loading ->
+            text "Loading users..."
+
+        UserList users ->
+            div [] (List.map viewUser users)
+
+        NetworkError e ->
+            text "Network error loading users!"
+
+
+viewPage : PageModel -> Html Msg
+viewPage page =
+    case page of
+        PageUserList user_list ->
+            viewPageUserList user_list
+
+        PageHome ->
+            h1 [] [ text "Welcome to the A-Team!" ]
+
+
 view : Model -> Html Msg
 view model =
     div []
-        [ Html.map GotSignInMsg (viewSignIn model.signin)
-        , case model.userlist of
-            Loading ->
-                text "Loading users..."
-
-            UserList users ->
-                div [] (List.map viewUser users)
-
-            NetworkError e ->
-                text "Network error loading users!"
+        [ nav [ class "navbar", class "is-primary" ]
+            [ div [ class "navbar-brand" ]
+                [ a [ class "navbar-item", href "/" ]
+                    [ img [ src "/A-TeamLogo2.svg" ] [] ]
+                , a
+                    [ attribute "role" "button"
+                    , class "navbar-burger"
+                    , class "burger"
+                    , attribute "aria-label" "menu"
+                    , attribute "aria-expanded" "false"
+                    , attribute "data-target" "navbar"
+                    ]
+                    [ span [ attribute "aria-hidden" "true" ] []
+                    , span [ attribute "aria-hidden" "true" ] []
+                    , span [ attribute "aria-hidden" "true" ] []
+                    ]
+                ]
+            , div [ id "navbar", class "navbar-menu" ]
+                [ div [ class "navbar-start" ]
+                    [ a [ class "navbar-item" ] [ text "Home" ]
+                    , a [ class "navbar-item" ] [ text "Users" ]
+                    ]
+                , div [ class "navbar-end" ]
+                    [ div [ class "navbar-item" ]
+                        [ Html.map GotSignInMsg (viewSignIn model.signin) ]
+                    ]
+                ]
+            ]
+        , viewPage model.page
         ]
+
+
+
+--
