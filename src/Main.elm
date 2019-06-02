@@ -12,6 +12,7 @@ import Platform.Cmd
 import Platform.Sub
 import SignIn exposing (SignInModel(..), SignInMsg, SignInUser, signInSubscriptions, updateSignIn, viewSignIn)
 import Url
+import Url.Parser as P exposing ((</>))
 
 
 main =
@@ -43,6 +44,20 @@ type alias User =
     }
 
 
+type Route
+    = Home
+    | Users
+    | NotFound
+
+
+routeParser : P.Parser (Route -> a) a
+routeParser =
+    P.oneOf
+        [ P.map Home P.top
+        , P.map Users (P.s "users")
+        ]
+
+
 type UserListModel
     = Loading
     | UserList (List User)
@@ -56,18 +71,18 @@ type PageModel
 
 type alias Model =
     { navkey : Nav.Key
-    , url : Url.Url
+    , route : Route
     , signin : SignInModel
-    , page : PageModel
+    , users : UserListModel
     }
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     ( { navkey = key
-      , url = url
+      , route = Home
       , signin = SignedOut
-      , page = PageHome
+      , users = Loading
       }
     , Cmd.none
     )
@@ -97,10 +112,10 @@ update msg model =
         GotUsers users_result ->
             ( case users_result of
                 Ok users ->
-                    { model | page = PageUserList (UserList users) }
+                    { model | users = UserList users }
 
                 Err e ->
-                    { model | page = PageUserList (NetworkError e) }
+                    { model | users = NetworkError e }
             , Cmd.none
             )
 
@@ -113,7 +128,12 @@ update msg model =
                     ( model, Nav.load href )
 
         UrlChanged url ->
-            ( { model | url = url }, Cmd.none )
+            case P.parse routeParser url of
+                Nothing ->
+                    ( { model | route = NotFound }, Cmd.none )
+
+                Just route ->
+                    ( { model | route = route }, Cmd.none )
 
 
 userDecoder : D.Decoder User
@@ -157,14 +177,17 @@ viewPageUserList user_list =
             text "Network error loading users!"
 
 
-viewPage : PageModel -> Html Msg
-viewPage page =
-    case page of
-        PageUserList user_list ->
-            viewPageUserList user_list
+viewPage : Model -> Html Msg
+viewPage model =
+    case model.route of
+        Users ->
+            viewPageUserList model.users
 
-        PageHome ->
+        Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
+
+        NotFound ->
+            h1 [] [ text "Page not found!" ]
 
 
 view : Model -> Browser.Document Msg
@@ -200,7 +223,7 @@ view model =
                         ]
                     ]
                 ]
-            , viewPage model.page
+            , viewPage model
             ]
         ]
     }
