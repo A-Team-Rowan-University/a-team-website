@@ -1,6 +1,7 @@
 port module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
 
 import Browser
+import Browser.Navigation as Nav
 import Html exposing (Html, a, button, div, h1, img, input, nav, pre, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -10,14 +11,17 @@ import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
 import SignIn exposing (SignInModel(..), SignInMsg, SignInUser, signInSubscriptions, updateSignIn, viewSignIn)
+import Url
 
 
 main =
-    Browser.element
+    Browser.application
         { init = init
         , subscriptions = subscriptions
         , update = update
         , view = view
+        , onUrlChange = UrlChanged
+        , onUrlRequest = LinkClicked
         }
 
 
@@ -51,14 +55,18 @@ type PageModel
 
 
 type alias Model =
-    { signin : SignInModel
+    { navkey : Nav.Key
+    , url : Url.Url
+    , signin : SignInModel
     , page : PageModel
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { signin = SignedOut
+init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init _ url key =
+    ( { navkey = key
+      , url = url
+      , signin = SignedOut
       , page = PageHome
       }
     , Cmd.none
@@ -70,7 +78,9 @@ init _ =
 
 
 type Msg
-    = GotSignInMsg SignInMsg
+    = LinkClicked Browser.UrlRequest
+    | UrlChanged Url.Url
+    | GotSignInMsg SignInMsg
     | GotUsers (Result Http.Error (List User))
 
 
@@ -93,6 +103,17 @@ update msg model =
                     { model | page = PageUserList (NetworkError e) }
             , Cmd.none
             )
+
+        LinkClicked request ->
+            case request of
+                Browser.Internal url ->
+                    ( model, Nav.pushUrl model.navkey (Url.toString url) )
+
+                Browser.External href ->
+                    ( model, Nav.load href )
+
+        UrlChanged url ->
+            ( { model | url = url }, Cmd.none )
 
 
 userDecoder : Decoder User
@@ -146,40 +167,40 @@ viewPage page =
             h1 [] [ text "Welcome to the A-Team!" ]
 
 
-view : Model -> Html Msg
+view : Model -> Browser.Document Msg
 view model =
-    div []
-        [ nav [ class "navbar", class "is-primary" ]
-            [ div [ class "navbar-brand" ]
-                [ a [ class "navbar-item", href "/" ]
-                    [ img [ src "/A-TeamLogo2.svg" ] [] ]
-                , a
-                    [ attribute "role" "button"
-                    , class "navbar-burger"
-                    , class "burger"
-                    , attribute "aria-label" "menu"
-                    , attribute "aria-expanded" "false"
-                    , attribute "data-target" "navbar"
+    { title = "A-Team!"
+    , body =
+        [ div []
+            [ nav [ class "navbar", class "is-primary" ]
+                [ div [ class "navbar-brand" ]
+                    [ a [ class "navbar-item", href "/" ]
+                        [ img [ src "/A-TeamLogo2.svg" ] [] ]
+                    , a
+                        [ attribute "role" "button"
+                        , class "navbar-burger"
+                        , class "burger"
+                        , attribute "aria-label" "menu"
+                        , attribute "aria-expanded" "false"
+                        , attribute "data-target" "navbar"
+                        ]
+                        [ span [ attribute "aria-hidden" "true" ] []
+                        , span [ attribute "aria-hidden" "true" ] []
+                        , span [ attribute "aria-hidden" "true" ] []
+                        ]
                     ]
-                    [ span [ attribute "aria-hidden" "true" ] []
-                    , span [ attribute "aria-hidden" "true" ] []
-                    , span [ attribute "aria-hidden" "true" ] []
+                , div [ id "navbar", class "navbar-menu" ]
+                    [ div [ class "navbar-start" ]
+                        [ a [ class "navbar-item", href "/" ] [ text "Home" ]
+                        , a [ class "navbar-item", href "/users" ] [ text "Users" ]
+                        ]
+                    , div [ class "navbar-end" ]
+                        [ div [ class "navbar-item" ]
+                            [ Html.map GotSignInMsg (viewSignIn model.signin) ]
+                        ]
                     ]
                 ]
-            , div [ id "navbar", class "navbar-menu" ]
-                [ div [ class "navbar-start" ]
-                    [ a [ class "navbar-item" ] [ text "Home" ]
-                    , a [ class "navbar-item" ] [ text "Users" ]
-                    ]
-                , div [ class "navbar-end" ]
-                    [ div [ class "navbar-item" ]
-                        [ Html.map GotSignInMsg (viewSignIn model.signin) ]
-                    ]
-                ]
+            , viewPage model.page
             ]
-        , viewPage model.page
         ]
-
-
-
---
+    }
