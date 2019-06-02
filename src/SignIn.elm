@@ -4,7 +4,7 @@ import Html exposing (Html, button, div, img, input, p, pre, span, text)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (emptyBody, header)
-import Json.Decode exposing (Decoder, decodeValue, field, int, list, map5, nullable, string)
+import Json.Decode as D
 import Json.Encode as E
 
 
@@ -28,14 +28,14 @@ port signIn : (E.Value -> msg) -> Sub msg
 -- Model
 
 
-signedInUserDecoder : Decoder SignInUser
+signedInUserDecoder : D.Decoder SignInUser
 signedInUserDecoder =
-    map5 SignInUser
-        (field "first_name" string)
-        (field "last_name" string)
-        (field "email" string)
-        (field "profile_url" string)
-        (field "id_token" string)
+    D.map5 SignInUser
+        (D.field "first_name" D.string)
+        (D.field "last_name" D.string)
+        (D.field "email" D.string)
+        (D.field "profile_url" D.string)
+        (D.field "id_token" D.string)
 
 
 type alias SignInUser =
@@ -50,7 +50,7 @@ type alias SignInUser =
 type SignInModel
     = SignedIn SignInUser
     | SignedOut
-    | SignInFailure Json.Decode.Error
+    | SignInFailure D.Error
 
 
 
@@ -65,7 +65,7 @@ updateSignIn : SignInMsg -> SignInModel -> ( SignInModel, Cmd SignInMsg )
 updateSignIn msg model =
     case msg of
         SignIn user_json ->
-            case decodeValue signedInUserDecoder user_json of
+            case D.decodeValue signedInUserDecoder user_json of
                 Ok user ->
                     ( SignedIn user, Cmd.none )
 

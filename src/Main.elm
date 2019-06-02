@@ -6,7 +6,7 @@ import Html exposing (Html, a, button, div, h1, img, input, nav, pre, span, text
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (emptyBody, header)
-import Json.Decode exposing (Decoder, decodeValue, field, int, list, map5, nullable, string)
+import Json.Decode as D
 import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
@@ -116,19 +116,19 @@ update msg model =
             ( { model | url = url }, Cmd.none )
 
 
-userDecoder : Decoder User
+userDecoder : D.Decoder User
 userDecoder =
-    map5 User
-        (field "id" int)
-        (field "first_name" string)
-        (field "last_name" string)
-        (field "email" (nullable string))
-        (field "banner_id" int)
+    D.map5 User
+        (D.field "id" D.int)
+        (D.field "first_name" D.string)
+        (D.field "last_name" D.string)
+        (D.field "email" (D.nullable D.string))
+        (D.field "banner_id" D.int)
 
 
-userListDecoder : Decoder (List User)
+userListDecoder : D.Decoder (List User)
 userListDecoder =
-    field "users" (list userDecoder)
+    D.field "users" (D.list userDecoder)
 
 
 
