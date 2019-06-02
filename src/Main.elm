@@ -232,7 +232,7 @@ viewSignIn model =
                         [ class "g-signin2"
                         , attribute "data-onsuccess" "onSignIn"
                         ]
-                        []
+                        [ text "Waiting for Google..." ]
                     ]
                 ]
 
@@ -243,9 +243,13 @@ viewSignIn model =
 viewUser : User -> Html Msg
 viewUser user =
     div [ class "box" ]
-        [ div [] [ text (user.first_name ++ " " ++ user.last_name) ]
-        , div [] [ text (Maybe.withDefault "No email" user.email) ]
-        , div [] [ text (String.fromInt user.banner_id) ]
+        [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
+        , p [ class "subtitle is-5 columns" ]
+            [ span [ class "column" ]
+                [ text ("Email: " ++ Maybe.withDefault "No email" user.email) ]
+            , span [ class "column" ]
+                [ text ("Banner ID: " ++ String.fromInt user.banner_id) ]
+            ]
         ]
 
 
@@ -256,7 +260,16 @@ viewPageUserList user_list =
             text "Loading users..."
 
         UserList users ->
-            div [] (List.map viewUser users)
+            div []
+                [ p [ class "title has-text-centered" ] [ text "Users" ]
+                , div [ class "columns" ]
+                    [ div [ class "column is-one-fifth" ]
+                        [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
+                        , p [ class "has-text-centered" ] [ text "Working on it :)" ]
+                        ]
+                    , div [ class "column" ] (List.map viewUser users)
+                    ]
+                ]
 
         NetworkError e ->
             text "Network error loading users!"
@@ -308,7 +321,7 @@ view model =
                         ]
                     ]
                 ]
-            , viewPage model
+            , div [ class "container" ] [ viewPage model ]
             ]
         ]
     }
