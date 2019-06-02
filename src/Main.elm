@@ -2,7 +2,7 @@ port module Main exposing (Model, Msg(..), init, main, subscriptions, update, vi
 
 import Browser
 import Browser.Navigation as Nav
-import Html exposing (Html, a, button, div, h1, img, input, nav, pre, span, text)
+import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
 import Http exposing (emptyBody, header)
@@ -10,7 +10,6 @@ import Json.Decode as D
 import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
-import SignIn exposing (SignInModel(..), SignInMsg, SignInUser, signInSubscriptions, updateSignIn, viewSignIn)
 import Url
 import Url.Parser as P exposing ((</>))
 
@@ -28,7 +27,14 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.map GotSignInMsg (signInSubscriptions model.signin)
+    signIn SignIn
+
+
+
+-- Ports
+
+
+port signIn : (E.Value -> msg) -> Sub msg
 
 
 
@@ -42,6 +48,21 @@ type alias User =
     , email : Maybe String
     , banner_id : Int
     }
+
+
+type alias SignInUser =
+    { first_name : String
+    , last_name : String
+    , email : String
+    , profile_url : String
+    , id_token : String
+    }
+
+
+type SignInModel
+    = SignedIn SignInUser
+    | SignedOut
+    | SignInFailure D.Error
 
 
 type Route
@@ -64,11 +85,6 @@ type UserListModel
     | NetworkError Http.Error
 
 
-type PageModel
-    = PageUserList UserListModel
-    | PageHome
-
-
 type alias Model =
     { navkey : Nav.Key
     , route : Route
@@ -80,7 +96,7 @@ type alias Model =
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     ( { navkey = key
-      , route = Home
+      , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , signin = SignedOut
       , users = Loading
       }
@@ -93,21 +109,24 @@ init _ url key =
 
 
 type Msg
-    = LinkClicked Browser.UrlRequest
+    = SignIn E.Value
+    | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
-    | GotSignInMsg SignInMsg
     | GotUsers (Result Http.Error (List User))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GotSignInMsg signin_msg ->
-            let
-                ( signInModel, signInCmd ) =
-                    updateSignIn signin_msg model.signin
-            in
-            ( { model | signin = signInModel }, Cmd.map GotSignInMsg signInCmd )
+        SignIn user_json ->
+            case D.decodeValue signedInUserDecoder user_json of
+                Ok user ->
+                    ( { model | signin = SignedIn user }
+                    , loadData model.route (SignedIn user)
+                    )
+
+                Err e ->
+                    ( { model | signin = SignInFailure e }, Cmd.none )
 
         GotUsers users_result ->
             ( case users_result of
@@ -133,7 +152,43 @@ update msg model =
                     ( { model | route = NotFound }, Cmd.none )
 
                 Just route ->
-                    ( { model | route = route }, Cmd.none )
+                    ( { model | route = route }, loadData route model.signin )
+
+
+loadData : Route -> SignInModel -> Cmd Msg
+loadData route signin =
+    case route of
+        Home ->
+            Cmd.none
+
+        Users ->
+            case signin of
+                SignedIn user ->
+                    Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" user.id_token ]
+                        , url = "http://localhost/api/v1/users/"
+                        , body = emptyBody
+                        , expect = Http.expectJson GotUsers userListDecoder
+                        , timeout = Nothing
+                        , tracker = Nothing
+                        }
+
+                _ ->
+                    Cmd.none
+
+        NotFound ->
+            Cmd.none
+
+
+signedInUserDecoder : D.Decoder SignInUser
+signedInUserDecoder =
+    D.map5 SignInUser
+        (D.field "first_name" D.string)
+        (D.field "last_name" D.string)
+        (D.field "email" D.string)
+        (D.field "profile_url" D.string)
+        (D.field "id_token" D.string)
 
 
 userDecoder : D.Decoder User
@@ -155,9 +210,39 @@ userListDecoder =
 -- VIEW
 
 
+viewSignIn : SignInModel -> Html Msg
+viewSignIn model =
+    case model of
+        SignedIn user ->
+            span [ class "level" ]
+                [ div [ class "level-left" ]
+                    [ p [ class "has-text-left", class "level-item" ]
+                        [ text (user.first_name ++ " " ++ user.last_name) ]
+                    ]
+                , div [ class "level-right" ]
+                    [ div [ class "image is-32x32", class "level-item" ]
+                        [ img [ src user.profile_url ] [] ]
+                    ]
+                ]
+
+        SignedOut ->
+            div [ class "level-item" ]
+                [ div []
+                    [ div
+                        [ class "g-signin2"
+                        , attribute "data-onsuccess" "onSignIn"
+                        ]
+                        []
+                    ]
+                ]
+
+        SignInFailure _ ->
+            div [] [ text "Failed to sign in" ]
+
+
 viewUser : User -> Html Msg
 viewUser user =
-    div []
+    div [ class "box" ]
         [ div [] [ text (user.first_name ++ " " ++ user.last_name) ]
         , div [] [ text (Maybe.withDefault "No email" user.email) ]
         , div [] [ text (String.fromInt user.banner_id) ]
@@ -219,7 +304,7 @@ view model =
                         ]
                     , div [ class "navbar-end" ]
                         [ div [ class "navbar-item" ]
-                            [ Html.map GotSignInMsg (viewSignIn model.signin) ]
+                            [ viewSignIn model.signin ]
                         ]
                     ]
                 ]
