@@ -11,7 +11,18 @@ import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
 import Url
+import Url.Builder as B
 import Url.Parser as P exposing ((</>))
+
+
+apiUrl : String
+apiUrl =
+    B.crossOrigin "http://localhost" [ "api", "v1" ] []
+
+
+staticUrl : String
+staticUrl =
+    B.absolute [ "static" ] []
 
 
 main =
@@ -41,6 +52,50 @@ port signIn : (E.Value -> msg) -> Sub msg
 -- MODEL
 
 
+type Access
+    = RootAccess
+    | GetUsers
+    | CreateUsers
+    | UpdateUsers
+    | DeleteUsers
+    | GetAccess
+    | CreateAccess
+    | UpdateAccess
+    | DeleteAccess
+    | GetUserAccess
+    | CreateUserAccess
+    | UpdateUserAccess
+    | DeleteUserAccess
+    | GetChemical
+    | CreateChemical
+    | UpdateChemical
+    | DeleteChemical
+    | GetChemicalInventory
+    | CreateChemicalInventory
+    | UpdateChemicalInventory
+    | DeleteChemicalInventory
+    | GetQuestions
+    | CreateQuestions
+    | UpdateQuestions
+    | DeleteQuestions
+    | GetQuestionCategories
+    | CreateQuestionCategories
+    | UpdateQuestionCategories
+    | DeleteQuestionCategories
+    | GetTests
+    | CreateTests
+    | UpdateTests
+    | DeleteTests
+    | GetTestSessions
+    | CreateTestSessions
+    | UpdateTestSessions
+    | DeleteTestSessions
+    | GetTestSessionRegistrations
+    | CreateTestSessionRegistrations
+    | UpdateTestSessionRegistrations
+    | DeleteTestSessionRegistrations
+
+
 type alias User =
     { id : Int
     , first_name : String
@@ -68,6 +123,7 @@ type SignInModel
 type Route
     = Home
     | Users
+    | UserDetail Int
     | NotFound
 
 
@@ -76,12 +132,13 @@ routeParser =
     P.oneOf
         [ P.map Home P.top
         , P.map Users (P.s "users")
+        , P.map UserDetail (P.s "users" </> P.int)
         ]
 
 
-type UserListModel
+type Network a
     = Loading
-    | UserList (List User)
+    | Loaded a
     | NetworkError Http.Error
 
 
@@ -89,7 +146,8 @@ type alias Model =
     { navkey : Nav.Key
     , route : Route
     , signin : SignInModel
-    , users : UserListModel
+    , users : Network (List User)
+    , user_detail : Network User
     }
 
 
@@ -99,6 +157,7 @@ init _ url key =
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , signin = SignedOut
       , users = Loading
+      , user_detail = Loading
       }
     , Cmd.none
     )
@@ -113,6 +172,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | GotUsers (Result Http.Error (List User))
+    | GotUser (Result Http.Error User)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -131,10 +191,20 @@ update msg model =
         GotUsers users_result ->
             ( case users_result of
                 Ok users ->
-                    { model | users = UserList users }
+                    { model | users = Loaded users }
 
                 Err e ->
                     { model | users = NetworkError e }
+            , Cmd.none
+            )
+
+        GotUser user_result ->
+            ( case user_result of
+                Ok user ->
+                    { model | user_detail = Loaded user }
+
+                Err e ->
+                    { model | user_detail = NetworkError e }
             , Cmd.none
             )
 
@@ -167,9 +237,25 @@ loadData route signin =
                     Http.request
                         { method = "GET"
                         , headers = [ header "id_token" user.id_token ]
-                        , url = "http://localhost/api/v1/users/"
+                        , url = B.relative [ apiUrl, "users/" ] []
                         , body = emptyBody
                         , expect = Http.expectJson GotUsers userListDecoder
+                        , timeout = Nothing
+                        , tracker = Nothing
+                        }
+
+                _ ->
+                    Cmd.none
+
+        UserDetail user_id ->
+            case signin of
+                SignedIn user ->
+                    Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" user.id_token ]
+                        , url = B.relative [ apiUrl, "users", String.fromInt user_id ] []
+                        , body = emptyBody
+                        , expect = Http.expectJson GotUser userDecoder
                         , timeout = Nothing
                         , tracker = Nothing
                         }
@@ -242,6 +328,19 @@ viewSignIn model =
 
 viewUser : User -> Html Msg
 viewUser user =
+    a [ class "box", href (B.relative [ "users", String.fromInt user.id ] []) ]
+        [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
+        , p [ class "subtitle is-5 columns" ]
+            [ span [ class "column" ]
+                [ text ("Email: " ++ Maybe.withDefault "No email" user.email) ]
+            , span [ class "column" ]
+                [ text ("Banner ID: " ++ String.fromInt user.banner_id) ]
+            ]
+        ]
+
+
+viewUserDetail : User -> Html Msg
+viewUserDetail user =
     div [ class "box" ]
         [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "subtitle is-5 columns" ]
@@ -253,33 +352,41 @@ viewUser user =
         ]
 
 
-viewPageUserList : UserListModel -> Html Msg
-viewPageUserList user_list =
-    case user_list of
-        Loading ->
-            text "Loading users..."
-
-        UserList users ->
-            div []
-                [ p [ class "title has-text-centered" ] [ text "Users" ]
-                , div [ class "columns" ]
-                    [ div [ class "column is-one-fifth" ]
-                        [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
-                        , p [ class "has-text-centered" ] [ text "Working on it :)" ]
-                        ]
-                    , div [ class "column" ] (List.map viewUser users)
-                    ]
+viewPageUserList : List User -> Html Msg
+viewPageUserList users =
+    div []
+        [ p [ class "title has-text-centered" ] [ text "Users" ]
+        , div [ class "columns" ]
+            [ div [ class "column is-one-fifth" ]
+                [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
+                , p [ class "has-text-centered" ] [ text "Working on it :)" ]
                 ]
+            , div [ class "column" ] (List.map viewUser users)
+            ]
+        ]
+
+
+viewNetwork : (a -> Html Msg) -> Network a -> Html Msg
+viewNetwork viewFunc network =
+    case network of
+        Loading ->
+            div [] [ text "Loading..." ]
+
+        Loaded a ->
+            viewFunc a
 
         NetworkError e ->
-            text "Network error loading users!"
+            div [] [ text "Network error!" ]
 
 
 viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Users ->
-            viewPageUserList model.users
+            viewNetwork viewPageUserList model.users
+
+        UserDetail user_id ->
+            viewNetwork viewUserDetail model.user_detail
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
@@ -296,7 +403,7 @@ view model =
             [ nav [ class "navbar", class "is-primary" ]
                 [ div [ class "navbar-brand" ]
                     [ a [ class "navbar-item", href "/" ]
-                        [ img [ src "/A-TeamLogo2.svg" ] [] ]
+                        [ img [ src (B.relative [ staticUrl, "logo.svg" ] []) ] [] ]
                     , a
                         [ attribute "role" "button"
                         , class "navbar-burger"

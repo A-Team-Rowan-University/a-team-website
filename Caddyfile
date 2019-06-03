@@ -1,0 +1,9 @@
+localhost:3000/static {
+    root static
+    log stdout
+}
+
+localhost:3000/ {
+    rewrite .* /dynamic/main.html
+    log stdout
+}
