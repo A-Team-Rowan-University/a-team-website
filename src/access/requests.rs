@@ -25,14 +25,15 @@ use super::models::{
     UserAccessResponse,
 };
 
-use crate::users::models::{NewUser, SearchUser, UserRequest, UserResponse};
-use crate::users::requests::handle_user;
+use crate::users::models::{NewUser, SearchUser};
+use crate::users::requests::create_user;
+use crate::users::requests::search_users;
 
 use super::schema::access as access_schema;
 use super::schema::user_access as user_access_schema;
 use crate::users::schema::users as users_schema;
 
-pub fn get_user(
+pub fn validate_token(
     id_token: &str,
     database_connection: &MysqlConnection,
 ) -> Option<u64> {
@@ -47,28 +48,18 @@ pub fn get_user(
         Ok(info) => {
             trace!("Validated token: {:?}", info);
             match info.email {
-                Some(email) => {
-                    let search_request = UserRequest::SearchUsers(SearchUser {
+                Some(email) => search_users(
+                    SearchUser {
                         first_name: Search::NoSearch,
                         last_name: Search::NoSearch,
                         banner_id: Search::NoSearch,
                         email: NullableSearch::Exact(email),
-                    });
-                    match handle_user(
-                        search_request,
-                        Some(0),
-                        database_connection,
-                    ) {
-                        Ok(found_user) => match found_user {
-                            UserResponse::OneUser(user) => Some(user.id),
-                            UserResponse::ManyUsers(mut user_list) => {
-                                user_list.users.pop().map(|u| u.id)
-                            }
-                            UserResponse::NoResponse => None,
-                        },
-                        Err(_e) => None,
-                    }
-                }
+                    },
+                    database_connection,
+                )
+                .ok()
+                .and_then(|mut l| l.users.pop())
+                .map(|u| u.id),
                 None => None,
             }
         }
@@ -168,7 +159,7 @@ pub fn handle_access(
     }
 }
 
-fn first_access(
+pub(crate) fn first_access(
     requesting_user: Option<u64>,
     id_token: &str,
     database_connection: &MysqlConnection,
@@ -219,19 +210,7 @@ fn first_access(
 
             trace!("New user: {:#?}", new_user);
 
-            let user_response = handle_user(
-                UserRequest::CreateUser(new_user),
-                Some(0),
-                database_connection,
-            )?;
-
-            trace!("User response: {:#?}", user_response);
-
-            if let UserResponse::OneUser(user) = user_response {
-                user.id
-            } else {
-                return Err(Error::new(ErrorKind::Database));
-            }
+            create_user(new_user, database_connection)?.id
         };
 
         let accesses = access_schema::table
@@ -258,7 +237,7 @@ fn first_access(
     }
 }
 
-fn get_access(
+pub(crate) fn get_access(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<Access, Error> {
@@ -272,7 +251,7 @@ fn get_access(
     }
 }
 
-fn create_access(
+pub(crate) fn create_access(
     access: NewAccess,
     database_connection: &MysqlConnection,
 ) -> Result<Access, Error> {
@@ -294,7 +273,7 @@ fn create_access(
     }
 }
 
-fn update_access(
+pub(crate) fn update_access(
     id: u64,
     access: PartialAccess,
     database_connection: &MysqlConnection,
@@ -306,7 +285,7 @@ fn update_access(
     Ok(())
 }
 
-fn delete_access(
+pub(crate) fn delete_access(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
@@ -390,7 +369,7 @@ pub fn handle_user_access(
     }
 }
 
-fn search_user_access(
+pub(crate) fn search_user_access(
     user_access_search: SearchUserAccess,
     database_connection: &MysqlConnection,
 ) -> Result<JoinedUserAccessList, Error> {
@@ -469,18 +448,14 @@ fn search_user_access(
     Ok(joined_list)
 }
 
-fn get_current_user_access(
+pub(crate) fn get_current_user_access(
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<AccessList, Error> {
     if let Some(user_id) = requesting_user {
-
         let accesses = access_schema::table
             .inner_join(user_access_schema::table)
-            .select((
-                access_schema::id,
-                access_schema::access_name,
-            ))
+            .select((access_schema::id, access_schema::access_name))
             .filter(user_access_schema::user_id.eq(user_id))
             .load::<Access>(database_connection)?;
 
@@ -490,8 +465,7 @@ fn get_current_user_access(
     }
 }
 
-
-fn get_user_access(
+pub(crate) fn get_user_access(
     permission_id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<UserAccess, Error> {
@@ -505,28 +479,11 @@ fn get_user_access(
     }
 }
 
-fn check_user_access(
+pub(crate) fn check_user_access(
     user_id: u64,
     access_name: String,
     database_connection: &MysqlConnection,
 ) -> Result<bool, Error> {
-    //checks for root access as a user may have root but not specific permissions
-    if access_name != "RootAccess" {
-        match check_user_access(
-            user_id,
-            String::from("RootAccess"),
-            database_connection,
-        ) {
-            Ok(access) => {
-                if access {
-                    return Ok(true);
-                }
-            }
-            Err(_e) => {}
-        }
-    }
-
-    //continue with normal permissions check
     let found_user_accesses = user_access_schema::table
         .inner_join(access_schema::table)
         .select((user_access_schema::user_id, access_schema::access_name))
@@ -541,7 +498,7 @@ fn check_user_access(
     }
 }
 
-fn create_user_access(
+pub(crate) fn create_user_access(
     user_access: NewUserAccess,
     database_connection: &MysqlConnection,
 ) -> Result<UserAccess, Error> {
@@ -575,7 +532,7 @@ fn create_user_access(
     }
 }
 
-fn update_user_access(
+pub(crate) fn update_user_access(
     id: u64,
     user_access: PartialUserAccess,
     database_connection: &MysqlConnection,
@@ -588,7 +545,7 @@ fn update_user_access(
     Ok(())
 }
 
-fn delete_user_access(
+pub(crate) fn delete_user_access(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {

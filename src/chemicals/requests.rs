@@ -89,7 +89,7 @@ pub fn handle_chemical(
     }
 }
 
-fn search_chemical(
+pub(crate) fn search_chemical(
     chemical_search: SearchChemical,
     database_connection: &MysqlConnection,
 ) -> Result<ChemicalList, Error> {
@@ -173,7 +173,7 @@ fn search_chemical(
     Ok(chemical_list)
 }
 
-fn get_chemical(
+pub(crate) fn get_chemical(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<Chemical, Error> {
@@ -187,7 +187,7 @@ fn get_chemical(
     }
 }
 
-fn create_chemical(
+pub(crate) fn create_chemical(
     chemical: NewChemical,
     database_connection: &MysqlConnection,
 ) -> Result<Chemical, Error> {
@@ -208,7 +208,7 @@ fn create_chemical(
     }
 }
 
-fn update_chemical(
+pub(crate) fn update_chemical(
     id: u64,
     chemical: PartialChemical,
     database_connection: &MysqlConnection,
@@ -220,7 +220,7 @@ fn update_chemical(
     Ok(())
 }
 
-fn delete_chemical(
+pub(crate) fn delete_chemical(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
@@ -306,7 +306,7 @@ pub fn handle_chemical_inventory(
     }
 }
 
-fn search_chemical_inventory(
+pub(crate) fn search_chemical_inventory(
     chemical_inventory_search: SearchChemicalInventory,
     database_connection: &MysqlConnection,
 ) -> Result<ChemicalInventoryList, Error> {
@@ -395,7 +395,7 @@ fn search_chemical_inventory(
     Ok(inventory_list)
 }
 
-fn get_chemical_inventory(
+pub(crate) fn get_chemical_inventory(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<ChemicalInventory, Error> {
@@ -409,7 +409,7 @@ fn get_chemical_inventory(
     }
 }
 
-fn create_chemical_inventory(
+pub(crate) fn create_chemical_inventory(
     inventory: NewChemicalInventory,
     database_connection: &MysqlConnection,
 ) -> Result<ChemicalInventory, Error> {
@@ -430,7 +430,7 @@ fn create_chemical_inventory(
     }
 }
 
-fn update_chemical_inventory(
+pub(crate) fn update_chemical_inventory(
     id: u64,
     inventory: PartialChemicalInventory,
     database_connection: &MysqlConnection,
@@ -442,7 +442,7 @@ fn update_chemical_inventory(
     Ok(())
 }
 
-fn delete_chemical_inventory(
+pub(crate) fn delete_chemical_inventory(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {

@@ -67,7 +67,7 @@ pub fn handle_question_category(
     }
 }
 
-fn condense_join(
+pub(crate) fn condense_join(
     joined: Vec<JoinedQuestionCategory>,
 ) -> Result<Vec<QuestionCategory>, Error> {
     let mut condensed: Vec<QuestionCategory> = Vec::new();
@@ -97,7 +97,7 @@ fn condense_join(
     Ok(condensed)
 }
 
-fn get_question_category(
+pub(crate) fn get_question_category(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<QuestionCategory, Error> {
@@ -131,7 +131,7 @@ fn get_question_category(
     }
 }
 
-fn get_question_categories(
+pub(crate) fn get_question_categories(
     database_connection: &MysqlConnection,
 ) -> Result<QuestionCategoryList, Error> {
     let joined_question_categories = question_categories_schema::table
@@ -161,7 +161,7 @@ fn get_question_categories(
     })
 }
 
-fn create_question_category(
+pub(crate) fn create_question_category(
     question_category: NewQuestionCategory,
     database_connection: &MysqlConnection,
 ) -> Result<QuestionCategory, Error> {
@@ -228,7 +228,7 @@ fn create_question_category(
     }
 }
 
-fn delete_question_category(
+pub(crate) fn delete_question_category(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {

@@ -96,6 +96,12 @@ impl From<diesel::result::Error> for Error {
     }
 }
 
+impl From<r2d2::Error> for Error {
+    fn from(e: r2d2::Error) -> Error {
+        Error::with_source(ErrorKind::Database, Box::new(e))
+    }
+}
+
 impl From<serde_json::Error> for Error {
     fn from(s: serde_json::Error) -> Error {
         Error::with_source(ErrorKind::Body, Box::new(s))

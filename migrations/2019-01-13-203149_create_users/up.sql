@@ -7,9 +7,3 @@ CREATE TABLE users (
   email VARCHAR(255)
 );
 
-INSERT INTO users (first_name, last_name, banner_id) VALUES ("root", "root", 0);
-UPDATE users
-SET
-  id = 0
-WHERE
-  first_name="root" AND last_name="root" AND banner_id=0 AND id != 0;

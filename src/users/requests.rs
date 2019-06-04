@@ -77,7 +77,7 @@ pub fn handle_user(
     }
 }
 
-fn search_users(
+pub(crate) fn search_users(
     user: SearchUser,
     database_connection: &MysqlConnection,
 ) -> Result<UserList, Error> {
@@ -150,7 +150,7 @@ fn search_users(
     Ok(user_list)
 }
 
-fn get_user(
+pub(crate) fn get_user(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
@@ -164,7 +164,7 @@ fn get_user(
     }
 }
 
-fn create_user(
+pub(crate) fn create_user(
     user: NewUser,
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
@@ -183,7 +183,7 @@ fn create_user(
     }
 }
 
-fn update_user(
+pub(crate) fn update_user(
     id: u64,
     user: PartialUser,
     database_connection: &MysqlConnection,
@@ -195,7 +195,7 @@ fn update_user(
     Ok(())
 }
 
-fn delete_user(
+pub(crate) fn delete_user(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {

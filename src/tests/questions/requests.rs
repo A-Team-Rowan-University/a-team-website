@@ -10,8 +10,7 @@ use crate::errors::ErrorKind;
 use crate::access::requests::check_to_run;
 
 use crate::tests::questions::models::{
-    NewRawQuestion, Question, QuestionList, QuestionRequest,
-    QuestionResponse,
+    NewRawQuestion, Question, QuestionList, QuestionRequest, QuestionResponse,
 };
 use crate::tests::questions::schema::questions as questions_schema;
 
@@ -47,7 +46,7 @@ pub fn handle_question(
     }
 }
 
-fn get_questions(
+pub(crate) fn get_questions(
     database_connection: &MysqlConnection,
 ) -> Result<QuestionList, Error> {
     let found_questions =
@@ -58,7 +57,7 @@ fn get_questions(
     })
 }
 
-fn create_question(
+pub(crate) fn create_question(
     question: NewRawQuestion,
     database_connection: &MysqlConnection,
 ) -> Result<Question, Error> {
@@ -77,7 +76,7 @@ fn create_question(
     }
 }
 
-fn delete_question(
+pub(crate) fn delete_question(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {

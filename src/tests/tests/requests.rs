@@ -43,7 +43,9 @@ pub fn handle_test(
     }
 }
 
-fn get_tests(database_connection: &MysqlConnection) -> Result<TestList, Error> {
+pub(crate) fn get_tests(
+    database_connection: &MysqlConnection,
+) -> Result<TestList, Error> {
     let joined_tests = tests_schema::table
         .inner_join(test_question_categories_schema::table)
         .select((
@@ -82,7 +84,7 @@ fn get_tests(database_connection: &MysqlConnection) -> Result<TestList, Error> {
     Ok(TestList { tests })
 }
 
-fn create_test(
+pub(crate) fn create_test(
     test: NewTest,
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
@@ -150,7 +152,7 @@ fn create_test(
     }
 }
 
-fn get_test(
+pub(crate) fn get_test(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<Test, Error> {
@@ -191,7 +193,7 @@ fn get_test(
     }
 }
 
-fn delete_test(
+pub(crate) fn delete_test(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {

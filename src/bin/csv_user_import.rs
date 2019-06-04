@@ -59,7 +59,7 @@ fn main() {
     debug!("Connected to database");
     //Get file name and path from args
     use std::env;
-    let arg = env::args().nth(1);
+    let arg = env::args().next();
     let filename = match arg {
         Some(name) => name,
         None => {

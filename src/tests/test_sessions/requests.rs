@@ -33,11 +33,11 @@ use crate::tests::questions::models::ResponseQuestionList;
 
 use crate::tests::question_categories::models::QuestionCategoryRequest;
 use crate::tests::question_categories::models::QuestionCategoryResponse;
-use crate::tests::question_categories::requests::handle_question_category;
+use crate::tests::question_categories::requests::get_question_category;
 
 use crate::tests::tests::models::TestRequest;
 use crate::tests::tests::models::TestResponse;
-use crate::tests::tests::requests::handle_test;
+use crate::tests::tests::requests::get_test;
 
 use crate::tests::test_sessions::schema::test_session_registrations as test_session_registrations_schema;
 use crate::tests::test_sessions::schema::test_sessions as test_sessions_schema;
@@ -115,7 +115,7 @@ pub fn handle_test_session(
     }
 }
 
-fn register(
+pub(crate) fn register(
     test_session_id: u64,
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
@@ -165,7 +165,7 @@ fn register(
     }
 }
 
-fn open(
+pub(crate) fn open(
     test_session_id: u64,
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
@@ -194,49 +194,15 @@ fn open(
                 let test_session =
                     get_test_session(test_session_id, database_connection)?;
 
-                let test_request = TestRequest::GetTest(test_session.test_id);
-                let test_response =
-                    handle_test(test_request, Some(0), database_connection)?;
-                let test = match test_response {
-                    TestResponse::OneTest(test) => test,
-                    TestResponse::ManyTests(mut tests) => match tests
-                        .tests
-                        .pop()
-                    {
-                        Some(test) => test,
-                        None => return Err(Error::new(ErrorKind::Database)),
-                    },
-                    TestResponse::NoResponse => {
-                        return Err(Error::new(ErrorKind::Database))
-                    }
-                };
+                let test = get_test(test_session.test_id, database_connection)?;
 
                 let mut all_questions = Vec::new();
 
                 for test_question_category in test.questions {
-                    let question_category_request =
-                        QuestionCategoryRequest::GetQuestionCategory(
-                            test_question_category.question_category_id,
-                        );
-                    let question_category_response = handle_question_category(
-                        question_category_request,
-                        Some(0),
+                    let question_category = get_question_category(
+                        test_question_category.question_category_id,
                         database_connection,
                     )?;
-                    let question_category = match question_category_response {
-                        QuestionCategoryResponse::OneQuestionCategory(qc) => qc,
-                        QuestionCategoryResponse::ManyQuestionCategories(
-                            mut qcs,
-                        ) => match qcs.question_categories.pop() {
-                            Some(qc) => qc,
-                            None => {
-                                return Err(Error::new(ErrorKind::Database))
-                            }
-                        },
-                        QuestionCategoryResponse::NoResponse => {
-                            return Err(Error::new(ErrorKind::Database))
-                        }
-                    };
 
                     let questions = questions_schema::table
                         .filter(
@@ -314,7 +280,7 @@ fn open(
     }
 }
 
-fn submit(
+pub(crate) fn submit(
     test_session_id: u64,
     response_questions: ResponseQuestionList,
     requested_user: Option<u64>,
@@ -407,7 +373,7 @@ fn submit(
     }
 }
 
-fn condense_join(
+pub(crate) fn condense_join(
     joined: Vec<JoinedTestSession>,
 ) -> Result<Vec<TestSession>, Error> {
     let mut condensed: Vec<TestSession> = Vec::new();
@@ -497,7 +463,7 @@ fn condense_join(
     Ok(condensed)
 }
 
-fn get_test_sessions(
+pub(crate) fn get_test_sessions(
     test_id: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<TestSessionList, Error> {
@@ -541,7 +507,7 @@ fn get_test_sessions(
     })
 }
 
-fn get_test_session(
+pub(crate) fn get_test_session(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<TestSession, Error> {
@@ -581,7 +547,7 @@ fn get_test_session(
     }
 }
 
-fn create_test_session(
+pub(crate) fn create_test_session(
     test_session: NewTestSession,
     database_connection: &MysqlConnection,
 ) -> Result<TestSession, Error> {
@@ -616,7 +582,7 @@ fn create_test_session(
     }
 }
 
-fn update_test_session(
+pub(crate) fn update_test_session(
     id: u64,
     test_session: PartialTestSession,
     database_connection: &MysqlConnection,
@@ -628,7 +594,7 @@ fn update_test_session(
     Ok(())
 }
 
-fn delete_test_session(
+pub(crate) fn delete_test_session(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
