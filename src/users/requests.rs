@@ -124,24 +124,16 @@ pub(crate) fn search_users(
     }
 
     match user.email {
-        NullableSearch::Partial(s) => {
+        Search::Partial(s) => {
             users_query =
                 users_query.filter(users_schema::email.like(format!("%{}%", s)))
         }
 
-        NullableSearch::Exact(s) => {
+        Search::Exact(s) => {
             users_query = users_query.filter(users_schema::email.eq(s))
         }
 
-        NullableSearch::Some => {
-            users_query = users_query.filter(users_schema::email.is_not_null());
-        }
-
-        NullableSearch::None => {
-            users_query = users_query.filter(users_schema::email.is_null());
-        }
-
-        NullableSearch::NoSearch => {}
+        Search::NoSearch => {}
     }
 
     let found_users = users_query.load::<User>(database_connection)?;

@@ -92,7 +92,7 @@ fn main() {
         let new_user: NewUser = NewUser {
             first_name: csv_user.first_name,
             last_name: csv_user.last_name,
-            email: Some(csv_user.email),
+            email: csv_user.email,
             banner_id: csv_user.banner_id as u32,
         };
         //Import new user into database

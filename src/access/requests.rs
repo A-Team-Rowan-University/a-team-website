@@ -53,7 +53,7 @@ pub fn validate_token(
                         first_name: Search::NoSearch,
                         last_name: Search::NoSearch,
                         banner_id: Search::NoSearch,
-                        email: NullableSearch::Exact(email),
+                        email: Search::Exact(email),
                     },
                     database_connection,
                 )
@@ -197,6 +197,13 @@ pub(crate) fn first_access(
 
             trace!("Token verified: {:?}", info);
 
+            let email = match info.email {
+                Some(email) => email,
+                None => {
+                    return Err(Error::new(ErrorKind::AccessDenied));
+                }
+            };
+
             let new_user = NewUser {
                 first_name: info
                     .given_name
@@ -204,7 +211,7 @@ pub(crate) fn first_access(
                 last_name: info
                     .family_name
                     .unwrap_or("Not supplied by Google".to_owned()),
-                email: info.email,
+                email: email,
                 banner_id: 0,
             };
 
