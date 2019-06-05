@@ -52,56 +52,19 @@ port signIn : (E.Value -> msg) -> Sub msg
 -- MODEL
 
 
-type Access
-    = RootAccess
-    | GetUsers
-    | CreateUsers
-    | UpdateUsers
-    | DeleteUsers
-    | GetAccess
-    | CreateAccess
-    | UpdateAccess
-    | DeleteAccess
-    | GetUserAccess
-    | CreateUserAccess
-    | UpdateUserAccess
-    | DeleteUserAccess
-    | GetChemical
-    | CreateChemical
-    | UpdateChemical
-    | DeleteChemical
-    | GetChemicalInventory
-    | CreateChemicalInventory
-    | UpdateChemicalInventory
-    | DeleteChemicalInventory
-    | GetQuestions
-    | CreateQuestions
-    | UpdateQuestions
-    | DeleteQuestions
-    | GetQuestionCategories
-    | CreateQuestionCategories
-    | UpdateQuestionCategories
-    | DeleteQuestionCategories
-    | GetTests
-    | CreateTests
-    | UpdateTests
-    | DeleteTests
-    | GetTestSessions
-    | CreateTestSessions
-    | UpdateTestSessions
-    | DeleteTestSessions
-    | GetTestSessionRegistrations
-    | CreateTestSessionRegistrations
-    | UpdateTestSessionRegistrations
-    | DeleteTestSessionRegistrations
+type alias Access =
+    { id : Int
+    , access_name : String
+    }
 
 
 type alias User =
     { id : Int
     , first_name : String
     , last_name : String
-    , email : Maybe String
+    , email : String
     , banner_id : Int
+    , accesses : List Access
     }
 
 
@@ -146,6 +109,7 @@ type alias Model =
     { navkey : Nav.Key
     , route : Route
     , signin : SignInModel
+    , accesses : Network (List Access)
     , users : Network (List User)
     , user_detail : Network User
     }
@@ -156,6 +120,7 @@ init _ url key =
     ( { navkey = key
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , signin = SignedOut
+      , accesses = Loading
       , users = Loading
       , user_detail = Loading
       }
@@ -201,9 +166,17 @@ update msg model =
         GotUser user_result ->
             ( case user_result of
                 Ok user ->
+                    let
+                        user_detail =
+                            model.user_detail
+                    in
                     { model | user_detail = Loaded user }
 
                 Err e ->
+                    let
+                        user_detail =
+                            model.user_detail
+                    in
                     { model | user_detail = NetworkError e }
             , Cmd.none
             )
@@ -250,15 +223,19 @@ loadData route signin =
         UserDetail user_id ->
             case signin of
                 SignedIn user ->
-                    Http.request
-                        { method = "GET"
-                        , headers = [ header "id_token" user.id_token ]
-                        , url = B.relative [ apiUrl, "users", String.fromInt user_id ] []
-                        , body = emptyBody
-                        , expect = Http.expectJson GotUser userDecoder
-                        , timeout = Nothing
-                        , tracker = Nothing
-                        }
+                    Cmd.batch
+                        [ Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" user.id_token ]
+                            , url =
+                                B.relative [ apiUrl, "users", String.fromInt user_id ]
+                                    []
+                            , body = emptyBody
+                            , expect = Http.expectJson GotUser userDecoder
+                            , timeout = Nothing
+                            , tracker = Nothing
+                            }
+                        ]
 
                 _ ->
                     Cmd.none
@@ -279,17 +256,25 @@ signedInUserDecoder =
 
 userDecoder : D.Decoder User
 userDecoder =
-    D.map5 User
+    D.map6 User
         (D.field "id" D.int)
         (D.field "first_name" D.string)
         (D.field "last_name" D.string)
-        (D.field "email" (D.nullable D.string))
+        (D.field "email" D.string)
         (D.field "banner_id" D.int)
+        (D.field "accesses" (D.list accessDecoder))
 
 
 userListDecoder : D.Decoder (List User)
 userListDecoder =
     D.field "users" (D.list userDecoder)
+
+
+accessDecoder : D.Decoder Access
+accessDecoder =
+    D.map2 Access
+        (D.field "id" D.int)
+        (D.field "access_name" D.string)
 
 
 
@@ -332,7 +317,7 @@ viewUser user =
         [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "subtitle is-5 columns" ]
             [ span [ class "column" ]
-                [ text ("Email: " ++ Maybe.withDefault "No email" user.email) ]
+                [ text ("Email: " ++ user.email) ]
             , span [ class "column" ]
                 [ text ("Banner ID: " ++ String.fromInt user.banner_id) ]
             ]
@@ -345,7 +330,7 @@ viewUserDetail user =
         [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "subtitle is-5 columns" ]
             [ span [ class "column" ]
-                [ text ("Email: " ++ Maybe.withDefault "No email" user.email) ]
+                [ text ("Email: " ++ user.email) ]
             , span [ class "column" ]
                 [ text ("Banner ID: " ++ String.fromInt user.banner_id) ]
             ]
@@ -376,6 +361,28 @@ viewNetwork viewFunc network =
             viewFunc a
 
         NetworkError e ->
+            div [] [ text "Network error!" ]
+
+
+viewNetwork2 : (a -> b -> Html Msg) -> Network a -> Network b -> Html Msg
+viewNetwork2 viewFunc network_a network_b =
+    case ( network_a, network_b ) of
+        ( Loading, Loading ) ->
+            div [] [ text "Loading..." ]
+
+        ( Loading, Loaded a ) ->
+            div [] [ text "Loading..." ]
+
+        ( Loaded a, Loading ) ->
+            div [] [ text "Loading..." ]
+
+        ( Loaded a, Loaded b ) ->
+            viewFunc a b
+
+        ( NetworkError e, _ ) ->
+            div [] [ text "Network error!" ]
+
+        ( _, NetworkError e ) ->
             div [] [ text "Network error!" ]
 
 
