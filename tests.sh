@@ -13,7 +13,7 @@ function first_access {
 function insert_users {
     echo
     echo Inserting John
-    curl --data '{"first_name": "John", "last_name": "McAvoy", "banner_id": 987654321, "email": "mcavoyj5@students.rowan.edu"}' -H id_token:$ID_TOKEN $URL/users/
+    curl --data '{"first_name": "John", "last_name": "McAvoy", "banner_id": 987654321, "email": "mcavoyj5@students.rowan.edu", "accesses": []}' -H id_token:$ID_TOKEN $URL/users/
 }
 
 function insert_tests {

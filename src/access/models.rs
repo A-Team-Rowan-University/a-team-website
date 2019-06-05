@@ -15,25 +15,25 @@ use crate::search::{NullableSearch, Search};
 
 use super::schema::{access, user_access};
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
 pub struct Access {
     pub id: u64,
     pub access_name: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "access"]
 pub struct NewAccess {
     pub access_name: String,
 }
 
-#[derive(AsChangeset, Serialize, Deserialize)]
+#[derive(AsChangeset, Serialize, Deserialize, Debug)]
 #[table_name = "access"]
 pub struct PartialAccess {
     pub access_name: Option<String>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct AccessList {
     pub accesses: Vec<Access>,
 }
@@ -105,7 +105,7 @@ impl AccessResponse {
     }
 }
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Debug)]
 pub struct UserAccess {
     pub permission_id: u64,
     pub access_id: u64,
@@ -113,7 +113,7 @@ pub struct UserAccess {
     pub permission_level: Option<String>,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "user_access"]
 pub struct NewUserAccess {
     pub access_id: u64,
@@ -121,7 +121,7 @@ pub struct NewUserAccess {
     pub permission_level: Option<String>,
 }
 
-#[derive(AsChangeset, Serialize, Deserialize)]
+#[derive(AsChangeset, Serialize, Deserialize, Debug)]
 #[table_name = "user_access"]
 pub struct PartialUserAccess {
     pub access_id: Option<u64>,

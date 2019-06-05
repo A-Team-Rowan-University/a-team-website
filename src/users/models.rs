@@ -8,13 +8,15 @@ use log::warn;
 
 use super::schema::users;
 
+use crate::access::models::Access;
+
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
 use crate::search::Search;
 
-#[derive(Debug, Queryable, Serialize, Deserialize)]
-pub struct User {
+#[derive(Queryable, Debug)]
+pub struct RawUser {
     pub id: u64,
     pub first_name: String,
     pub last_name: String,
@@ -22,13 +24,38 @@ pub struct User {
     pub email: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize, Debug)]
+#[derive(Insertable, Debug)]
 #[table_name = "users"]
+pub struct NewRawUser {
+    pub first_name: String,
+    pub last_name: String,
+    pub banner_id: u32,
+    pub email: String,
+}
+
+#[derive(Queryable, Debug)]
+pub struct JoinedUser {
+    pub user: RawUser,
+    pub access: Option<Access>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct User {
+    pub id: u64,
+    pub first_name: String,
+    pub last_name: String,
+    pub banner_id: u32,
+    pub email: String,
+    pub accesses: Vec<Access>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct NewUser {
     pub first_name: String,
     pub last_name: String,
     pub banner_id: u32,
     pub email: String,
+    pub accesses: Vec<u64>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]

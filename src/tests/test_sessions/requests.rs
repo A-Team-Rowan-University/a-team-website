@@ -31,12 +31,8 @@ use crate::tests::questions::models::AnonymousQuestionList;
 use crate::tests::questions::models::Question;
 use crate::tests::questions::models::ResponseQuestionList;
 
-use crate::tests::question_categories::models::QuestionCategoryRequest;
-use crate::tests::question_categories::models::QuestionCategoryResponse;
 use crate::tests::question_categories::requests::get_question_category;
 
-use crate::tests::tests::models::TestRequest;
-use crate::tests::tests::models::TestResponse;
 use crate::tests::tests::requests::get_test;
 
 use crate::tests::test_sessions::schema::test_session_registrations as test_session_registrations_schema;

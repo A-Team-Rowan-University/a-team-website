@@ -213,6 +213,7 @@ pub(crate) fn first_access(
                     .unwrap_or("Not supplied by Google".to_owned()),
                 email: email,
                 banner_id: 0,
+                accesses: Vec::new(),
             };
 
             trace!("New user: {:#?}", new_user);
