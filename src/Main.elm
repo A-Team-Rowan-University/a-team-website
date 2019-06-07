@@ -5,11 +5,12 @@ import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
-import Http exposing (emptyBody, header)
+import Http exposing (emptyBody, header, jsonBody)
 import Json.Decode as D
 import Json.Encode as E
 import Platform.Cmd
 import Platform.Sub
+import Set exposing (Set)
 import Url
 import Url.Builder as B
 import Url.Parser as P exposing ((</>))
@@ -68,6 +69,14 @@ type alias User =
     }
 
 
+type alias PartialUser =
+    { first_name : Maybe String
+    , last_name : Maybe String
+    , banner_id : Maybe Int
+    , email : Maybe String
+    }
+
+
 type alias SignInUser =
     { first_name : String
     , last_name : String
@@ -112,6 +121,7 @@ type alias Model =
     , accesses : Network (List Access)
     , users : Network (List User)
     , user_detail : Network User
+    , user_edit : PartialUser
     }
 
 
@@ -123,6 +133,12 @@ init _ url key =
       , accesses = Loading
       , users = Loading
       , user_detail = Loading
+      , user_edit =
+            { first_name = Nothing
+            , last_name = Nothing
+            , banner_id = Nothing
+            , email = Nothing
+            }
       }
     , Cmd.none
     )
@@ -138,6 +154,16 @@ type Msg
     | UrlChanged Url.Url
     | GotUsers (Result Http.Error (List User))
     | GotUser (Result Http.Error User)
+    | EditUserFirstName String
+    | ResetUserFirstName
+    | EditUserLastName String
+    | ResetUserLastName
+    | EditUserBannerId Int
+    | ResetUserBannerId
+    | EditUserEmail String
+    | ResetUserEmail
+    | SubmitEditUser
+    | Updated (Result Http.Error ())
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -180,6 +206,91 @@ update msg model =
                     { model | user_detail = NetworkError e }
             , Cmd.none
             )
+
+        EditUserFirstName first_name ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | first_name = Just first_name } }, Cmd.none )
+
+        ResetUserFirstName ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | first_name = Nothing } }, Cmd.none )
+
+        EditUserLastName last_name ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | last_name = Just last_name } }, Cmd.none )
+
+        ResetUserLastName ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | last_name = Nothing } }, Cmd.none )
+
+        EditUserBannerId banner_id ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | banner_id = Just banner_id } }, Cmd.none )
+
+        ResetUserBannerId ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | banner_id = Nothing } }, Cmd.none )
+
+        EditUserEmail email ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | email = Just email } }, Cmd.none )
+
+        ResetUserEmail ->
+            let
+                partial_user =
+                    model.user_edit
+            in
+            ( { model | user_edit = { partial_user | email = Nothing } }, Cmd.none )
+
+        SubmitEditUser ->
+            ( { model | user_edit = PartialUser Nothing Nothing Nothing Nothing }
+            , case model.signin of
+                SignedIn user ->
+                    case model.user_detail of
+                        Loaded user_detail ->
+                            Http.request
+                                { method = "PUT"
+                                , headers = [ header "id_token" user.id_token ]
+                                , url = B.relative [ apiUrl, "users", String.fromInt user_detail.id ] []
+                                , body = jsonBody (partialUserEncoder model.user_edit)
+                                , expect = Http.expectWhatever Updated
+                                , timeout = Nothing
+                                , tracker = Nothing
+                                }
+
+                        Loading ->
+                            Cmd.none
+
+                        NetworkError e ->
+                            Cmd.none
+
+                _ ->
+                    Cmd.none
+            )
+
+        Updated _ ->
+            ( model, loadData model.route model.signin )
 
         LinkClicked request ->
             case request of
@@ -277,6 +388,45 @@ accessDecoder =
         (D.field "access_name" D.string)
 
 
+partialUserEncoder : PartialUser -> E.Value
+partialUserEncoder user =
+    E.object
+        ([]
+            |> (\l ->
+                    case user.first_name of
+                        Just first_name ->
+                            ( "first_name", E.string first_name ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case user.last_name of
+                        Just last_name ->
+                            ( "last_name", E.string last_name ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case user.banner_id of
+                        Just banner_id ->
+                            ( "banner_id", E.int banner_id ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case user.email of
+                        Just email ->
+                            ( "email", E.string email ) :: l
+
+                        Nothing ->
+                            l
+               )
+        )
+
+
 
 -- VIEW
 
@@ -324,16 +474,105 @@ viewUser user =
         ]
 
 
-viewUserDetail : User -> Html Msg
-viewUserDetail user =
-    div [ class "box" ]
-        [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
-        , p [ class "subtitle is-5 columns" ]
-            [ span [ class "column" ]
-                [ text ("Email: " ++ user.email) ]
-            , span [ class "column" ]
-                [ text ("Banner ID: " ++ String.fromInt user.banner_id) ]
+viewAccess : Access -> Html Msg
+viewAccess access =
+    div [] [ text access.access_name ]
+
+
+viewEditableText : String -> Maybe String -> (String -> Msg) -> Msg -> Html Msg
+viewEditableText defaultText editedText onEdit onReset =
+    case editedText of
+        Nothing ->
+            p
+                [ onClick (onEdit defaultText) ]
+                [ text defaultText ]
+
+        Just edited ->
+            div [ class "field has-addons" ]
+                [ div [ class "control" ]
+                    [ input
+                        [ class "input"
+                        , value edited
+                        , onInput onEdit
+                        ]
+                        []
+                    ]
+                , div [ class "control" ]
+                    [ button
+                        [ class "button is-danger"
+                        , onClick onReset
+                        ]
+                        [ text "Reset" ]
+                    ]
+                ]
+
+
+viewEditableInt : Int -> Maybe Int -> (Int -> Msg) -> Msg -> Html Msg
+viewEditableInt default edited onEdit onReset =
+    case edited of
+        Nothing ->
+            p
+                [ onClick (onEdit default) ]
+                [ text (String.fromInt default) ]
+
+        Just edit ->
+            div [ class "field has-addons" ]
+                [ div [ class "control" ]
+                    [ input
+                        [ class "input"
+                        , value (String.fromInt edit)
+                        , onInput (\s -> onEdit (Maybe.withDefault 0 (String.toInt s)))
+                        , type_ "number"
+                        ]
+                        []
+                    ]
+                , div [ class "control" ]
+                    [ button
+                        [ class "button is-danger"
+                        , onClick onReset
+                        ]
+                        [ text "Reset" ]
+                    ]
+                ]
+
+
+viewUserDetail : User -> PartialUser -> Html Msg
+viewUserDetail user user_edit =
+    div []
+        [ div [ class "title has-text-centered" ]
+            [ viewEditableText
+                user.first_name
+                user_edit.first_name
+                EditUserFirstName
+                ResetUserFirstName
             ]
+        , div [ class "title has-text-centered" ]
+            [ viewEditableText
+                user.last_name
+                user_edit.last_name
+                EditUserLastName
+                ResetUserLastName
+            ]
+        , p [ class "columns" ]
+            [ span [ class "column" ]
+                [ div []
+                    [ viewEditableText
+                        user.email
+                        user_edit.email
+                        EditUserEmail
+                        ResetUserEmail
+                    ]
+                , div []
+                    [ viewEditableInt
+                        user.banner_id
+                        user_edit.banner_id
+                        EditUserBannerId
+                        ResetUserBannerId
+                    ]
+                ]
+            , span [ class "column" ] (List.map viewAccess user.accesses)
+            ]
+        , button [ class "button is-primary is-fixed-bottom", onClick SubmitEditUser ] [ text "Submit edits" ]
         ]
 
 
@@ -393,7 +632,7 @@ viewPage model =
             viewNetwork viewPageUserList model.users
 
         UserDetail user_id ->
-            viewNetwork viewUserDetail model.user_detail
+            viewNetwork2 viewUserDetail model.user_detail (Loaded model.user_edit)
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
