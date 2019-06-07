@@ -102,7 +102,9 @@ fn main() {
             rouille::Response::text("")
                 .with_additional_header(
                     "Access-Control-Allow-Methods",
-                    "PUT, POST, GET, DELETE, OPTIONS",
+
+                    "POST, GET, DELETE, OPTIONS, PUT",
+
                 )
                 .with_additional_header("Access-Control-Allow-Origin", "*")
                 .with_additional_header(
