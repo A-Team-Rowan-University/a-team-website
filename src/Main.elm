@@ -122,6 +122,7 @@ type alias Model =
     , users : Network (List User)
     , user_detail : Network User
     , user_edit : PartialUser
+    , user_new_access : Maybe Int
     }
 
 
@@ -139,6 +140,7 @@ init _ url key =
             , banner_id = Nothing
             , email = Nothing
             }
+      , user_new_access = Nothing
       }
     , Cmd.none
     )
@@ -164,6 +166,10 @@ type Msg
     | ResetUserEmail
     | SubmitEditUser
     | Updated (Result Http.Error ())
+    | StartRemoveAccess Access
+    | FinishRemoveAccess (Result Http.Error (Maybe Int))
+    | EditNewUserAccess (Maybe Int)
+    | SubmitNewUserAccess
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -292,6 +298,121 @@ update msg model =
         Updated _ ->
             ( model, loadData model.route model.signin )
 
+        StartRemoveAccess access ->
+            ( model
+            , case model.signin of
+                SignedIn user ->
+                    case model.user_detail of
+                        Loaded user_detail ->
+                            Http.request
+                                { method = "GET"
+                                , headers = [ header "id_token" user.id_token ]
+                                , url =
+                                    B.relative [ apiUrl, "user_access/" ]
+                                        [ B.string "access_id"
+                                            ("exact," ++ String.fromInt access.id)
+                                        , B.string "user_id"
+                                            ("exact," ++ String.fromInt user_detail.id)
+                                        ]
+                                , body = emptyBody
+                                , expect =
+                                    Http.expectJson
+                                        FinishRemoveAccess
+                                        (D.map List.head userAccessListDecoder)
+                                , timeout = Nothing
+                                , tracker = Nothing
+                                }
+
+                        Loading ->
+                            Cmd.none
+
+                        NetworkError e ->
+                            Cmd.none
+
+                _ ->
+                    Cmd.none
+            )
+
+        FinishRemoveAccess user_access_result ->
+            case user_access_result of
+                Ok user_access_id ->
+                    case user_access_id of
+                        Just id ->
+                            ( model
+                            , case model.signin of
+                                SignedIn user ->
+                                    Http.request
+                                        { method = "DELETE"
+                                        , headers = [ header "id_token" user.id_token ]
+                                        , url =
+                                            B.relative
+                                                [ apiUrl
+                                                , "user_access/"
+                                                , String.fromInt id
+                                                ]
+                                                []
+                                        , body = emptyBody
+                                        , expect = Http.expectWhatever Updated
+                                        , timeout = Nothing
+                                        , tracker = Nothing
+                                        }
+
+                                _ ->
+                                    Cmd.none
+                            )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                Err e ->
+                    ( model, Cmd.none )
+
+        EditNewUserAccess access_id ->
+            case access_id of
+                Just id ->
+                    ( { model | user_new_access = Just id }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        SubmitNewUserAccess ->
+            ( { model | user_new_access = Nothing }
+            , case model.user_new_access of
+                Just new_access ->
+                    case model.signin of
+                        SignedIn user ->
+                            case model.user_detail of
+                                Loaded user_detail ->
+                                    Http.request
+                                        { method = "POST"
+                                        , headers = [ header "id_token" user.id_token ]
+                                        , url = B.relative [ apiUrl, "user_access/" ] []
+                                        , body =
+                                            jsonBody
+                                                (E.object
+                                                    [ ( "access_id", E.int new_access )
+                                                    , ( "user_id", E.int user_detail.id )
+                                                    , ( "permission_level", E.null )
+                                                    ]
+                                                )
+                                        , expect = Http.expectWhatever Updated
+                                        , timeout = Nothing
+                                        , tracker = Nothing
+                                        }
+
+                                Loading ->
+                                    Cmd.none
+
+                                NetworkError e ->
+                                    Cmd.none
+
+                        _ ->
+                            Cmd.none
+
+                Nothing ->
+                    Cmd.none
+            )
+
         LinkClicked request ->
             case request of
                 Browser.Internal url ->
@@ -388,6 +509,16 @@ accessDecoder =
         (D.field "access_name" D.string)
 
 
+userAccessDecoder : D.Decoder Int
+userAccessDecoder =
+    D.field "permission_id" D.int
+
+
+userAccessListDecoder : D.Decoder (List Int)
+userAccessListDecoder =
+    D.field "entries" (D.list userAccessDecoder)
+
+
 partialUserEncoder : PartialUser -> E.Value
 partialUserEncoder user =
     E.object
@@ -474,9 +605,18 @@ viewUser user =
         ]
 
 
-viewAccess : Access -> Html Msg
-viewAccess access =
-    div [] [ text access.access_name ]
+viewAccess : User -> Access -> Html Msg
+viewAccess user access =
+    div [ class "columns" ]
+        [ span [ class "column" ] [ text (String.fromInt access.id ++ ": " ++ access.access_name) ]
+        , div [ class "column" ]
+            [ button
+                [ class "button is-danger is-pulled-right"
+                , onClick (StartRemoveAccess access)
+                ]
+                [ text "Remove" ]
+            ]
+        ]
 
 
 viewEditableText : String -> Maybe String -> (String -> Msg) -> Msg -> Html Msg
@@ -536,43 +676,87 @@ viewEditableInt default edited onEdit onReset =
                 ]
 
 
-viewUserDetail : User -> PartialUser -> Html Msg
-viewUserDetail user user_edit =
+viewAddUserAccess : User -> Maybe Int -> Html Msg
+viewAddUserAccess user access_id =
+    case access_id of
+        Nothing ->
+            button
+                [ class "button is-primary", onClick (EditNewUserAccess (Just 0)) ]
+                [ text "Add" ]
+
+        Just edit ->
+            div [ class "field has-addons" ]
+                [ div [ class "control" ]
+                    [ input
+                        [ class "input"
+                        , value (String.fromInt edit)
+                        , onInput (\s -> EditNewUserAccess (String.toInt s))
+                        , type_ "number"
+                        ]
+                        []
+                    ]
+                , div [ class "control" ]
+                    [ button
+                        [ class "button is-primary"
+                        , onClick SubmitNewUserAccess
+                        ]
+                        [ text "Submit" ]
+                    ]
+                ]
+
+
+viewUserDetail : User -> ( PartialUser, Maybe Int ) -> Html Msg
+viewUserDetail user ( user_edit, user_new_access ) =
     div []
-        [ div [ class "title has-text-centered" ]
-            [ viewEditableText
-                user.first_name
-                user_edit.first_name
-                EditUserFirstName
-                ResetUserFirstName
-            ]
-        , div [ class "title has-text-centered" ]
-            [ viewEditableText
-                user.last_name
-                user_edit.last_name
-                EditUserLastName
-                ResetUserLastName
-            ]
+        [ p [ class "title has-text-centered" ]
+            [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "columns" ]
             [ span [ class "column" ]
-                [ div []
-                    [ viewEditableText
+                [ p [ class "subtitle has-text-centered" ] [ text "User Details" ]
+                , div [ class "box" ]
+                    [ span [] [ text "First Name: " ]
+                    , viewEditableText
+                        user.first_name
+                        user_edit.first_name
+                        EditUserFirstName
+                        ResetUserFirstName
+                    ]
+                , div [ class "box" ]
+                    [ span [] [ text "Last Name: " ]
+                    , viewEditableText
+                        user.last_name
+                        user_edit.last_name
+                        EditUserLastName
+                        ResetUserLastName
+                    ]
+                , div [ class "box" ]
+                    [ span [] [ text "Email: " ]
+                    , viewEditableText
                         user.email
                         user_edit.email
                         EditUserEmail
                         ResetUserEmail
                     ]
-                , div []
-                    [ viewEditableInt
+                , div [ class "box" ]
+                    [ span [] [ text "Banner ID: " ]
+                    , viewEditableInt
                         user.banner_id
                         user_edit.banner_id
                         EditUserBannerId
                         ResetUserBannerId
                     ]
+                , button
+                    [ class "button is-primary"
+                    , onClick SubmitEditUser
+                    ]
+                    [ text "Submit edits" ]
                 ]
-            , span [ class "column" ] (List.map viewAccess user.accesses)
+            , div [ class "column" ]
+                [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
+                , div [ class "box" ] (List.map (viewAccess user) user.accesses)
+                , viewAddUserAccess user user_new_access
+                ]
             ]
-        , button [ class "button is-primary is-fixed-bottom", onClick SubmitEditUser ] [ text "Submit edits" ]
         ]
 
 
@@ -632,7 +816,9 @@ viewPage model =
             viewNetwork viewPageUserList model.users
 
         UserDetail user_id ->
-            viewNetwork2 viewUserDetail model.user_detail (Loaded model.user_edit)
+            viewNetwork2 viewUserDetail
+                model.user_detail
+                (Loaded ( model.user_edit, model.user_new_access ))
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
