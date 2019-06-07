@@ -15,7 +15,7 @@ use crate::search::{NullableSearch, Search};
 
 use super::schema::{access, user_access};
 
-#[derive(Queryable, Serialize, Deserialize, Debug, Clone)]
+#[derive(Queryable, Serialize, Deserialize, Clone, Debug)]
 pub struct Access {
     pub id: u64,
     pub access_name: String,

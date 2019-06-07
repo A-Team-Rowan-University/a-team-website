@@ -224,57 +224,6 @@ pub(crate) fn create_user(
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
 
-    /*
-    if let Some(raw_inserted_question_category) =
-        raw_inserted_question_categories.pop()
-    {
-        let new_raw_questions: Vec<_> = question_category
-            .questions
-            .into_iter()
-            .map(|question| NewRawQuestion {
-                title: question.title,
-                category_id: raw_inserted_question_category.id,
-                correct_answer: question.correct_answer,
-                incorrect_answer_1: question.incorrect_answer_1,
-                incorrect_answer_2: question.incorrect_answer_2,
-                incorrect_answer_3: question.incorrect_answer_3,
-            })
-            .collect();
-
-        diesel::insert_into(questions_schema::table)
-            .values(new_raw_questions)
-            .execute(database_connection)?;
-
-        let inserted_questions = questions_schema::table
-            .filter(
-                questions_schema::category_id
-                    .eq(raw_inserted_question_category.id),
-            )
-            .load::<Question>(database_connection)?
-            .into_iter()
-            .map(|raw_question| Question {
-                id: raw_question.id,
-                category_id: raw_question.category_id,
-                title: raw_question.title,
-                correct_answer: raw_question.correct_answer,
-                incorrect_answer_1: raw_question.incorrect_answer_1,
-                incorrect_answer_2: raw_question.incorrect_answer_2,
-                incorrect_answer_3: raw_question.incorrect_answer_3,
-            })
-            .collect();
-
-        let inserted_question_category = QuestionCategory {
-            id: raw_inserted_question_category.id,
-            title: raw_inserted_question_category.title,
-            questions: inserted_questions,
-        };
-
-        Ok(inserted_question_category)
-    } else {
-        Err(Error::new(ErrorKind::Database))
-    }
-    */
-
     let new_raw_user = NewRawUser {
         first_name: user.first_name,
         last_name: user.last_name,
