@@ -15,22 +15,27 @@ use crate::search::{NullableSearch, Search};
 
 use super::schema::{access, user_access};
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Clone, Debug)]
 pub struct Access {
     pub id: u64,
     pub access_name: String,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "access"]
 pub struct NewAccess {
     pub access_name: String,
 }
 
-#[derive(AsChangeset, Serialize, Deserialize)]
+#[derive(AsChangeset, Serialize, Deserialize, Debug)]
 #[table_name = "access"]
 pub struct PartialAccess {
     pub access_name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccessList {
+    pub accesses: Vec<Access>,
 }
 
 pub enum AccessRequest {
@@ -100,7 +105,7 @@ impl AccessResponse {
     }
 }
 
-#[derive(Queryable, Serialize, Deserialize)]
+#[derive(Queryable, Serialize, Deserialize, Debug)]
 pub struct UserAccess {
     pub permission_id: u64,
     pub access_id: u64,
@@ -108,7 +113,7 @@ pub struct UserAccess {
     pub permission_level: Option<String>,
 }
 
-#[derive(Insertable, Serialize, Deserialize)]
+#[derive(Insertable, Serialize, Deserialize, Debug)]
 #[table_name = "user_access"]
 pub struct NewUserAccess {
     pub access_id: u64,
@@ -116,7 +121,7 @@ pub struct NewUserAccess {
     pub permission_level: Option<String>,
 }
 
-#[derive(AsChangeset, Serialize, Deserialize)]
+#[derive(AsChangeset, Serialize, Deserialize, Debug)]
 #[table_name = "user_access"]
 pub struct PartialUserAccess {
     pub access_id: Option<u64>,
@@ -132,6 +137,7 @@ pub struct SearchUserAccess {
 
 pub enum UserAccessRequest {
     SearchAccess(SearchUserAccess), //list of users with access id or (?) name
+    GetCurrentUserAccess,           // Get the access for the logged in user
     GetAccess(u64),                 //get individual access entry from its id
     CheckAccess(u64, String), //entry allowing user of user_id to perform action of action_id
     CreateAccess(NewUserAccess), //entry to add to database
@@ -170,6 +176,10 @@ impl UserAccessRequest {
                     user_id: user_id_search,
                     permission_level: permission_level_search,
                 }))
+            },
+
+            (GET) (/current) => {
+                Ok(UserAccessRequest::GetCurrentUserAccess)
             },
 
             (GET) (/{permission_id: u64}) => {
@@ -211,6 +221,7 @@ impl UserAccessRequest {
 pub enum UserAccessResponse {
     AccessState(bool),
     ManyUserAccess(JoinedUserAccessList),
+    ManyAccess(AccessList),
     OneUserAccess(UserAccess),
     NoResponse,
 }
@@ -223,6 +234,9 @@ impl UserAccessResponse {
             }
             UserAccessResponse::ManyUserAccess(user_accesses) => {
                 rouille::Response::json(&user_accesses)
+            }
+            UserAccessResponse::ManyAccess(accesses) => {
+                rouille::Response::json(&accesses)
             }
             UserAccessResponse::OneUserAccess(user_access) => {
                 rouille::Response::json(&user_access)
