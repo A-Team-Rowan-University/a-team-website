@@ -26,7 +26,7 @@ use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
 use webdev_lib::access::models::{AccessRequest, UserAccessRequest};
-use webdev_lib::access::requests::get_user;
+use webdev_lib::access::requests::validate_token;
 use webdev_lib::access::requests::{handle_access, handle_user_access};
 
 use webdev_lib::chemicals::models::{
@@ -102,7 +102,7 @@ fn main() {
             rouille::Response::text("")
                 .with_additional_header(
                     "Access-Control-Allow-Methods",
-                    "POST, GET, DELETE, OPTIONS",
+                    "PUT, POST, GET, DELETE, OPTIONS",
                 )
                 .with_additional_header("Access-Control-Allow-Origin", "*")
                 .with_additional_header(
@@ -136,7 +136,7 @@ fn handle_request(
 
     if let Some(id_token) = request.header("id_token") {
         trace!("Got id_token: {}", id_token);
-        requested_user = get_user(id_token, database_connection);
+        requested_user = validate_token(id_token, database_connection);
     } else {
         trace!("No id_token header!");
     }
