@@ -1,0 +1,9 @@
+0.0.0.0:80
+
+rewrite not /(static|api)/.* /static/main.html
+log stdout
+
+proxy /api/v1 http://api:8000 {
+    without /api/v1
+}
+
