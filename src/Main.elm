@@ -2,6 +2,7 @@ port module Main exposing (Model, Msg(..), init, main, subscriptions, update, vi
 
 import Browser
 import Browser.Navigation as Nav
+import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -114,13 +115,16 @@ type Network a
     | NetworkError Http.Error
 
 
+type alias UserId =
+    Int
+
+
 type alias Model =
     { navkey : Nav.Key
     , route : Route
     , signin : SignInModel
     , accesses : Network (List Access)
-    , users : Network (List User)
-    , user_detail : Network User
+    , users : Dict UserId User
     , user_edit : PartialUser
     , user_new_access : Maybe Int
     }
@@ -132,8 +136,7 @@ init _ url key =
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , signin = SignedOut
       , accesses = Loading
-      , users = Loading
-      , user_detail = Loading
+      , users = Dict.empty
       , user_edit =
             { first_name = Nothing
             , last_name = Nothing
@@ -188,28 +191,20 @@ update msg model =
         GotUsers users_result ->
             ( case users_result of
                 Ok users ->
-                    { model | users = Loaded users }
+                    { model | users = Dict.fromList (List.map (\u -> ( u.id, u )) users) }
 
                 Err e ->
-                    { model | users = NetworkError e }
+                    model
             , Cmd.none
             )
 
         GotUser user_result ->
             ( case user_result of
                 Ok user ->
-                    let
-                        user_detail =
-                            model.user_detail
-                    in
-                    { model | user_detail = Loaded user }
+                    { model | users = Dict.insert user.id user model.users }
 
                 Err e ->
-                    let
-                        user_detail =
-                            model.user_detail
-                    in
-                    { model | user_detail = NetworkError e }
+                    model
             , Cmd.none
             )
 
@@ -273,22 +268,25 @@ update msg model =
             ( { model | user_edit = PartialUser Nothing Nothing Nothing Nothing }
             , case model.signin of
                 SignedIn user ->
-                    case model.user_detail of
-                        Loaded user_detail ->
+                    case model.route of
+                        UserDetail user_id ->
                             Http.request
                                 { method = "PUT"
                                 , headers = [ header "id_token" user.id_token ]
-                                , url = B.relative [ apiUrl, "users", String.fromInt user_detail.id ] []
+                                , url =
+                                    B.relative
+                                        [ apiUrl
+                                        , "users"
+                                        , String.fromInt user_id
+                                        ]
+                                        []
                                 , body = jsonBody (partialUserEncoder model.user_edit)
                                 , expect = Http.expectWhatever Updated
                                 , timeout = Nothing
                                 , tracker = Nothing
                                 }
 
-                        Loading ->
-                            Cmd.none
-
-                        NetworkError e ->
+                        _ ->
                             Cmd.none
 
                 _ ->
@@ -302,8 +300,8 @@ update msg model =
             ( model
             , case model.signin of
                 SignedIn user ->
-                    case model.user_detail of
-                        Loaded user_detail ->
+                    case model.route of
+                        UserDetail user_id ->
                             Http.request
                                 { method = "GET"
                                 , headers = [ header "id_token" user.id_token ]
@@ -312,7 +310,7 @@ update msg model =
                                         [ B.string "access_id"
                                             ("exact," ++ String.fromInt access.id)
                                         , B.string "user_id"
-                                            ("exact," ++ String.fromInt user_detail.id)
+                                            ("exact," ++ String.fromInt user_id)
                                         ]
                                 , body = emptyBody
                                 , expect =
@@ -323,10 +321,7 @@ update msg model =
                                 , tracker = Nothing
                                 }
 
-                        Loading ->
-                            Cmd.none
-
-                        NetworkError e ->
+                        _ ->
                             Cmd.none
 
                 _ ->
@@ -381,8 +376,8 @@ update msg model =
                 Just new_access ->
                     case model.signin of
                         SignedIn user ->
-                            case model.user_detail of
-                                Loaded user_detail ->
+                            case model.route of
+                                UserDetail user_id ->
                                     Http.request
                                         { method = "POST"
                                         , headers = [ header "id_token" user.id_token ]
@@ -391,7 +386,7 @@ update msg model =
                                             jsonBody
                                                 (E.object
                                                     [ ( "access_id", E.int new_access )
-                                                    , ( "user_id", E.int user_detail.id )
+                                                    , ( "user_id", E.int user_id )
                                                     , ( "permission_level", E.null )
                                                     ]
                                                 )
@@ -400,10 +395,7 @@ update msg model =
                                         , tracker = Nothing
                                         }
 
-                                Loading ->
-                                    Cmd.none
-
-                                NetworkError e ->
+                                _ ->
                                     Cmd.none
 
                         _ ->
@@ -705,8 +697,8 @@ viewAddUserAccess user access_id =
                 ]
 
 
-viewUserDetail : User -> ( PartialUser, Maybe Int ) -> Html Msg
-viewUserDetail user ( user_edit, user_new_access ) =
+viewUserDetail : User -> PartialUser -> Maybe Int -> Html Msg
+viewUserDetail user user_edit user_new_access =
     div []
         [ p [ class "title has-text-centered" ]
             [ text (user.first_name ++ " " ++ user.last_name) ]
@@ -760,7 +752,7 @@ viewUserDetail user ( user_edit, user_new_access ) =
         ]
 
 
-viewPageUserList : List User -> Html Msg
+viewPageUserList : Dict UserId User -> Html Msg
 viewPageUserList users =
     div []
         [ p [ class "title has-text-centered" ] [ text "Users" ]
@@ -769,7 +761,7 @@ viewPageUserList users =
                 [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
                 , p [ class "has-text-centered" ] [ text "Working on it :)" ]
                 ]
-            , div [ class "column" ] (List.map viewUser users)
+            , div [ class "column" ] (List.map viewUser (Dict.values users))
             ]
         ]
 
@@ -813,12 +805,15 @@ viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Users ->
-            viewNetwork viewPageUserList model.users
+            viewPageUserList model.users
 
         UserDetail user_id ->
-            viewNetwork2 viewUserDetail
-                model.user_detail
-                (Loaded ( model.user_edit, model.user_new_access ))
+            case Dict.get user_id model.users of
+                Just user ->
+                    viewUserDetail user model.user_edit model.user_new_access
+
+                Nothing ->
+                    p [] [ text "User not found" ]
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
