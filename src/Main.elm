@@ -6,7 +6,7 @@ import Dict exposing (Dict)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
-import Http exposing (emptyBody, header, jsonBody)
+import Http exposing (Progress, emptyBody, header, jsonBody)
 import Json.Decode as D
 import Json.Encode as E
 import Platform.Cmd
@@ -125,6 +125,7 @@ type alias Model =
     , signin : SignInModel
     , accesses : Network (List Access)
     , users : Dict UserId User
+    , users_status : Network ()
     , user_edit : PartialUser
     , user_new_access : Maybe Int
     }
@@ -137,6 +138,7 @@ init _ url key =
       , signin = SignedOut
       , accesses = Loading
       , users = Dict.empty
+      , users_status = Loading
       , user_edit =
             { first_name = Nothing
             , last_name = Nothing
@@ -181,8 +183,15 @@ update msg model =
         SignIn user_json ->
             case D.decodeValue signedInUserDecoder user_json of
                 Ok user ->
-                    ( { model | signin = SignedIn user }
-                    , loadData model.route (SignedIn user)
+                    let
+                        ( users_status, cmd ) =
+                            loadData model.route (SignedIn user)
+                    in
+                    ( { model
+                        | signin = SignedIn user
+                        , users_status = Maybe.withDefault model.users_status users_status
+                      }
+                    , cmd
                     )
 
                 Err e ->
@@ -191,20 +200,26 @@ update msg model =
         GotUsers users_result ->
             ( case users_result of
                 Ok users ->
-                    { model | users = Dict.fromList (List.map (\u -> ( u.id, u )) users) }
+                    { model
+                        | users = Dict.fromList (List.map (\u -> ( u.id, u )) users)
+                        , users_status = Loaded ()
+                    }
 
                 Err e ->
-                    model
+                    { model | users_status = NetworkError e }
             , Cmd.none
             )
 
         GotUser user_result ->
             ( case user_result of
                 Ok user ->
-                    { model | users = Dict.insert user.id user model.users }
+                    { model
+                        | users = Dict.insert user.id user model.users
+                        , users_status = Loaded ()
+                    }
 
                 Err e ->
-                    model
+                    { model | users_status = NetworkError e }
             , Cmd.none
             )
 
@@ -265,7 +280,10 @@ update msg model =
             ( { model | user_edit = { partial_user | email = Nothing } }, Cmd.none )
 
         SubmitEditUser ->
-            ( { model | user_edit = PartialUser Nothing Nothing Nothing Nothing }
+            ( { model
+                | user_edit = PartialUser Nothing Nothing Nothing Nothing
+                , users_status = Loading
+              }
             , case model.signin of
                 SignedIn user ->
                     case model.route of
@@ -294,10 +312,16 @@ update msg model =
             )
 
         Updated _ ->
-            ( model, loadData model.route model.signin )
+            let
+                ( users_status, cmd ) =
+                    loadData model.route model.signin
+            in
+            ( { model | users_status = Maybe.withDefault model.users_status users_status }
+            , cmd
+            )
 
         StartRemoveAccess access ->
-            ( model
+            ( { model | users_status = Loading }
             , case model.signin of
                 SignedIn user ->
                     case model.route of
@@ -329,12 +353,12 @@ update msg model =
             )
 
         FinishRemoveAccess user_access_result ->
-            case user_access_result of
+            ( { model | users_status = Loading }
+            , case user_access_result of
                 Ok user_access_id ->
                     case user_access_id of
                         Just id ->
-                            ( model
-                            , case model.signin of
+                            case model.signin of
                                 SignedIn user ->
                                     Http.request
                                         { method = "DELETE"
@@ -354,13 +378,13 @@ update msg model =
 
                                 _ ->
                                     Cmd.none
-                            )
 
                         Nothing ->
-                            ( model, Cmd.none )
+                            Cmd.none
 
                 Err e ->
-                    ( model, Cmd.none )
+                    Cmd.none
+            )
 
         EditNewUserAccess access_id ->
             case access_id of
@@ -371,7 +395,10 @@ update msg model =
                     ( model, Cmd.none )
 
         SubmitNewUserAccess ->
-            ( { model | user_new_access = Nothing }
+            ( { model
+                | user_new_access = Nothing
+                , users_status = Loading
+              }
             , case model.user_new_access of
                 Just new_access ->
                     case model.signin of
@@ -419,19 +446,29 @@ update msg model =
                     ( { model | route = NotFound }, Cmd.none )
 
                 Just route ->
-                    ( { model | route = route }, loadData route model.signin )
+                    let
+                        ( users_status, cmd ) =
+                            loadData route model.signin
+                    in
+                    ( { model
+                        | route = route
+                        , users_status = Maybe.withDefault model.users_status users_status
+                      }
+                    , cmd
+                    )
 
 
-loadData : Route -> SignInModel -> Cmd Msg
+loadData : Route -> SignInModel -> ( Maybe (Network ()), Cmd Msg )
 loadData route signin =
     case route of
         Home ->
-            Cmd.none
+            ( Nothing, Cmd.none )
 
         Users ->
             case signin of
                 SignedIn user ->
-                    Http.request
+                    ( Just Loading
+                    , Http.request
                         { method = "GET"
                         , headers = [ header "id_token" user.id_token ]
                         , url = B.relative [ apiUrl, "users/" ] []
@@ -440,32 +477,33 @@ loadData route signin =
                         , timeout = Nothing
                         , tracker = Nothing
                         }
+                    )
 
                 _ ->
-                    Cmd.none
+                    ( Just Loading, Cmd.none )
 
         UserDetail user_id ->
             case signin of
                 SignedIn user ->
-                    Cmd.batch
-                        [ Http.request
-                            { method = "GET"
-                            , headers = [ header "id_token" user.id_token ]
-                            , url =
-                                B.relative [ apiUrl, "users", String.fromInt user_id ]
-                                    []
-                            , body = emptyBody
-                            , expect = Http.expectJson GotUser userDecoder
-                            , timeout = Nothing
-                            , tracker = Nothing
-                            }
-                        ]
+                    ( Just Loading
+                    , Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" user.id_token ]
+                        , url =
+                            B.relative [ apiUrl, "users", String.fromInt user_id ]
+                                []
+                        , body = emptyBody
+                        , expect = Http.expectJson GotUser userDecoder
+                        , timeout = Nothing
+                        , tracker = Nothing
+                        }
+                    )
 
                 _ ->
-                    Cmd.none
+                    ( Just Loading, Cmd.none )
 
         NotFound ->
-            Cmd.none
+            ( Nothing, Cmd.none )
 
 
 signedInUserDecoder : D.Decoder SignInUser
@@ -697,10 +735,11 @@ viewAddUserAccess user access_id =
                 ]
 
 
-viewUserDetail : User -> PartialUser -> Maybe Int -> Html Msg
-viewUserDetail user user_edit user_new_access =
+viewUserDetail : User -> PartialUser -> Maybe Int -> Network () -> Html Msg
+viewUserDetail user user_edit user_new_access users_status =
     div []
-        [ p [ class "title has-text-centered" ]
+        [ viewNetwork (\a -> div [] []) users_status
+        , p [ class "title has-text-centered" ]
             [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "columns" ]
             [ span [ class "column" ]
@@ -752,10 +791,11 @@ viewUserDetail user user_edit user_new_access =
         ]
 
 
-viewPageUserList : Dict UserId User -> Html Msg
-viewPageUserList users =
+viewPageUserList : Dict UserId User -> Network () -> Html Msg
+viewPageUserList users users_status =
     div []
-        [ p [ class "title has-text-centered" ] [ text "Users" ]
+        [ viewNetwork (\a -> div [] []) users_status
+        , p [ class "title has-text-centered" ] [ text "Users" ]
         , div [ class "columns" ]
             [ div [ class "column is-one-fifth" ]
                 [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
@@ -770,13 +810,14 @@ viewNetwork : (a -> Html Msg) -> Network a -> Html Msg
 viewNetwork viewFunc network =
     case network of
         Loading ->
-            div [] [ text "Loading..." ]
+            progress [ class "progress is-info is-small" ] []
 
         Loaded a ->
             viewFunc a
 
         NetworkError e ->
-            div [] [ text "Network error!" ]
+            div [ class "notification is-danger" ]
+                [ text "There was a problem with the network. The shown data may not be up to date." ]
 
 
 viewNetwork2 : (a -> b -> Html Msg) -> Network a -> Network b -> Html Msg
@@ -805,12 +846,12 @@ viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Users ->
-            viewPageUserList model.users
+            viewPageUserList model.users model.users_status
 
         UserDetail user_id ->
             case Dict.get user_id model.users of
                 Just user ->
-                    viewUserDetail user model.user_edit model.user_new_access
+                    viewUserDetail user model.user_edit model.user_new_access model.users_status
 
                 Nothing ->
                     p [] [ text "User not found" ]
