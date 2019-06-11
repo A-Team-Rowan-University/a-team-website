@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate diesel_migrations;
 
-#[macro_use]
 extern crate diesel;
 
 use std::env;
@@ -12,6 +11,7 @@ use std::time;
 use log::debug;
 use log::error;
 use log::info;
+use log::trace;
 use log::warn;
 
 use diesel::prelude::*;
@@ -19,18 +19,35 @@ use diesel::MysqlConnection;
 
 use dotenv::dotenv;
 
-use webdev_lib::errors::WebdevError;
-use webdev_lib::errors::WebdevErrorKind;
+use webdev_lib::errors::Error;
+use webdev_lib::errors::ErrorKind;
 
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
 use webdev_lib::access::models::{AccessRequest, UserAccessRequest};
+<<<<<<< HEAD
 use webdev_lib::access::requests::get_user;
+=======
+use webdev_lib::access::requests::validate_token;
+>>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
 use webdev_lib::access::requests::{handle_access, handle_user_access};
 
-use webdev_lib::chemicals::models::{ChemicalInventoryRequest, ChemicalRequest};
-use webdev_lib::chemicals::requests::{handle_chemical, handle_chemical_inventory};
+use webdev_lib::chemicals::models::{
+    ChemicalInventoryRequest, ChemicalRequest,
+};
+use webdev_lib::chemicals::requests::{
+    handle_chemical, handle_chemical_inventory,
+};
+
+use webdev_lib::tests::question_categories::models::QuestionCategoryRequest;
+use webdev_lib::tests::question_categories::requests::handle_question_category;
+use webdev_lib::tests::questions::models::QuestionRequest;
+use webdev_lib::tests::questions::requests::handle_question;
+use webdev_lib::tests::test_sessions::models::TestSessionRequest;
+use webdev_lib::tests::test_sessions::requests::handle_test_session;
+use webdev_lib::tests::tests::models::TestRequest;
+use webdev_lib::tests::tests::requests::handle_test;
 
 embed_migrations!("./webdev_lib/migrations");
 
@@ -89,12 +106,12 @@ fn main() {
             rouille::Response::text("")
                 .with_additional_header(
                     "Access-Control-Allow-Methods",
-                    "POST, GET, DELETE, OPTIONS",
+                    "POST, GET, DELETE, OPTIONS, PUT",
                 )
                 .with_additional_header("Access-Control-Allow-Origin", "*")
                 .with_additional_header(
                     "Access-Control-Allow-Headers",
-                    "X-PINGOTHER, Content-Type",
+                    "X-PINGOTHER, Content-Type, id_token",
                 )
                 .with_additional_header("Access-Control-Max-Age", "86400")
         } else {
@@ -102,8 +119,8 @@ fn main() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Could not lock database");
-                    return rouille::Response::from(WebdevError::new(
-                        WebdevErrorKind::Database,
+                    return rouille::Response::from(Error::new(
+                        ErrorKind::Database,
                     ));
                 }
             };
@@ -122,14 +139,29 @@ fn handle_request(
     let mut requested_user = None;
 
     if let Some(id_token) = request.header("id_token") {
+<<<<<<< HEAD
         requested_user = get_user(id_token, database_connection);
+=======
+        trace!("Got id_token: {}", id_token);
+        requested_user = validate_token(id_token, database_connection);
+    } else {
+        trace!("No id_token header!");
+>>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
     }
 
     if let Some(user_request) = request.remove_prefix("/users") {
         match UserRequest::from_rouille(&user_request) {
             Err(err) => rouille::Response::from(err),
             Ok(user_request) => {
+<<<<<<< HEAD
                 match handle_user(user_request, requested_user, database_connection) {
+=======
+                match handle_user(
+                    user_request,
+                    requested_user,
+                    database_connection,
+                ) {
+>>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
                     Ok(user_response) => user_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -139,7 +171,15 @@ fn handle_request(
         match AccessRequest::from_rouille(&access_request) {
             Err(err) => rouille::Response::from(err),
             Ok(access_request) => {
+<<<<<<< HEAD
                 match handle_access(access_request, requested_user, database_connection) {
+=======
+                match handle_access(
+                    access_request,
+                    requested_user,
+                    database_connection,
+                ) {
+>>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
                     Ok(access_response) => access_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
@@ -183,8 +223,84 @@ fn handle_request(
         match ChemicalRequest::from_rouille(&chemical_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(chemical_request) => {
+<<<<<<< HEAD
                 match handle_chemical(chemical_request, requested_user, database_connection) {
+=======
+                match handle_chemical(
+                    chemical_request,
+                    requested_user,
+                    database_connection,
+                ) {
+>>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
                     Ok(chemical_response) => chemical_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(question_request_url) =
+        request.remove_prefix("/questions")
+    {
+        match QuestionRequest::from_rouille(&question_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(question_request) => {
+                match handle_question(
+                    question_request,
+                    requested_user,
+                    database_connection,
+                ) {
+                    Ok(question_response) => question_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(question_category_request_url) =
+        request.remove_prefix("/question_categories")
+    {
+        match QuestionCategoryRequest::from_rouille(
+            &question_category_request_url,
+        ) {
+            Err(err) => rouille::Response::from(err),
+            Ok(question_category_request) => {
+                match handle_question_category(
+                    question_category_request,
+                    requested_user,
+                    database_connection,
+                ) {
+                    Ok(question_category_response) => {
+                        question_category_response.to_rouille()
+                    }
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(test_request_url) = request.remove_prefix("/tests") {
+        match TestRequest::from_rouille(&test_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(test_request) => {
+                match handle_test(
+                    test_request,
+                    requested_user,
+                    database_connection,
+                ) {
+                    Ok(test_response) => test_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+                }
+            }
+        }
+    } else if let Some(test_session_request_url) =
+        request.remove_prefix("/test_sessions")
+    {
+        match TestSessionRequest::from_rouille(&test_session_request_url) {
+            Err(err) => rouille::Response::from(err),
+            Ok(test_session_request) => {
+                match handle_test_session(
+                    test_session_request,
+                    requested_user,
+                    database_connection,
+                ) {
+                    Ok(test_session_response) => {
+                        test_session_response.to_rouille()
+                    }
                     Err(err) => rouille::Response::from(err),
                 }
             }

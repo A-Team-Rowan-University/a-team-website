@@ -19,17 +19,40 @@ git submodule init
 git submodule update
 ```
 
-Build the docker images
+Build the images with
 ```
 docker-compose build
 ```
 
-Run the containers
+Create and run the containers
 ```
-docker-compose up
+docker-compose up -d
 ```
 
-## backend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-backend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-backend)
-Coded in Rust, manages database manipulation using AJAX requests from frontend.
+You can stop the running containers with
+```
+docker-compose stop
+```
 
-## frontend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-frontend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-frontend)
+And start the them again (without rebuilding them) with
+```
+docker-compose start
+```
+
+And finally, remove the containers and images
+```
+docker-compose down
+```
+
+See `docker-compose --help` for more information
+
+## What is included in this repository
+
+This repo includes the backend api server, apache configs, and Dockerfiles to run them all.
+
+The webdev_lib that does all the backend heavy lifting is located at https://github.com/A-Team-Rowan-University/resource-website-backend.
+[![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-backend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-backend)
+
+The frontend resources that get served for the website are at https://github.com/A-Team-Rowan-University/resource-website-frontend.
+[![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-frontend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-frontend)
+
