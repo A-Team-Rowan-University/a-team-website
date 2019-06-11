@@ -7,11 +7,11 @@ use serde::Serialize;
 
 use url::form_urlencoded;
 
-use log::{trace, warn};
+use log::warn;
 
-use crate::errors::{WebdevError, WebdevErrorKind};
+use crate::errors::{Error, ErrorKind};
 
-use crate::search::{NullableSearch, Search};
+use crate::search::Search;
 
 use super::schema::{chemical, chemical_inventory};
 
@@ -69,9 +69,7 @@ pub enum ChemicalRequest {
 impl ChemicalRequest {
     pub fn from_rouille(
         request: &rouille::Request,
-    ) -> Result<ChemicalRequest, WebdevError> {
-        trace!("Creating ChemicalRequest from {:#?}", request);
-
+    ) -> Result<ChemicalRequest, Error> {
         let url_queries =
             form_urlencoded::parse(request.raw_query_string().as_bytes());
 
@@ -90,7 +88,7 @@ impl ChemicalRequest {
                         "company_name" => company_name_search = Search::from_query(query.as_ref())?,
                         "ingredients" => ingredients_search = Search::from_query(query.as_ref())?,
                         "manual_link" => manual_link_search = Search::from_query(query.as_ref())?,
-                        _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
+                        _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
 
@@ -108,14 +106,14 @@ impl ChemicalRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let new_chemical: NewChemical = serde_json::from_reader(request_body)?;
 
                 Ok(ChemicalRequest::CreateChemical(new_chemical))
             },
 
             (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
+                let request_body = request.data().ok_or(Error::new(ErrorKind::Body))?;
                 let update_chemical: PartialChemical = serde_json::from_reader(request_body)?;
 
                 Ok(ChemicalRequest::UpdateChemical(id, update_chemical))
@@ -127,7 +125,7 @@ impl ChemicalRequest {
 
             _ => {
                 warn!("Could not create a chemical request for the given rouille request");
-                Err(WebdevError::new(WebdevErrorKind::NotFound))
+                Err(Error::new(ErrorKind::NotFound))
             }
         ) //end router
     }
@@ -207,9 +205,7 @@ pub enum ChemicalInventoryRequest {
 impl ChemicalInventoryRequest {
     pub fn from_rouille(
         request: &rouille::Request,
-    ) -> Result<ChemicalInventoryRequest, WebdevError> {
-        trace!("Creating ChemicalInvntoryRequest from {:#?}", request);
-
+    ) -> Result<ChemicalInventoryRequest, Error> {
         let url_queries =
             form_urlencoded::parse(request.raw_query_string().as_bytes());
 
@@ -223,12 +219,16 @@ impl ChemicalInventoryRequest {
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
-                        "purchaser_id" => purchaser_id_search = Search::from_query(query.as_ref())?,
-                        "custodian_id" => custodian_id_search = Search::from_query(query.as_ref())?,
-                        "chemical_id" => chemical_id_search = Search::from_query(query.as_ref())?,
-                        "storage_location" => storage_location_search = Search::from_query(query.as_ref())?,
+                        "purchaser_id" => purchaser_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "custodian_id" => custodian_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "chemical_id" => chemical_id_search =
+                            Search::from_query(query.as_ref())?,
+                        "storage_location" => storage_location_search
+                            = Search::from_query(query.as_ref())?,
                         "amount" => amount_search = Search::from_query(query.as_ref())?,
-                        _ => return Err(WebdevError::new(WebdevErrorKind::Format)),
+                        _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
 
@@ -246,17 +246,23 @@ impl ChemicalInventoryRequest {
             },
 
             (POST) (/) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
-                let new_chemical_inventory: NewChemicalInventory = serde_json::from_reader(request_body)?;
-
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let new_chemical_inventory: NewChemicalInventory =
+                    serde_json::from_reader(request_body)?;
                 Ok(ChemicalInventoryRequest::CreateInventory(new_chemical_inventory))
             },
 
-            (POST) (/{id: u64}) => {
-                let request_body = request.data().ok_or(WebdevError::new(WebdevErrorKind::Format))?;
-                let update_chemical_inventory: PartialChemicalInventory = serde_json::from_reader(request_body)?;
+            (PUT) (/{id: u64}) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let update_chemical_inventory: PartialChemicalInventory =
+                    serde_json::from_reader(request_body)?;
 
-                Ok(ChemicalInventoryRequest::UpdateInventory(id, update_chemical_inventory))
+                Ok(ChemicalInventoryRequest::UpdateInventory(
+                        id,
+                        update_chemical_inventory
+                ))
             },
 
             (DELETE) (/{id: u64}) => {
@@ -264,8 +270,8 @@ impl ChemicalInventoryRequest {
             },
 
             _ => {
-                warn!("Could not create a chemical inventory request for the given rouille request");
-                Err(WebdevError::new(WebdevErrorKind::NotFound))
+                warn!("Could not create a chemical inventory request");
+                Err(Error::new(ErrorKind::NotFound))
             }
         ) //end router
     }

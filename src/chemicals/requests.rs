@@ -1,17 +1,14 @@
 use diesel;
 use diesel::mysql::types::Unsigned;
-use diesel::mysql::Mysql;
 use diesel::mysql::MysqlConnection;
 use diesel::query_builder::AsQuery;
-use diesel::query_builder::BoxedSelectStatement;
-use diesel::types;
+use diesel::sql_types;
 use diesel::ExpressionMethods;
-use diesel::NullableExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
 use diesel::TextExpressionMethods;
 
-use crate::errors::{WebdevError, WebdevErrorKind};
+use crate::errors::{Error, ErrorKind};
 
 use crate::search::Search;
 
@@ -32,60 +29,70 @@ pub fn handle_chemical(
     request: ChemicalRequest,
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalResponse, WebdevError> {
+) -> Result<ChemicalResponse, Error> {
     match request {
         ChemicalRequest::Search(chemical) => {
-            match check_to_run(requested_user, "GetChemical", database_connection) {
-                Ok(()) => {
-                    search_chemical(chemical, database_connection)
-                        .map(|c| ChemicalResponse::ManyChemical(c))
-                },
+            match check_to_run(
+                requested_user,
+                "GetChemical",
+                database_connection,
+            ) {
+                Ok(()) => search_chemical(chemical, database_connection)
+                    .map(|c| ChemicalResponse::ManyChemical(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::GetChemical(id) => {
-            match check_to_run(requested_user, "GetChemical", database_connection) {
-                Ok(()) => {
-                    get_chemical(id, database_connection)
-                        .map(|c| ChemicalResponse::OneChemical(c))
-                },
+            match check_to_run(
+                requested_user,
+                "GetChemical",
+                database_connection,
+            ) {
+                Ok(()) => get_chemical(id, database_connection)
+                    .map(|c| ChemicalResponse::OneChemical(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::CreateChemical(chemical) => {
-            match check_to_run(requested_user, "CreateChemical", database_connection) {
-                Ok(()) => {
-                    create_chemical(chemical, database_connection)
-                        .map(|c| ChemicalResponse::OneChemical(c))
-                },
+            match check_to_run(
+                requested_user,
+                "CreateChemical",
+                database_connection,
+            ) {
+                Ok(()) => create_chemical(chemical, database_connection)
+                    .map(|c| ChemicalResponse::OneChemical(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::UpdateChemical(id, chemical) => {
-            match check_to_run(requested_user, "UpdateChemical", database_connection) {
-                Ok(()) => {
-                    update_chemical(id, chemical, database_connection)
-                        .map(|_| ChemicalResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "UpdateChemical",
+                database_connection,
+            ) {
+                Ok(()) => update_chemical(id, chemical, database_connection)
+                    .map(|_| ChemicalResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalRequest::DeleteChemical(id) => {
-            match check_to_run(requested_user, "DeleteChemical", database_connection) {
-                Ok(()) => {
-                    delete_chemical(id, database_connection)
-                        .map(|_| ChemicalResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "DeleteChemical",
+                database_connection,
+            ) {
+                Ok(()) => delete_chemical(id, database_connection)
+                    .map(|_| ChemicalResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
     }
 }
 
-fn search_chemical(
+pub(crate) fn search_chemical(
     chemical_search: SearchChemical,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalList, WebdevError> {
+) -> Result<ChemicalList, Error> {
     let mut chemical_query = chemical_schema::table.as_query().into_boxed();
 
     match chemical_search.name {
@@ -166,29 +173,29 @@ fn search_chemical(
     Ok(chemical_list)
 }
 
-fn get_chemical(
+pub(crate) fn get_chemical(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<Chemical, WebdevError> {
+) -> Result<Chemical, Error> {
     let mut found_chemical = chemical_schema::table
         .filter(chemical_schema::id.eq(id))
         .load::<Chemical>(database_connection)?;
 
     match found_chemical.pop() {
         Some(chemical) => Ok(chemical),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
-fn create_chemical(
+pub(crate) fn create_chemical(
     chemical: NewChemical,
     database_connection: &MysqlConnection,
-) -> Result<Chemical, WebdevError> {
+) -> Result<Chemical, Error> {
     diesel::insert_into(chemical_schema::table)
         .values(chemical)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
+    no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
     let mut inserted_chemicals = chemical_schema::table
         .filter(chemical_schema::id.eq(last_insert_id))
@@ -197,15 +204,15 @@ fn create_chemical(
     if let Some(inserted_chemical) = inserted_chemicals.pop() {
         Ok(inserted_chemical)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
-fn update_chemical(
+pub(crate) fn update_chemical(
     id: u64,
     chemical: PartialChemical,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(chemical_schema::table)
         .filter(chemical_schema::id.eq(id))
         .set(&chemical)
@@ -213,10 +220,10 @@ fn update_chemical(
     Ok(())
 }
 
-fn delete_chemical(
+pub(crate) fn delete_chemical(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(chemical_schema::table.filter(chemical_schema::id.eq(id)))
         .execute(database_connection)?;
 
@@ -227,60 +234,82 @@ pub fn handle_chemical_inventory(
     request: ChemicalInventoryRequest,
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventoryResponse, WebdevError> {
+) -> Result<ChemicalInventoryResponse, Error> {
     match request {
         ChemicalInventoryRequest::SearchInventory(inventory) => {
-            match check_to_run(requested_user, "GetChemicalInventory", database_connection) {
+            match check_to_run(
+                requested_user,
+                "GetChemicalInventory",
+                database_connection,
+            ) {
                 Ok(()) => {
                     search_chemical_inventory(inventory, database_connection)
-                        .map(|c| ChemicalInventoryResponse::ManyInventoryEntries(c))
-                },
+                        .map(|c| {
+                            ChemicalInventoryResponse::ManyInventoryEntries(c)
+                        })
+                }
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::GetInventory(id) => {
-            match check_to_run(requested_user, "GetChemicalInventory", database_connection) {
-                Ok(()) => {
-                    get_chemical_inventory(id, database_connection)
-                        .map(|c| ChemicalInventoryResponse::OneInventoryEntry(c))
-                },
+            match check_to_run(
+                requested_user,
+                "GetChemicalInventory",
+                database_connection,
+            ) {
+                Ok(()) => get_chemical_inventory(id, database_connection)
+                    .map(|c| ChemicalInventoryResponse::OneInventoryEntry(c)),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::CreateInventory(inventory) => {
-            match check_to_run(requested_user, "CreateChemicalInventory", database_connection) {
+            match check_to_run(
+                requested_user,
+                "CreateChemicalInventory",
+                database_connection,
+            ) {
                 Ok(()) => {
                     create_chemical_inventory(inventory, database_connection)
-                        .map(|c| ChemicalInventoryResponse::OneInventoryEntry(c))
-                },
+                        .map(|c| {
+                            ChemicalInventoryResponse::OneInventoryEntry(c)
+                        })
+                }
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::UpdateInventory(id, inventory) => {
-            match check_to_run(requested_user, "UpdateChemicalInventory", database_connection) {
-                Ok(()) => {
-                    update_chemical_inventory(id, inventory, database_connection)
-                        .map(|_| ChemicalInventoryResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "UpdateChemicalInventory",
+                database_connection,
+            ) {
+                Ok(()) => update_chemical_inventory(
+                    id,
+                    inventory,
+                    database_connection,
+                )
+                .map(|_| ChemicalInventoryResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
         ChemicalInventoryRequest::DeleteInventory(id) => {
-            match check_to_run(requested_user, "DeleteChemicalInventory", database_connection) {
-                Ok(()) => {
-                    delete_chemical_inventory(id, database_connection)
-                        .map(|_| ChemicalInventoryResponse::NoResponse)
-                },
+            match check_to_run(
+                requested_user,
+                "DeleteChemicalInventory",
+                database_connection,
+            ) {
+                Ok(()) => delete_chemical_inventory(id, database_connection)
+                    .map(|_| ChemicalInventoryResponse::NoResponse),
                 Err(e) => Err(e),
             }
-        },
+        }
     }
 }
 
-fn search_chemical_inventory(
+pub(crate) fn search_chemical_inventory(
     chemical_inventory_search: SearchChemicalInventory,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventoryList, WebdevError> {
+) -> Result<ChemicalInventoryList, Error> {
     let mut chemical_inventory_query =
         chemical_inventory_schema::table.as_query().into_boxed();
 
@@ -366,29 +395,29 @@ fn search_chemical_inventory(
     Ok(inventory_list)
 }
 
-fn get_chemical_inventory(
+pub(crate) fn get_chemical_inventory(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventory, WebdevError> {
+) -> Result<ChemicalInventory, Error> {
     let mut found_inventory = chemical_inventory_schema::table
         .filter(chemical_inventory_schema::id.eq(id))
         .load::<ChemicalInventory>(database_connection)?;
 
     match found_inventory.pop() {
         Some(entry) => Ok(entry),
-        None => Err(WebdevError::new(WebdevErrorKind::NotFound)),
+        None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
-fn create_chemical_inventory(
+pub(crate) fn create_chemical_inventory(
     inventory: NewChemicalInventory,
     database_connection: &MysqlConnection,
-) -> Result<ChemicalInventory, WebdevError> {
+) -> Result<ChemicalInventory, Error> {
     diesel::insert_into(chemical_inventory_schema::table)
         .values(inventory)
         .execute(database_connection)?;
 
-    no_arg_sql_function!(last_insert_id, Unsigned<types::Bigint>);
+    no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
     let mut inserted_inventory_entries = chemical_inventory_schema::table
         .filter(chemical_inventory_schema::id.eq(last_insert_id))
@@ -397,15 +426,15 @@ fn create_chemical_inventory(
     if let Some(inserted_entry) = inserted_inventory_entries.pop() {
         Ok(inserted_entry)
     } else {
-        Err(WebdevError::new(WebdevErrorKind::Database))
+        Err(Error::new(ErrorKind::Database))
     }
 }
 
-fn update_chemical_inventory(
+pub(crate) fn update_chemical_inventory(
     id: u64,
     inventory: PartialChemicalInventory,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::update(chemical_inventory_schema::table)
         .filter(chemical_inventory_schema::id.eq(id))
         .set(&inventory)
@@ -413,10 +442,10 @@ fn update_chemical_inventory(
     Ok(())
 }
 
-fn delete_chemical_inventory(
+pub(crate) fn delete_chemical_inventory(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<(), WebdevError> {
+) -> Result<(), Error> {
     diesel::delete(
         chemical_inventory_schema::table
             .filter(chemical_inventory_schema::id.eq(id)),

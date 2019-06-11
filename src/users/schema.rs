@@ -4,6 +4,6 @@ table! {
         first_name -> Varchar,
         last_name -> Varchar,
         banner_id -> Unsigned<Integer>,
-        email -> Nullable<Varchar>,
+        email -> Varchar,
     }
 }
