@@ -1,0 +1,216 @@
+## Data Structures
+### Question
+ + id: 12 (number, required)
+ + category_id: 34 (number, required)
+ + title: What does the E-Stop do? (string, required)
+ + correct_answer: Kills the power (string, required)
+ + incorrect_answer_1: Gives you cake (string, required)
+ + incorrect_answer_2: Makes mario happy (string, required)
+ + incorrect_answer_3: Turns off the lights (string, required)
+
+### New Raw Question
+ + category_id: 34 (number, required)
+ + title: What does the E-Stop do? (string, required)
+ + correct_answer: Kills the power (string, required)
+ + incorrect_answer_1: Gives you cake (string, required)
+ + incorrect_answer_2: Makes mario happy (string, required)
+ + incorrect_answer_3: Turns off the lights (string, required)
+
+### New Question
+ + title: What does the E-Stop do? (string, required)
+ + correct_answer: Kills the power (string, required)
+ + incorrect_answer_1: Gives you cake (string, required)
+ + incorrect_answer_2: Makes mario happy (string, required)
+ + incorrect_answer_3: Turns off the lights (string, required)
+
+### Question Category
+ + id: 34 (number, required)
+ + title: Electrical Safety (string, required)
+ + questions (array[Question], required)
+
+### New Question Category
+ + title: Electrical Safety (string, required)
+ + questions (array[Question], required)
+
+### Question Category Number
+ + number_of_questions: 2 (number, required) - The number of questions that should be choosed from this category
+ + question_category: 1 (number, required) - The question category id
+
+### Anonymous Question
+ + id: 32 (number, required)
+ + title: What does the E-Stop do? (string, required)
+ + answer_1: Gives you cake (string, required)
+ + answer_2: Makes mario happy (string, required)
+ + answer_3: Turns off the lights (string, required)
+ + answer_4: Kills the power (string, required)
+
+### Question Response
++ id: 43 (number, required)
++ answer: Gives you cake (string, required)
+
+### Test
+ + id: 41 (number, required)
+ + creator: 1 (number, required) - The UserID of the user that created the test
+ + name: ECE Safety (string, required)
+ + questions (array[Question Category Number], required)
+
+### Test Session
+ + id: 56 (number, required)
+ + test_id: 41 (number, required) - The id for the test that this is from
+ + name: ECE Safety #1 (string, required)
+ + registrations (array[Test Session Registration], required)
+ + registration_enabled: false (boolean, required)
+ + opening_enabled: true (boolean, required)
+ + submissions_enabled: true (boolean, required)
+
+### New Test Session
+ + test_id: 41 (number, required)
+ + name: ECE Safety #1 (string, required)
+
+### Partial Test Session
+ + registration_enabled: false (boolean)
+ + opening_enabled: true (boolean)
+ + submissions_enabled: true (boolean)
+
+### Test Session Registration
+ + id: 89 (number, required)
+ + taker_id: 1 (number, required) - The id of the user that took this test
+ + registered: 2011-10-10T14:48:00.000+09:00 (string, required) - The date and time the user registered for the test.
+ + opened: 2011-10-10T14:50:00.000+09:00 (string) - If the user opened the test, the date and time the user opened the test. Otherwise, null
+ + sumbitted: 2011-10-10T14:55:00.000+09:00 (string) - If the user submitted the test, the date and time the user sumbitted the test. Otherwise, null
+ + score: 0.84 (number) - The score if the test has been submitted, 0.0 - 1.0
+
+# Group Safety Tests
+
+## Questions [/api/v1/questions/]
+### List all the questions [GET]
+ + Response 200 (application/json)
+   + Attributes
+     + questions (array[Question])
+
+### Create a new question [POST]
+ + Request (application/json)
+   + Attributes (New Raw Question, required)
+ + Response 200 (application/json)
+   + Attributes (Question, required)
+
+## Question [/api/v1/question/{question_id}]
+ + Parameters
+   + question_id: 1 (number, required)
+
+### Delete a question [DELETE]
+ + Response 204
+
+## Question Categories [/api/v1/question_categories]
+
+### List the question categories [GET]
+This gets all the categories of questions
+ + Response 200 (application/json)
+   + Attributes
+      + question_categories (array[Question Category])
+
+### Create a new question category [POST]
+ + Request (application/json)
+   + Attributes (New Question Category, required)
+ + Response 200 (application/json)
+   + Attributes (Question Category, required)
+
+## Question Category [/api/v1/question_categories/{question_category_id}]
+ + Parameters
+   + question_category_id: 1 (number, required)
+
+### Read a single questio category [GET]
+ + Response 200 (application/json)
+   + Attributes (Question Category, required)
+
+### Delete a question category [DELETE]
+ + Response 204
+
+## Tests [/api/v1/tests]
+
+### List the all the tests [GET]
+ + Response 200 (application/json)
+   + Attributes
+     + tests (array[Test])
+
+### Create a new test [POST]
+ + Request (application/json)
+   + Attributes
+     + name: ECE Safety (string, required)
+     + questions (array[Question Category Number], required)
+ + Response 204
+
+## Test [/api/v1/tests/{test_id}]
+ + Parameters
+   + test_id: 1 (number, required)
+
+### Read a single test [GET]
+ + Response 200 (application/json)
+   + Attributes (Test, required)
+
+### Delete a test [DELETE]
+ + Response 204
+
+## Test Sessions [/api/v1/testsessions]
+
+### List all the test sessions [GET]
+ + Response 200 (application/json)
+   + Attributes
+     + test_sessions (array[Test Session])
+
+### Create a new test session [POST]
+ + Response 200 (application/json)
+   + Attributes
+     + test: 1 (number, required) - The test id that this is created from
+     + name: ECE Safety #1 (string, required) - The name of the session
+
+## Test Sessions for a given test [/api/v1/testsessions?test={test_id}]
+### List all the test sessions for a given test [GET]
+ + Response 200 (application/json)
+   + Attributes
+     + test_sessions (array[Test Session])
+
+## Test Session [/api/v1/testsessions/{test_session_id}]
+ + Parameters
+   + test_session_id (required, number)
+
+### Read a single test session [GET]
+ + Response 200 (application/json)
+   + Attributes (Test Session, required)
+
+### Update a test session [PUT]
+ + Response 200 (application/json)
+   + Attributes (Test Session, required)
+
+### Delete a test session [DELETE]
+ + Response 204
+
+## Test Session Registration [/api/v1/testsessions/{test_session_id}/register]
+ + Parameters
+   + test_session_id (required, number)
+
+### Register for a test session [POST]
+Registers the logged in user for a test session by creating a test session registration
+ + Response 204
+
+## Test Session Opening [/api/v1/testsessions/{test_session_id}/open]
+ + Parameters
+   + test_session_id (required, number)
+
+### Open a test session [GET]
+This marks the test as opened
+ + Response 200 (application/json)
+   + Attributes
+     + questions (array[Anonymous Question], required)
+
+## Test Session Submission [/api/v1/testsessions/{test_session_id}/submit]
+ + Parameters
+   + test_session_id (required, number)
+
+### Submit a test [POST]
+This marks the test as submitted
+ + Request (application/json)
+   + Attributes
+     + questions (array[Question Response], required)
+ + Response 204
+
