@@ -5,8 +5,6 @@ CREATE TABLE access (
 );
 
 INSERT INTO access (access_name) VALUES
-  ("RootAccess"),
-
   ("GetUsers"),
   ("CreateUsers"),
   ("UpdateUsers"),
@@ -46,8 +44,3 @@ CREATE TABLE user_access (
     ON UPDATE CASCADE,
   permission_level VARCHAR(255)
 );
-
-INSERT INTO user_access(access_id, user_id, permission_level)
-    SELECT (select access.id as access_id from access where access.access_name = "RootAccess"),
-           (select users.id as user_id from users where users.id = 0),
-           (select "RootAccess" as permission_level);

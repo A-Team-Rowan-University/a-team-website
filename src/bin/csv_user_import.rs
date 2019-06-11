@@ -59,7 +59,7 @@ fn main() {
     debug!("Connected to database");
     //Get file name and path from args
     use std::env;
-    let arg = env::args().nth(1);
+    let arg = env::args().next();
     let filename = match arg {
         Some(name) => name,
         None => {
@@ -92,8 +92,9 @@ fn main() {
         let new_user: NewUser = NewUser {
             first_name: csv_user.first_name,
             last_name: csv_user.last_name,
-            email: Some(csv_user.email),
+            email: csv_user.email,
             banner_id: csv_user.banner_id as u32,
+            accesses: Vec::new(),
         };
         //Import new user into database
         let import_user = UserRequest::CreateUser(new_user);
