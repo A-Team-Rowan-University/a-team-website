@@ -70,6 +70,15 @@ type alias User =
     }
 
 
+type alias NewUser =
+    { first_name : String
+    , last_name : String
+    , banner_id : Int
+    , email : String
+    , accesses : List Int
+    }
+
+
 type alias PartialUser =
     { first_name : Maybe String
     , last_name : Maybe String
@@ -97,6 +106,7 @@ type Route
     = Home
     | Users
     | UserDetail Int
+    | UserNew
     | NotFound
 
 
@@ -106,6 +116,7 @@ routeParser =
         [ P.map Home P.top
         , P.map Users (P.s "users")
         , P.map UserDetail (P.s "users" </> P.int)
+        , P.map UserNew (P.s "users" </> P.s "new")
         ]
 
 
@@ -127,6 +138,8 @@ type alias Model =
     , users : Dict UserId User
     , users_status : Network ()
     , user_edit : PartialUser
+    , user_access : Maybe Int
+    , user_new : NewUser
     , user_new_access : Maybe Int
     }
 
@@ -144,6 +157,14 @@ init _ url key =
             , last_name = Nothing
             , banner_id = Nothing
             , email = Nothing
+            }
+      , user_access = Nothing
+      , user_new =
+            { first_name = ""
+            , last_name = ""
+            , banner_id = 0
+            , email = ""
+            , accesses = []
             }
       , user_new_access = Nothing
       }
@@ -165,7 +186,7 @@ type Msg
     | ResetUserFirstName
     | EditUserLastName String
     | ResetUserLastName
-    | EditUserBannerId Int
+    | EditUserBannerId (Maybe Int)
     | ResetUserBannerId
     | EditUserEmail String
     | ResetUserEmail
@@ -173,8 +194,15 @@ type Msg
     | Updated (Result Http.Error ())
     | StartRemoveAccess Access
     | FinishRemoveAccess (Result Http.Error (Maybe Int))
+    | EditUserAccess (Maybe Int)
+    | SubmitUserAccess
+    | NewFirstName String
+    | NewLastName String
+    | NewBannerId (Maybe Int)
+    | NewEmail String
     | EditNewUserAccess (Maybe Int)
     | SubmitNewUserAccess
+    | SubmitNewUser
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -242,7 +270,9 @@ update msg model =
                 partial_user =
                     model.user_edit
             in
-            ( { model | user_edit = { partial_user | last_name = Just last_name } }, Cmd.none )
+            ( { model | user_edit = { partial_user | last_name = Just last_name } }
+            , Cmd.none
+            )
 
         ResetUserLastName ->
             let
@@ -252,11 +282,18 @@ update msg model =
             ( { model | user_edit = { partial_user | last_name = Nothing } }, Cmd.none )
 
         EditUserBannerId banner_id ->
-            let
-                partial_user =
-                    model.user_edit
-            in
-            ( { model | user_edit = { partial_user | banner_id = Just banner_id } }, Cmd.none )
+            case banner_id of
+                Just id ->
+                    let
+                        partial_user =
+                            model.user_edit
+                    in
+                    ( { model | user_edit = { partial_user | banner_id = Just id } }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
 
         ResetUserBannerId ->
             let
@@ -386,20 +423,20 @@ update msg model =
                     Cmd.none
             )
 
-        EditNewUserAccess access_id ->
+        EditUserAccess access_id ->
             case access_id of
                 Just id ->
-                    ( { model | user_new_access = Just id }, Cmd.none )
+                    ( { model | user_access = Just id }, Cmd.none )
 
                 Nothing ->
                     ( model, Cmd.none )
 
-        SubmitNewUserAccess ->
+        SubmitUserAccess ->
             ( { model
-                | user_new_access = Nothing
+                | user_access = Nothing
                 , users_status = Loading
               }
-            , case model.user_new_access of
+            , case model.user_access of
                 Just new_access ->
                     case model.signin of
                         SignedIn user ->
@@ -429,6 +466,99 @@ update msg model =
                             Cmd.none
 
                 Nothing ->
+                    Cmd.none
+            )
+
+        NewFirstName first_name ->
+            let
+                new_user =
+                    model.user_new
+            in
+            ( { model | user_new = { new_user | first_name = first_name } }, Cmd.none )
+
+        NewLastName last_name ->
+            let
+                new_user =
+                    model.user_new
+            in
+            ( { model | user_new = { new_user | last_name = last_name } }, Cmd.none )
+
+        NewBannerId banner_id ->
+            case banner_id of
+                Just id ->
+                    let
+                        new_user =
+                            model.user_new
+                    in
+                    ( { model | user_new = { new_user | banner_id = id } }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        NewEmail email ->
+            let
+                new_user =
+                    model.user_new
+            in
+            ( { model | user_new = { new_user | email = email } }, Cmd.none )
+
+        EditNewUserAccess access_id ->
+            case access_id of
+                Just id ->
+                    ( { model | user_new_access = Just id }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        SubmitNewUserAccess ->
+            case model.user_new_access of
+                Just access_id ->
+                    let
+                        new_user =
+                            model.user_new
+                    in
+                    ( { model
+                        | user_new =
+                            { new_user | accesses = access_id :: new_user.accesses }
+                        , user_new_access = Nothing
+                      }
+                    , Cmd.none
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        SubmitNewUser ->
+            ( { model
+                | user_new = NewUser "" "" 0 "" []
+                , users_status = Loading
+              }
+            , case model.signin of
+                SignedIn user ->
+                    case model.route of
+                        UserNew ->
+                            Cmd.batch
+                                [ Http.request
+                                    { method = "POST"
+                                    , headers = [ header "id_token" user.id_token ]
+                                    , url =
+                                        B.relative
+                                            [ apiUrl
+                                            , "users/"
+                                            ]
+                                            []
+                                    , body = jsonBody (newUserEncoder model.user_new)
+                                    , expect = Http.expectWhatever Updated
+                                    , timeout = Nothing
+                                    , tracker = Nothing
+                                    }
+                                , Nav.pushUrl model.navkey "/users"
+                                ]
+
+                        _ ->
+                            Cmd.none
+
+                _ ->
                     Cmd.none
             )
 
@@ -501,6 +631,9 @@ loadData route signin =
 
                 _ ->
                     ( Just Loading, Cmd.none )
+
+        UserNew ->
+            ( Nothing, Cmd.none )
 
         NotFound ->
             ( Nothing, Cmd.none )
@@ -586,6 +719,17 @@ partialUserEncoder user =
                             l
                )
         )
+
+
+newUserEncoder : NewUser -> E.Value
+newUserEncoder user =
+    E.object
+        [ ( "first_name", E.string user.first_name )
+        , ( "last_name", E.string user.last_name )
+        , ( "banner_id", E.int user.banner_id )
+        , ( "email", E.string user.email )
+        , ( "accesses", E.list E.int user.accesses )
+        ]
 
 
 
@@ -677,12 +821,12 @@ viewEditableText defaultText editedText onEdit onReset =
                 ]
 
 
-viewEditableInt : Int -> Maybe Int -> (Int -> Msg) -> Msg -> Html Msg
+viewEditableInt : Int -> Maybe Int -> (Maybe Int -> Msg) -> Msg -> Html Msg
 viewEditableInt default edited onEdit onReset =
     case edited of
         Nothing ->
             p
-                [ onClick (onEdit default) ]
+                [ onClick (onEdit (Just default)) ]
                 [ text (String.fromInt default) ]
 
         Just edit ->
@@ -691,7 +835,7 @@ viewEditableInt default edited onEdit onReset =
                     [ input
                         [ class "input"
                         , value (String.fromInt edit)
-                        , onInput (\s -> onEdit (Maybe.withDefault 0 (String.toInt s)))
+                        , onInput (\s -> onEdit (String.toInt s))
                         , type_ "number"
                         ]
                         []
@@ -706,12 +850,12 @@ viewEditableInt default edited onEdit onReset =
                 ]
 
 
-viewAddUserAccess : User -> Maybe Int -> Html Msg
-viewAddUserAccess user access_id =
+viewAddUserAccess : Maybe Int -> (Maybe Int -> msg) -> msg -> Html msg
+viewAddUserAccess access_id onEdit onSubmit =
     case access_id of
         Nothing ->
             button
-                [ class "button is-primary", onClick (EditNewUserAccess (Just 0)) ]
+                [ class "button is-primary", onClick (onEdit (Just 0)) ]
                 [ text "Add" ]
 
         Just edit ->
@@ -720,7 +864,7 @@ viewAddUserAccess user access_id =
                     [ input
                         [ class "input"
                         , value (String.fromInt edit)
-                        , onInput (\s -> EditNewUserAccess (String.toInt s))
+                        , onInput (\s -> onEdit (String.toInt s))
                         , type_ "number"
                         ]
                         []
@@ -728,15 +872,75 @@ viewAddUserAccess user access_id =
                 , div [ class "control" ]
                     [ button
                         [ class "button is-primary"
-                        , onClick SubmitNewUserAccess
+                        , onClick onSubmit
                         ]
                         [ text "Submit" ]
                     ]
                 ]
 
 
+viewNewUser : NewUser -> Maybe Int -> Html Msg
+viewNewUser user access_id =
+    div []
+        [ p [ class "title has-text-centered" ]
+            [ text "New User" ]
+        , p [ class "columns" ]
+            [ span [ class "column" ]
+                [ p [ class "subtitle has-text-centered" ] [ text "User Details" ]
+                , div [ class "box" ]
+                    [ span [] [ text "First Name: " ]
+                    , input
+                        [ class "input"
+                        , value user.first_name
+                        , onInput NewFirstName
+                        ]
+                        []
+                    ]
+                , div [ class "box" ]
+                    [ span [] [ text "Last Name: " ]
+                    , input
+                        [ class "input"
+                        , value user.last_name
+                        , onInput NewLastName
+                        ]
+                        []
+                    ]
+                , div [ class "box" ]
+                    [ span [] [ text "Email: " ]
+                    , input
+                        [ class "input"
+                        , value user.email
+                        , onInput NewEmail
+                        ]
+                        []
+                    ]
+                , div [ class "box" ]
+                    [ span [] [ text "Banner ID: " ]
+                    , input
+                        [ class "input"
+                        , type_ "number"
+                        , value (String.fromInt user.banner_id)
+                        , onInput (\s -> String.toInt s |> NewBannerId)
+                        ]
+                        []
+                    ]
+                , button
+                    [ class "button is-primary"
+                    , onClick SubmitNewUser
+                    ]
+                    [ text "Submit new user" ]
+                ]
+            , div [ class "column" ]
+                [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
+                , div [ class "box" ] (List.map (\id -> p [] [ String.fromInt id |> text ]) user.accesses)
+                , viewAddUserAccess access_id EditNewUserAccess SubmitNewUserAccess
+                ]
+            ]
+        ]
+
+
 viewUserDetail : User -> PartialUser -> Maybe Int -> Network () -> Html Msg
-viewUserDetail user user_edit user_new_access users_status =
+viewUserDetail user user_edit user_access users_status =
     div []
         [ viewNetwork (\a -> div [] []) users_status
         , p [ class "title has-text-centered" ]
@@ -785,7 +989,7 @@ viewUserDetail user user_edit user_new_access users_status =
             , div [ class "column" ]
                 [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
                 , div [ class "box" ] (List.map (viewAccess user) user.accesses)
-                , viewAddUserAccess user user_new_access
+                , viewAddUserAccess user_access EditUserAccess SubmitUserAccess
                 ]
             ]
         ]
@@ -801,7 +1005,10 @@ viewPageUserList users users_status =
                 [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
                 , p [ class "has-text-centered" ] [ text "Working on it :)" ]
                 ]
-            , div [ class "column" ] (List.map viewUser (Dict.values users))
+            , div [ class "column" ]
+                [ div [] (List.map viewUser (Dict.values users))
+                , a [ class "button is-primary", href "/users/new" ] [ text "New User" ]
+                ]
             ]
         ]
 
@@ -851,10 +1058,13 @@ viewPage model =
         UserDetail user_id ->
             case Dict.get user_id model.users of
                 Just user ->
-                    viewUserDetail user model.user_edit model.user_new_access model.users_status
+                    viewUserDetail user model.user_edit model.user_access model.users_status
 
                 Nothing ->
                     p [] [ text "User not found" ]
+
+        UserNew ->
+            viewNewUser model.user_new model.user_new_access
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
