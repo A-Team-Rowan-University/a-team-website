@@ -202,6 +202,7 @@ type Msg
     | NewEmail String
     | EditNewUserAccess (Maybe Int)
     | SubmitNewUserAccess
+    | RemoveNewUserAccess Int
     | SubmitNewUser
 
 
@@ -519,7 +520,7 @@ update msg model =
                     in
                     ( { model
                         | user_new =
-                            { new_user | accesses = access_id :: new_user.accesses }
+                            { new_user | accesses = new_user.accesses ++ [ access_id ] }
                         , user_new_access = Nothing
                       }
                     , Cmd.none
@@ -527,6 +528,18 @@ update msg model =
 
                 Nothing ->
                     ( model, Cmd.none )
+
+        RemoveNewUserAccess access_id ->
+            let
+                new_user =
+                    model.user_new
+
+                accesses =
+                    new_user.accesses
+            in
+            ( { model | user_new = { new_user | accesses = List.filter (\id -> id /= access_id) accesses } }
+            , Cmd.none
+            )
 
         SubmitNewUser ->
             ( { model
@@ -932,7 +945,22 @@ viewNewUser user access_id =
                 ]
             , div [ class "column" ]
                 [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
-                , div [ class "box" ] (List.map (\id -> p [] [ String.fromInt id |> text ]) user.accesses)
+                , div [ class "box" ]
+                    (List.map
+                        (\id ->
+                            div [ class "columns" ]
+                                [ span [ class "column" ] [ String.fromInt id |> text ]
+                                , div [ class "column" ]
+                                    [ button
+                                        [ class "button is-danger is-pulled-right"
+                                        , onClick (RemoveNewUserAccess id)
+                                        ]
+                                        [ text "Remove" ]
+                                    ]
+                                ]
+                        )
+                        user.accesses
+                    )
                 , viewAddUserAccess access_id EditNewUserAccess SubmitNewUserAccess
                 ]
             ]
