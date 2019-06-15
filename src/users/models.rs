@@ -83,6 +83,7 @@ pub struct UserList {
 #[derive(Debug)]
 pub enum UserRequest {
     SearchUsers(SearchUser),
+    Current,
     GetUser(u64),
     CreateUser(NewUser),
     UpdateUser(u64, PartialUser),
@@ -124,6 +125,10 @@ impl UserRequest {
                     banner_id: banner_id_search,
                     email: email_search,
                 }))
+            },
+
+            (GET) (/current) => {
+                Ok(UserRequest::Current)
             },
 
             (GET) (/{id: u64}) => {

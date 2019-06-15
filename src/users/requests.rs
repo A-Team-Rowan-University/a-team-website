@@ -42,6 +42,15 @@ pub fn handle_user(
                 Err(e) => Err(e),
             }
         }
+
+        UserRequest::Current => {
+            match requested_user {
+                Some(id) => get_user(id, database_connection)
+                    .map(|u| UserResponse::OneUser(u)),
+                None => Ok(UserResponse::NoResponse)
+            }
+        }
+
         UserRequest::GetUser(id) => {
             match check_to_run(requested_user, "GetUsers", database_connection)
             {
