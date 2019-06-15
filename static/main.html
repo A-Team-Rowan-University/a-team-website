@@ -19,24 +19,24 @@
             console.log(app);
 
             function onSignIn(googleUser) {
-                var profile = googleUser.getBasicProfile();
-                console.log('ID: ' + profile.getId());
+                let profile = googleUser.getBasicProfile();
+                let auth = googleUser.getAuthResponse();
                 console.log('Name: ' + profile.getName());
-                console.log('Image URL: ' + profile.getImageUrl());
                 console.log('Email: ' + profile.getEmail());
-                console.log('Token:' + googleUser.getAuthResponse().id_token);
-
-                console.log("GoogleUser: " + googleUser);
-                console.log("Basic Profile: " + googleUser.getBasicProfile());
-                console.log("Auth response: " + googleUser.getAuthResponse());
+                console.log('Token:\n' + auth.id_token);
 
                 let signed_in_user = {
-                    first_name: profile.getGivenName(),
-                    last_name: profile.getFamilyName(),
+                    given_name: profile.getGivenName(),
+                    family_name: profile.getFamilyName(),
                     email: profile.getEmail(),
-                    profile_url: profile.getImageUrl(),
-                    id_token: googleUser.getAuthResponse().id_token
+                    image_url: profile.getImageUrl(),
+                    id_token: auth.id_token,
+                    expires_in: auth.expires_in,
+                    first_issued_at: auth.first_issued_at,
+                    expires_at: auth.expires_at,
                 };
+
+                console.log(signed_in_user);
 
                 app.ports.signIn.send(signed_in_user)
             }

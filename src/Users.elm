@@ -1,4 +1,4 @@
-module Users exposing (Access, NewUser, NewUserConfig, PartialUser, User, UserDetailConfig, viewAccess, viewAddUserAccess, viewEditableInt, viewEditableText, viewNewUser, viewUser, viewUserDetail, viewUserList)
+module Users exposing (Access, NewUser, NewUserConfig, PartialUser, User, UserDetailConfig, UserId, viewAccess, viewAddUserAccess, viewEditableInt, viewEditableText, viewNewUser, viewUser, viewUserDetail, viewUserList)
 
 import Dict exposing (Dict)
 import Html exposing (Html, a, button, div, input, p, span, text)

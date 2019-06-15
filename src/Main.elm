@@ -12,6 +12,7 @@ import Json.Encode as E
 import Network exposing (..)
 import Platform.Cmd
 import Platform.Sub
+import Session exposing (Session, googleUserDecoder, idToken)
 import Set exposing (Set)
 import Url
 import Url.Builder as B
@@ -46,7 +47,7 @@ main =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    signIn SignIn
+    signIn SignedIn
 
 
 
@@ -58,21 +59,6 @@ port signIn : (E.Value -> msg) -> Sub msg
 
 
 -- MODEL
-
-
-type alias SignInUser =
-    { first_name : String
-    , last_name : String
-    , email : String
-    , profile_url : String
-    , id_token : String
-    }
-
-
-type SignInModel
-    = SignedIn SignInUser
-    | SignedOut
-    | SignInFailure D.Error
 
 
 type Route
@@ -100,7 +86,7 @@ type alias UserId =
 type alias Model =
     { navkey : Nav.Key
     , route : Route
-    , signin : SignInModel
+    , session : Session
     , accesses : Network (List Access)
     , users : Dict UserId User
     , users_status : Network ()
@@ -115,7 +101,7 @@ init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
     ( { navkey = key
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
-      , signin = SignedOut
+      , session = Session.NotSignedIn
       , accesses = Loading
       , users = Dict.empty
       , users_status = Loading
@@ -144,7 +130,8 @@ init _ url key =
 
 
 type Msg
-    = SignIn E.Value
+    = SignedIn E.Value
+    | Validated (Result Http.Error User)
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | GotUsers (Result Http.Error (List User))
@@ -176,22 +163,54 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        SignIn user_json ->
-            case D.decodeValue signedInUserDecoder user_json of
-                Ok user ->
-                    let
-                        ( users_status, cmd ) =
-                            loadData model.route (SignedIn user)
-                    in
+        SignedIn user_json ->
+            case D.decodeValue googleUserDecoder user_json of
+                Ok google_user ->
                     ( { model
-                        | signin = SignedIn user
-                        , users_status = Maybe.withDefault model.users_status users_status
+                        | session = Session.SignedIn google_user
+                        , users_status = Loading
                       }
-                    , cmd
+                    , Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" google_user.id_token ]
+                        , url =
+                            B.relative [ apiUrl, "users", "current" ]
+                                []
+                        , body = emptyBody
+                        , expect = Http.expectJson Validated userDecoder
+                        , timeout = Nothing
+                        , tracker = Nothing
+                        }
                     )
 
                 Err e ->
-                    ( { model | signin = SignInFailure e }, Cmd.none )
+                    ( { model | session = Session.GoogleError e }, Cmd.none )
+
+        Validated user_result ->
+            case model.session of
+                Session.SignedIn google_user ->
+                    case user_result of
+                        Ok user ->
+                            let
+                                session =
+                                    Session.Validated user.id google_user
+
+                                ( users_status, cmd ) =
+                                    loadData session model.route
+                            in
+                            ( { model
+                                | session = session
+                                , users = Dict.insert user.id user model.users
+                                , users_status = Loaded ()
+                              }
+                            , cmd
+                            )
+
+                        Err e ->
+                            ( { model | session = Session.NetworkError e }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
 
         GotUsers users_result ->
             ( case users_result of
@@ -289,13 +308,13 @@ update msg model =
                 | user_edit = PartialUser Nothing Nothing Nothing Nothing
                 , users_status = Loading
               }
-            , case model.signin of
-                SignedIn user ->
+            , case idToken model.session of
+                Just id_token ->
                     case model.route of
                         UserDetail user_id ->
                             Http.request
                                 { method = "PUT"
-                                , headers = [ header "id_token" user.id_token ]
+                                , headers = [ header "id_token" id_token ]
                                 , url =
                                     B.relative
                                         [ apiUrl
@@ -312,14 +331,14 @@ update msg model =
                         _ ->
                             Cmd.none
 
-                _ ->
+                Nothing ->
                     Cmd.none
             )
 
         Updated _ ->
             let
                 ( users_status, cmd ) =
-                    loadData model.route model.signin
+                    loadData model.session model.route
             in
             ( { model | users_status = Maybe.withDefault model.users_status users_status }
             , cmd
@@ -327,13 +346,13 @@ update msg model =
 
         StartRemoveAccess access ->
             ( { model | users_status = Loading }
-            , case model.signin of
-                SignedIn user ->
+            , case idToken model.session of
+                Just id_token ->
                     case model.route of
                         UserDetail user_id ->
                             Http.request
                                 { method = "GET"
-                                , headers = [ header "id_token" user.id_token ]
+                                , headers = [ header "id_token" id_token ]
                                 , url =
                                     B.relative [ apiUrl, "user_access/" ]
                                         [ B.string "access_id"
@@ -353,7 +372,7 @@ update msg model =
                         _ ->
                             Cmd.none
 
-                _ ->
+                Nothing ->
                     Cmd.none
             )
 
@@ -363,11 +382,11 @@ update msg model =
                 Ok user_access_id ->
                     case user_access_id of
                         Just id ->
-                            case model.signin of
-                                SignedIn user ->
+                            case idToken model.session of
+                                Just id_token ->
                                     Http.request
                                         { method = "DELETE"
-                                        , headers = [ header "id_token" user.id_token ]
+                                        , headers = [ header "id_token" id_token ]
                                         , url =
                                             B.relative
                                                 [ apiUrl
@@ -381,7 +400,7 @@ update msg model =
                                         , tracker = Nothing
                                         }
 
-                                _ ->
+                                Nothing ->
                                     Cmd.none
 
                         Nothing ->
@@ -406,13 +425,13 @@ update msg model =
               }
             , case model.user_access of
                 Just new_access ->
-                    case model.signin of
-                        SignedIn user ->
+                    case idToken model.session of
+                        Just id_token ->
                             case model.route of
                                 UserDetail user_id ->
                                     Http.request
                                         { method = "POST"
-                                        , headers = [ header "id_token" user.id_token ]
+                                        , headers = [ header "id_token" id_token ]
                                         , url = B.relative [ apiUrl, "user_access/" ] []
                                         , body =
                                             jsonBody
@@ -430,7 +449,7 @@ update msg model =
                                 _ ->
                                     Cmd.none
 
-                        _ ->
+                        Nothing ->
                             Cmd.none
 
                 Nothing ->
@@ -513,14 +532,14 @@ update msg model =
                 | user_new = NewUser "" "" 0 "" []
                 , users_status = Loading
               }
-            , case model.signin of
-                SignedIn user ->
+            , case idToken model.session of
+                Just id_token ->
                     case model.route of
                         UserNew ->
                             Cmd.batch
                                 [ Http.request
                                     { method = "POST"
-                                    , headers = [ header "id_token" user.id_token ]
+                                    , headers = [ header "id_token" id_token ]
                                     , url =
                                         B.relative
                                             [ apiUrl
@@ -558,7 +577,7 @@ update msg model =
                 Just route ->
                     let
                         ( users_status, cmd ) =
-                            loadData route model.signin
+                            loadData model.session route
                     in
                     ( { model
                         | route = route
@@ -568,19 +587,19 @@ update msg model =
                     )
 
 
-loadData : Route -> SignInModel -> ( Maybe (Network ()), Cmd Msg )
-loadData route signin =
+loadData : Session -> Route -> ( Maybe (Network ()), Cmd Msg )
+loadData session route =
     case route of
         Home ->
             ( Nothing, Cmd.none )
 
         Users ->
-            case signin of
-                SignedIn user ->
+            case idToken session of
+                Just id_token ->
                     ( Just Loading
                     , Http.request
                         { method = "GET"
-                        , headers = [ header "id_token" user.id_token ]
+                        , headers = [ header "id_token" id_token ]
                         , url = B.relative [ apiUrl, "users/" ] []
                         , body = emptyBody
                         , expect = Http.expectJson GotUsers userListDecoder
@@ -589,16 +608,16 @@ loadData route signin =
                         }
                     )
 
-                _ ->
+                Nothing ->
                     ( Just Loading, Cmd.none )
 
         UserDetail user_id ->
-            case signin of
-                SignedIn user ->
+            case idToken session of
+                Just id_token ->
                     ( Just Loading
                     , Http.request
                         { method = "GET"
-                        , headers = [ header "id_token" user.id_token ]
+                        , headers = [ header "id_token" id_token ]
                         , url =
                             B.relative [ apiUrl, "users", String.fromInt user_id ]
                                 []
@@ -609,7 +628,7 @@ loadData route signin =
                         }
                     )
 
-                _ ->
+                Nothing ->
                     ( Just Loading, Cmd.none )
 
         UserNew ->
@@ -617,16 +636,6 @@ loadData route signin =
 
         NotFound ->
             ( Nothing, Cmd.none )
-
-
-signedInUserDecoder : D.Decoder SignInUser
-signedInUserDecoder =
-    D.map5 SignInUser
-        (D.field "first_name" D.string)
-        (D.field "last_name" D.string)
-        (D.field "email" D.string)
-        (D.field "profile_url" D.string)
-        (D.field "id_token" D.string)
 
 
 userDecoder : D.Decoder User
@@ -716,23 +725,44 @@ newUserEncoder user =
 -- VIEW
 
 
-viewSignIn : SignInModel -> Html Msg
-viewSignIn model =
+viewSignIn : Session -> Dict UserId User -> Html Msg
+viewSignIn model users =
     case model of
-        SignedIn user ->
-            span [ class "level" ]
-                [ div [ class "level-left" ]
-                    [ p [ class "has-text-left", class "level-item" ]
-                        [ text (user.first_name ++ " " ++ user.last_name) ]
-                    ]
-                , div [ class "level-right" ]
-                    [ div [ class "image is-32x32", class "level-item" ]
-                        [ img [ src user.profile_url ] [] ]
-                    ]
-                ]
+        Session.Validated user_id google_user ->
+            case Dict.get user_id users of
+                Just user ->
+                    span [ class "level" ]
+                        ([ div [ class "level-left" ]
+                            [ p [ class "has-text-left", class "level-item" ]
+                                [ text (user.first_name ++ " " ++ user.last_name) ]
+                            ]
+                         ]
+                            |> (\l ->
+                                    case google_user.image_url of
+                                        Just image_url ->
+                                            List.append l
+                                                [ div [ class "level-right" ]
+                                                    [ div
+                                                        [ class "image is-32x32"
+                                                        , class "level-item"
+                                                        ]
+                                                        [ img [ src image_url ] [] ]
+                                                    ]
+                                                ]
 
-        SignedOut ->
-            div [ class "level-item" ]
+                                        Nothing ->
+                                            l
+                               )
+                        )
+
+                Nothing ->
+                    div [] [ text "User not found!" ]
+
+        Session.SignedIn google_iser ->
+            div [] [ text "Validating..." ]
+
+        Session.NotSignedIn ->
+            div []
                 [ div []
                     [ div
                         [ class "g-signin2"
@@ -742,8 +772,14 @@ viewSignIn model =
                     ]
                 ]
 
-        SignInFailure _ ->
-            div [] [ text "Failed to sign in" ]
+        Session.GoogleError _ ->
+            div [] [ text "Google failed to sign in" ]
+
+        Session.NetworkError error ->
+            div [] [ text "Network error validating" ]
+
+        Session.AccessDenied ->
+            div [] [ text "Access denied!" ]
 
 
 
@@ -842,7 +878,7 @@ view model =
                         ]
                     , div [ class "navbar-end" ]
                         [ div [ class "navbar-item" ]
-                            [ viewSignIn model.signin ]
+                            [ viewSignIn model.session model.users ]
                         ]
                     ]
                 ]
