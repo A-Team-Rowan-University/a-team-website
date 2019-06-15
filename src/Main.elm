@@ -9,17 +9,23 @@ import Html.Events exposing (onClick, onInput)
 import Http exposing (Progress, emptyBody, header, jsonBody)
 import Json.Decode as D
 import Json.Encode as E
+import Network exposing (..)
 import Platform.Cmd
 import Platform.Sub
 import Set exposing (Set)
 import Url
 import Url.Builder as B
 import Url.Parser as P exposing ((</>))
+import Users exposing (Access, NewUser, NewUserConfig, PartialUser, User, UserDetailConfig, viewNewUser, viewUserDetail, viewUserList)
 
 
 apiUrl : String
 apiUrl =
     B.crossOrigin "http://localhost" [ "api", "v1" ] []
+
+
+
+--B.absolute [ "api", "v1" ] []
 
 
 staticUrl : String
@@ -54,39 +60,6 @@ port signIn : (E.Value -> msg) -> Sub msg
 -- MODEL
 
 
-type alias Access =
-    { id : Int
-    , access_name : String
-    }
-
-
-type alias User =
-    { id : Int
-    , first_name : String
-    , last_name : String
-    , email : String
-    , banner_id : Int
-    , accesses : List Access
-    }
-
-
-type alias NewUser =
-    { first_name : String
-    , last_name : String
-    , banner_id : Int
-    , email : String
-    , accesses : List Int
-    }
-
-
-type alias PartialUser =
-    { first_name : Maybe String
-    , last_name : Maybe String
-    , banner_id : Maybe Int
-    , email : Maybe String
-    }
-
-
 type alias SignInUser =
     { first_name : String
     , last_name : String
@@ -118,12 +91,6 @@ routeParser =
         , P.map UserDetail (P.s "users" </> P.int)
         , P.map UserNew (P.s "users" </> P.s "new")
         ]
-
-
-type Network a
-    = Loading
-    | Loaded a
-    | NetworkError Http.Error
 
 
 type alias UserId =
@@ -404,7 +371,7 @@ update msg model =
                                         , url =
                                             B.relative
                                                 [ apiUrl
-                                                , "user_access/"
+                                                , "user_access"
                                                 , String.fromInt id
                                                 ]
                                                 []
@@ -779,320 +746,65 @@ viewSignIn model =
             div [] [ text "Failed to sign in" ]
 
 
-viewUser : User -> Html Msg
-viewUser user =
-    a [ class "box", href (B.relative [ "users", String.fromInt user.id ] []) ]
-        [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
-        , p [ class "subtitle is-5 columns" ]
-            [ span [ class "column" ]
-                [ text ("Email: " ++ user.email) ]
-            , span [ class "column" ]
-                [ text ("Banner ID: " ++ String.fromInt user.banner_id) ]
-            ]
-        ]
+
+{-
+   | NewFirstName String
+   | NewLastName String
+   | NewBannerId (Maybe Int)
+   | NewEmail String
+   | EditNewUserAccess (Maybe Int)
+   | SubmitNewUserAccess
+   | RemoveNewUserAccess Int
+   | SubmitNewUser
+-}
 
 
-viewAccess : User -> Access -> Html Msg
-viewAccess user access =
-    div [ class "columns" ]
-        [ span [ class "column" ] [ text (String.fromInt access.id ++ ": " ++ access.access_name) ]
-        , div [ class "column" ]
-            [ button
-                [ class "button is-danger is-pulled-right"
-                , onClick (StartRemoveAccess access)
-                ]
-                [ text "Remove" ]
-            ]
-        ]
+userDetailConfig : UserDetailConfig Msg
+userDetailConfig =
+    { onEditFirstName = EditUserFirstName
+    , onResetFirstName = ResetUserFirstName
+    , onEditLastName = EditUserLastName
+    , onResetLastName = ResetUserLastName
+    , onEditEmail = EditUserEmail
+    , onResetEmail = ResetUserEmail
+    , onEditBannerId = EditUserBannerId
+    , onResetBannerId = ResetUserBannerId
+    , onEditAccess = EditUserAccess
+    , onAddAccess = SubmitUserAccess
+    , onRemoveAccess = StartRemoveAccess
+    , onSubmit = SubmitEditUser
+    }
 
 
-viewEditableText : String -> Maybe String -> (String -> Msg) -> Msg -> Html Msg
-viewEditableText defaultText editedText onEdit onReset =
-    case editedText of
-        Nothing ->
-            p
-                [ onClick (onEdit defaultText) ]
-                [ text defaultText ]
-
-        Just edited ->
-            div [ class "field has-addons" ]
-                [ div [ class "control" ]
-                    [ input
-                        [ class "input"
-                        , value edited
-                        , onInput onEdit
-                        ]
-                        []
-                    ]
-                , div [ class "control" ]
-                    [ button
-                        [ class "button is-danger"
-                        , onClick onReset
-                        ]
-                        [ text "Reset" ]
-                    ]
-                ]
-
-
-viewEditableInt : Int -> Maybe Int -> (Maybe Int -> Msg) -> Msg -> Html Msg
-viewEditableInt default edited onEdit onReset =
-    case edited of
-        Nothing ->
-            p
-                [ onClick (onEdit (Just default)) ]
-                [ text (String.fromInt default) ]
-
-        Just edit ->
-            div [ class "field has-addons" ]
-                [ div [ class "control" ]
-                    [ input
-                        [ class "input"
-                        , value (String.fromInt edit)
-                        , onInput (\s -> onEdit (String.toInt s))
-                        , type_ "number"
-                        ]
-                        []
-                    ]
-                , div [ class "control" ]
-                    [ button
-                        [ class "button is-danger"
-                        , onClick onReset
-                        ]
-                        [ text "Reset" ]
-                    ]
-                ]
-
-
-viewAddUserAccess : Maybe Int -> (Maybe Int -> msg) -> msg -> Html msg
-viewAddUserAccess access_id onEdit onSubmit =
-    case access_id of
-        Nothing ->
-            button
-                [ class "button is-primary", onClick (onEdit (Just 0)) ]
-                [ text "Add" ]
-
-        Just edit ->
-            div [ class "field has-addons" ]
-                [ div [ class "control" ]
-                    [ input
-                        [ class "input"
-                        , value (String.fromInt edit)
-                        , onInput (\s -> onEdit (String.toInt s))
-                        , type_ "number"
-                        ]
-                        []
-                    ]
-                , div [ class "control" ]
-                    [ button
-                        [ class "button is-primary"
-                        , onClick onSubmit
-                        ]
-                        [ text "Submit" ]
-                    ]
-                ]
-
-
-viewNewUser : NewUser -> Maybe Int -> Html Msg
-viewNewUser user access_id =
-    div []
-        [ p [ class "title has-text-centered" ]
-            [ text "New User" ]
-        , p [ class "columns" ]
-            [ span [ class "column" ]
-                [ p [ class "subtitle has-text-centered" ] [ text "User Details" ]
-                , div [ class "box" ]
-                    [ span [] [ text "First Name: " ]
-                    , input
-                        [ class "input"
-                        , value user.first_name
-                        , onInput NewFirstName
-                        ]
-                        []
-                    ]
-                , div [ class "box" ]
-                    [ span [] [ text "Last Name: " ]
-                    , input
-                        [ class "input"
-                        , value user.last_name
-                        , onInput NewLastName
-                        ]
-                        []
-                    ]
-                , div [ class "box" ]
-                    [ span [] [ text "Email: " ]
-                    , input
-                        [ class "input"
-                        , value user.email
-                        , onInput NewEmail
-                        ]
-                        []
-                    ]
-                , div [ class "box" ]
-                    [ span [] [ text "Banner ID: " ]
-                    , input
-                        [ class "input"
-                        , type_ "number"
-                        , value (String.fromInt user.banner_id)
-                        , onInput (\s -> String.toInt s |> NewBannerId)
-                        ]
-                        []
-                    ]
-                , button
-                    [ class "button is-primary"
-                    , onClick SubmitNewUser
-                    ]
-                    [ text "Submit new user" ]
-                ]
-            , div [ class "column" ]
-                [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
-                , div [ class "box" ]
-                    (List.map
-                        (\id ->
-                            div [ class "columns" ]
-                                [ span [ class "column" ] [ String.fromInt id |> text ]
-                                , div [ class "column" ]
-                                    [ button
-                                        [ class "button is-danger is-pulled-right"
-                                        , onClick (RemoveNewUserAccess id)
-                                        ]
-                                        [ text "Remove" ]
-                                    ]
-                                ]
-                        )
-                        user.accesses
-                    )
-                , viewAddUserAccess access_id EditNewUserAccess SubmitNewUserAccess
-                ]
-            ]
-        ]
-
-
-viewUserDetail : User -> PartialUser -> Maybe Int -> Network () -> Html Msg
-viewUserDetail user user_edit user_access users_status =
-    div []
-        [ viewNetwork (\a -> div [] []) users_status
-        , p [ class "title has-text-centered" ]
-            [ text (user.first_name ++ " " ++ user.last_name) ]
-        , p [ class "columns" ]
-            [ span [ class "column" ]
-                [ p [ class "subtitle has-text-centered" ] [ text "User Details" ]
-                , div [ class "box" ]
-                    [ span [] [ text "First Name: " ]
-                    , viewEditableText
-                        user.first_name
-                        user_edit.first_name
-                        EditUserFirstName
-                        ResetUserFirstName
-                    ]
-                , div [ class "box" ]
-                    [ span [] [ text "Last Name: " ]
-                    , viewEditableText
-                        user.last_name
-                        user_edit.last_name
-                        EditUserLastName
-                        ResetUserLastName
-                    ]
-                , div [ class "box" ]
-                    [ span [] [ text "Email: " ]
-                    , viewEditableText
-                        user.email
-                        user_edit.email
-                        EditUserEmail
-                        ResetUserEmail
-                    ]
-                , div [ class "box" ]
-                    [ span [] [ text "Banner ID: " ]
-                    , viewEditableInt
-                        user.banner_id
-                        user_edit.banner_id
-                        EditUserBannerId
-                        ResetUserBannerId
-                    ]
-                , button
-                    [ class "button is-primary"
-                    , onClick SubmitEditUser
-                    ]
-                    [ text "Submit edits" ]
-                ]
-            , div [ class "column" ]
-                [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
-                , div [ class "box" ] (List.map (viewAccess user) user.accesses)
-                , viewAddUserAccess user_access EditUserAccess SubmitUserAccess
-                ]
-            ]
-        ]
-
-
-viewPageUserList : Dict UserId User -> Network () -> Html Msg
-viewPageUserList users users_status =
-    div []
-        [ viewNetwork (\a -> div [] []) users_status
-        , p [ class "title has-text-centered" ] [ text "Users" ]
-        , div [ class "columns" ]
-            [ div [ class "column is-one-fifth" ]
-                [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]
-                , p [ class "has-text-centered" ] [ text "Working on it :)" ]
-                ]
-            , div [ class "column" ]
-                [ div [] (List.map viewUser (Dict.values users))
-                , a [ class "button is-primary", href "/users/new" ] [ text "New User" ]
-                ]
-            ]
-        ]
-
-
-viewNetwork : (a -> Html Msg) -> Network a -> Html Msg
-viewNetwork viewFunc network =
-    case network of
-        Loading ->
-            progress [ class "progress is-info is-small" ] []
-
-        Loaded a ->
-            viewFunc a
-
-        NetworkError e ->
-            div [ class "notification is-danger" ]
-                [ text "There was a problem with the network. The shown data may not be up to date." ]
-
-
-viewNetwork2 : (a -> b -> Html Msg) -> Network a -> Network b -> Html Msg
-viewNetwork2 viewFunc network_a network_b =
-    case ( network_a, network_b ) of
-        ( Loading, Loading ) ->
-            div [] [ text "Loading..." ]
-
-        ( Loading, Loaded a ) ->
-            div [] [ text "Loading..." ]
-
-        ( Loaded a, Loading ) ->
-            div [] [ text "Loading..." ]
-
-        ( Loaded a, Loaded b ) ->
-            viewFunc a b
-
-        ( NetworkError e, _ ) ->
-            div [] [ text "Network error!" ]
-
-        ( _, NetworkError e ) ->
-            div [] [ text "Network error!" ]
+newUserConfig : NewUserConfig Msg
+newUserConfig =
+    { onEditFirstName = NewFirstName
+    , onEditLastName = NewLastName
+    , onEditEmail = NewEmail
+    , onEditBannerId = NewBannerId
+    , onEditAccess = EditNewUserAccess
+    , onAddAccess = SubmitNewUserAccess
+    , onRemoveAccess = RemoveNewUserAccess
+    , onSubmit = SubmitNewUser
+    }
 
 
 viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Users ->
-            viewPageUserList model.users model.users_status
+            viewUserList model.users model.users_status
 
         UserDetail user_id ->
             case Dict.get user_id model.users of
                 Just user ->
-                    viewUserDetail user model.user_edit model.user_access model.users_status
+                    viewUserDetail userDetailConfig user model.user_edit model.user_access model.users_status
 
                 Nothing ->
                     p [] [ text "User not found" ]
 
         UserNew ->
-            viewNewUser model.user_new model.user_new_access
+            viewNewUser newUserConfig model.user_new model.user_new_access
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
