@@ -596,12 +596,10 @@ updateDetail id_token state msg user_id =
 viewDetail :
     User
     -> DetailState
-    -> Network ()
     -> Html DetailMsg
-viewDetail user state users_status =
+viewDetail user state =
     div []
-        [ viewNetwork (\a -> div [] []) users_status
-        , p [ class "title has-text-centered" ]
+        [ p [ class "title has-text-centered" ]
             [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "columns" ]
             [ span [ class "column" ]
@@ -654,11 +652,10 @@ viewDetail user state users_status =
         ]
 
 
-viewList : Dict Id User -> Network () -> Html msg
-viewList users users_status =
+viewList : Dict Id User -> Html msg
+viewList users =
     div []
-        [ viewNetwork (\a -> div [] []) users_status
-        , p [ class "title has-text-centered" ] [ text "Users" ]
+        [ p [ class "title has-text-centered" ] [ text "Users" ]
         , div [ class "columns" ]
             [ div [ class "column is-one-fifth" ]
                 [ p [ class "title is-4 has-text-centered" ] [ text "Search" ]

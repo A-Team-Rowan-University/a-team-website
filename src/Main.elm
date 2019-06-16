@@ -71,7 +71,6 @@ type alias Model =
     , route : Route
     , session : Session Users.Id
     , users : Dict Users.Id User
-    , users_status : Network ()
     , user_detail : Users.DetailState
     , user_new : Users.New
     , user_new_access : Maybe Int
@@ -99,7 +98,6 @@ init _ url key =
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , session = Session.NotSignedIn
       , users = Dict.empty
-      , users_status = Loading Nothing
       , user_detail = Users.initDetail
       , user_new =
             { first_name = ""
@@ -126,7 +124,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | GotUsers (Result Http.Error (List User))
-    | GotUser (Result Http.Error User)
+    | GotUser Users.Id (Result Http.Error User)
     | UserDetailMsg Users.DetailMsg
     | Updated (Result Http.Error ())
     | NewFirstName String
@@ -147,7 +145,6 @@ update msg model =
                 Ok google_user ->
                     ( { model
                         | session = Session.SignedIn google_user
-                        , users_status = Loading Nothing
                       }
                     , Http.request
                         { method = "GET"
@@ -205,24 +202,52 @@ update msg model =
                         | users =
                             Dict.fromList
                                 (List.map (\u -> ( u.id, u )) users)
-                        , users_status = Loaded ()
+                        , requests =
+                            handleRequestChange
+                                (Just (RemoveRequest "get users"))
+                                model.requests
                     }
 
                 Err e ->
-                    { model | users_status = NetworkError e }
+                    { model
+                        | requests =
+                            handleRequestChange
+                                (Just (RemoveRequest "get users"))
+                                model.requests
+                    }
             , Cmd.none
             )
 
-        GotUser user_result ->
+        GotUser id user_result ->
             ( case user_result of
                 Ok user ->
                     { model
                         | users = Dict.insert user.id user model.users
-                        , users_status = Loaded ()
+                        , requests =
+                            handleRequestChange
+                                (Just
+                                    (RemoveRequest
+                                        ("get user "
+                                            ++ String.fromInt user.id
+                                        )
+                                    )
+                                )
+                                model.requests
                     }
 
                 Err e ->
-                    { model | users_status = NetworkError e }
+                    { model
+                        | requests =
+                            handleRequestChange
+                                (Just
+                                    (RemoveRequest
+                                        ("get user "
+                                            ++ String.fromInt id
+                                        )
+                                    )
+                                )
+                                model.requests
+                    }
             , Cmd.none
             )
 
@@ -375,7 +400,6 @@ update msg model =
         SubmitNewUser ->
             ( { model
                 | user_new = Users.New "" "" 0 "" []
-                , users_status = Loading Nothing
               }
             , case idToken model.session of
                 Just id_token ->
@@ -486,7 +510,10 @@ loadData session route =
                             B.relative [ apiUrl, "users", String.fromInt user_id ]
                                 []
                         , body = emptyBody
-                        , expect = Http.expectJson GotUser Users.decoder
+                        , expect =
+                            Http.expectJson
+                                (GotUser user_id)
+                                Users.decoder
                         , timeout = Nothing
                         , tracker = Just tracker
                         }
@@ -538,7 +565,7 @@ viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Users ->
-            Users.viewList model.users model.users_status
+            Users.viewList model.users
 
         UserDetail user_id ->
             case Dict.get user_id model.users of
@@ -548,7 +575,6 @@ viewPage model =
                         (Users.viewDetail
                             user
                             model.user_detail
-                            model.users_status
                         )
 
                 Nothing ->
