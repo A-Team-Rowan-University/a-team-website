@@ -135,6 +135,7 @@ type Msg
     | SubmitNewUserAccess
     | RemoveNewUserAccess Int
     | SubmitNewUser
+    | CloseNotification Int
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -430,6 +431,16 @@ update msg model =
                     Cmd.none
             )
 
+        -- 0 1 2 3 4 5 6
+        CloseNotification index ->
+            ( { model
+                | notifications =
+                    List.take index model.notifications
+                        ++ List.drop (index + 1) model.notifications
+              }
+            , Cmd.none
+            )
+
         LinkClicked request ->
             case request of
                 Browser.Internal url ->
@@ -702,24 +713,36 @@ view model =
                     )
                 , div [ class "column" ] [ viewPage model ]
                 , div [ class "column is-one-fifth" ]
-                    (List.map viewNotification model.notifications)
+                    (List.indexedMap (viewNotification CloseNotification) model.notifications)
                 ]
             ]
         ]
     }
 
 
-viewNotification : Notification -> Html msg
-viewNotification notification =
+viewNotification : (Int -> msg) -> Int -> Notification -> Html msg
+viewNotification onClose index notification =
     case notification of
         NError t ->
-            div [ class "notification is-danger" ] [ text t ]
+            div [ class "notification is-danger" ]
+                [ button [ class "delete", onClick (onClose index) ] []
+                , text t
+                ]
 
         NWarning t ->
-            div [ class "notification is-warning" ] [ text t ]
+            div [ class "notification is-warning" ]
+                [ button [ class "delete", onClick (onClose index) ] []
+                , text t
+                ]
 
         NInfo t ->
-            div [ class "notification is-info" ] [ text t ]
+            div [ class "notification is-info" ]
+                [ button [ class "delete", onClick (onClose index) ] []
+                , text t
+                ]
 
         NDebug t ->
-            div [ class "notification" ] [ text t ]
+            div [ class "notification" ]
+                [ button [ class "delete", onClick (onClose index) ] []
+                , text t
+                ]
