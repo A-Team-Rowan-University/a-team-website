@@ -1,15 +1,19 @@
-port module Session exposing (Session(..), googleUserDecoder, idToken)
+port module Session exposing
+    ( GoogleUser
+    , Session(..)
+    , googleUserDecoder
+    , idToken
+    )
 
 import Http
 import Json.Decode as D
 import Json.Decode.Pipeline as P
-import Users exposing (UserId)
 
 
-type Session
+type Session userid
     = NotSignedIn
     | SignedIn GoogleUser
-    | Validated UserId GoogleUser
+    | Validated userid GoogleUser
     | GoogleError D.Error
     | NetworkError Http.Error
     | AccessDenied
@@ -27,11 +31,10 @@ type alias GoogleUser =
     }
 
 
-
--- Extract the Id Token from the signed in user if they are signed in and validated
-
-
-idToken : Session -> Maybe String
+{-| Extract the Id Token from the signed in user if
+they are signed in and validated
+-}
+idToken : Session userid -> Maybe String
 idToken session =
     case session of
         NotSignedIn ->

@@ -1,21 +1,53 @@
-module Network exposing (Network(..), viewNetwork, viewNetwork2)
+module Network exposing
+    ( Network(..)
+    , Notification(..)
+    , RequestChange(..)
+    , viewNetwork
+    )
 
 import Html exposing (Html, div, progress, text)
 import Html.Attributes exposing (class)
 import Http
 
 
+type Notification
+    = NError String
+    | NWarning String
+    | NInfo String
+    | NDebug String
+
+
+type RequestChange
+    = AddRequest String
+    | RemoveRequest String
+
+
 type Network a
-    = Loading
+    = NotLoaded
+    | Loading (Maybe a)
     | Loaded a
     | NetworkError Http.Error
+    | AccessDenied
 
 
 viewNetwork : (a -> Html msg) -> Network a -> Html msg
 viewNetwork viewFunc network =
     case network of
-        Loading ->
-            progress [ class "progress is-info is-small" ] []
+        NotLoaded ->
+            div [] [ text "Not loaded yet" ]
+
+        Loading ma ->
+            case ma of
+                Just a ->
+                    div []
+                        [ progress
+                            [ class "progress is-info is-small" ]
+                            []
+                        , viewFunc a
+                        ]
+
+                Nothing ->
+                    progress [ class "progress is-info is-small" ] []
 
         Loaded a ->
             viewFunc a
@@ -24,24 +56,6 @@ viewNetwork viewFunc network =
             div [ class "notification is-danger" ]
                 [ text "There was a problem with the network. The shown data may not be up to date." ]
 
-
-viewNetwork2 : (a -> b -> Html msg) -> Network a -> Network b -> Html msg
-viewNetwork2 viewFunc network_a network_b =
-    case ( network_a, network_b ) of
-        ( Loading, Loading ) ->
-            div [] [ text "Loading..." ]
-
-        ( Loading, Loaded a ) ->
-            div [] [ text "Loading..." ]
-
-        ( Loaded a, Loading ) ->
-            div [] [ text "Loading..." ]
-
-        ( Loaded a, Loaded b ) ->
-            viewFunc a b
-
-        ( NetworkError e, _ ) ->
-            div [] [ text "Network error!" ]
-
-        ( _, NetworkError e ) ->
-            div [] [ text "Network error!" ]
+        AccessDenied ->
+            div [ class "notification is-warning" ]
+                [ text "You do not have permission for this request" ]
