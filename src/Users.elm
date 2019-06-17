@@ -12,6 +12,8 @@ module Users exposing
     , listDecoder
     , newEncoder
     , updateDetail
+    , userUrl
+    , usersUrl
     , view
     , viewAccess
     , viewAddAccess
@@ -79,6 +81,17 @@ type alias Partial r =
         , banner_id : Maybe Int
         , email : Maybe String
     }
+
+
+usersUrl : String
+usersUrl =
+    B.relative [ apiUrl, "users/" ] []
+
+
+userUrl : Id -> String
+userUrl user_id =
+    B.relative [ apiUrl, "users", String.fromInt user_id ]
+        []
 
 
 userEditSubmitUrl : Id -> String

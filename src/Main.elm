@@ -207,7 +207,7 @@ update msg model =
                                 (List.map (\u -> ( u.id, u )) users)
                         , requests =
                             handleRequestChanges
-                                [ RemoveRequest "get users" ]
+                                [ Users.usersUrl |> RemoveRequest ]
                                 model.requests
                     }
 
@@ -215,7 +215,7 @@ update msg model =
                     { model
                         | requests =
                             handleRequestChanges
-                                [ RemoveRequest "get users" ]
+                                [ Users.usersUrl |> RemoveRequest ]
                                 model.requests
                     }
             , Cmd.none
@@ -228,11 +228,7 @@ update msg model =
                         | users = Dict.insert user.id user model.users
                         , requests =
                             handleRequestChanges
-                                [ RemoveRequest
-                                    ("get user "
-                                        ++ String.fromInt user.id
-                                    )
-                                ]
+                                [ Users.userUrl id |> RemoveRequest ]
                                 model.requests
                     }
 
@@ -240,11 +236,7 @@ update msg model =
                     { model
                         | requests =
                             handleRequestChanges
-                                [ RemoveRequest
-                                    ("get user "
-                                        ++ String.fromInt id
-                                    )
-                                ]
+                                [ Users.userUrl id |> RemoveRequest ]
                                 model.requests
                     }
             , Cmd.none
@@ -479,20 +471,16 @@ loadData session route =
         Users ->
             case idToken session of
                 Just id_token ->
-                    let
-                        tracker =
-                            "get users"
-                    in
                     ( Http.request
                         { method = "GET"
                         , headers = [ header "id_token" id_token ]
-                        , url = B.relative [ apiUrl, "users/" ] []
+                        , url = Users.usersUrl
                         , body = emptyBody
                         , expect = Http.expectJson GotUsers Users.listDecoder
                         , timeout = Nothing
-                        , tracker = Just tracker
+                        , tracker = Users.usersUrl |> Just
                         }
-                    , [ AddRequest tracker ]
+                    , [ Users.usersUrl |> AddRequest ]
                     , []
                     )
 
@@ -512,18 +500,16 @@ loadData session route =
                     ( Http.request
                         { method = "GET"
                         , headers = [ header "id_token" id_token ]
-                        , url =
-                            B.relative [ apiUrl, "users", String.fromInt user_id ]
-                                []
+                        , url = Users.userUrl user_id
                         , body = emptyBody
                         , expect =
                             Http.expectJson
                                 (GotUser user_id)
                                 Users.decoder
                         , timeout = Nothing
-                        , tracker = Just tracker
+                        , tracker = Users.userUrl user_id |> Just
                         }
-                    , [ AddRequest tracker ]
+                    , [ Users.userUrl user_id |> AddRequest ]
                     , []
                     )
 
