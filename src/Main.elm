@@ -79,17 +79,19 @@ type alias Model =
     }
 
 
-handleRequestChange : Maybe RequestChange -> Set String -> Set String
-handleRequestChange request requests =
-    case request of
-        Just (AddRequest r) ->
-            Set.insert r requests
+handleRequestChanges : List RequestChange -> Set String -> Set String
+handleRequestChanges request_changes original_requests =
+    List.foldr
+        (\request_change requests ->
+            case request_change of
+                AddRequest r ->
+                    Set.insert r requests
 
-        Just (RemoveRequest r) ->
-            Set.remove r requests
-
-        Nothing ->
-            requests
+                RemoveRequest r ->
+                    Set.remove r requests
+        )
+        original_requests
+        request_changes
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -179,7 +181,7 @@ update msg model =
                                 | session = session
                                 , users = Dict.insert user.id user model.users
                                 , requests =
-                                    handleRequestChange
+                                    handleRequestChanges
                                         request
                                         model.requests
                                 , notifications =
@@ -204,16 +206,16 @@ update msg model =
                             Dict.fromList
                                 (List.map (\u -> ( u.id, u )) users)
                         , requests =
-                            handleRequestChange
-                                (Just (RemoveRequest "get users"))
+                            handleRequestChanges
+                                [ RemoveRequest "get users" ]
                                 model.requests
                     }
 
                 Err e ->
                     { model
                         | requests =
-                            handleRequestChange
-                                (Just (RemoveRequest "get users"))
+                            handleRequestChanges
+                                [ RemoveRequest "get users" ]
                                 model.requests
                     }
             , Cmd.none
@@ -225,28 +227,24 @@ update msg model =
                     { model
                         | users = Dict.insert user.id user model.users
                         , requests =
-                            handleRequestChange
-                                (Just
-                                    (RemoveRequest
-                                        ("get user "
-                                            ++ String.fromInt user.id
-                                        )
+                            handleRequestChanges
+                                [ RemoveRequest
+                                    ("get user "
+                                        ++ String.fromInt user.id
                                     )
-                                )
+                                ]
                                 model.requests
                     }
 
                 Err e ->
                     { model
                         | requests =
-                            handleRequestChange
-                                (Just
-                                    (RemoveRequest
-                                        ("get user "
-                                            ++ String.fromInt id
-                                        )
+                            handleRequestChanges
+                                [ RemoveRequest
+                                    ("get user "
+                                        ++ String.fromInt id
                                     )
-                                )
+                                ]
                                 model.requests
                     }
             , Cmd.none
@@ -276,26 +274,23 @@ update msg model =
                                     [ Cmd.map UserDetailMsg response.cmd
                                     , load_cmd
                                     ]
-                                , model.requests
-                                    |> handleRequestChange
-                                        response.request
-                                    |> handleRequestChange
-                                        load_request
+                                , response.requests ++ load_request
                                 , response.notifications
                                     ++ load_notifications
                                 )
 
                             else
                                 ( Cmd.map UserDetailMsg response.cmd
-                                , handleRequestChange
-                                    response.request
-                                    model.requests
+                                , response.requests
                                 , response.notifications
                                 )
                     in
                     ( { model
                         | user_detail = response.state
-                        , requests = requests
+                        , requests =
+                            handleRequestChanges
+                                requests
+                                model.requests
                         , notifications =
                             model.notifications
                                 ++ notifications
@@ -313,7 +308,7 @@ update msg model =
             in
             ( { model
                 | requests =
-                    handleRequestChange
+                    handleRequestChanges
                         request
                         model.requests
                 , notifications =
@@ -462,7 +457,7 @@ update msg model =
                     ( { model
                         | route = route
                         , requests =
-                            handleRequestChange
+                            handleRequestChanges
                                 request
                                 model.requests
                         , notifications =
@@ -475,11 +470,11 @@ update msg model =
 loadData :
     Session Users.Id
     -> Route
-    -> ( Cmd Msg, Maybe RequestChange, List Notification )
+    -> ( Cmd Msg, List RequestChange, List Notification )
 loadData session route =
     case route of
         Home ->
-            ( Cmd.none, Nothing, [] )
+            ( Cmd.none, [], [] )
 
         Users ->
             case idToken session of
@@ -497,13 +492,13 @@ loadData session route =
                         , timeout = Nothing
                         , tracker = Just tracker
                         }
-                    , Just (AddRequest tracker)
+                    , [ AddRequest tracker ]
                     , []
                     )
 
                 Nothing ->
                     ( Cmd.none
-                    , Nothing
+                    , []
                     , [ NWarning "You must be logged in to get users" ]
                     )
 
@@ -528,21 +523,21 @@ loadData session route =
                         , timeout = Nothing
                         , tracker = Just tracker
                         }
-                    , Just (AddRequest tracker)
+                    , [ AddRequest tracker ]
                     , []
                     )
 
                 Nothing ->
                     ( Cmd.none
-                    , Nothing
+                    , []
                     , [ NWarning "You must be logged in to get users" ]
                     )
 
         UserNew ->
-            ( Cmd.none, Nothing, [] )
+            ( Cmd.none, [], [] )
 
         NotFound ->
-            ( Cmd.none, Nothing, [] )
+            ( Cmd.none, [], [] )
 
 
 

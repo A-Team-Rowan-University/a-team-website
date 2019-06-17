@@ -81,6 +81,41 @@ type alias Partial r =
     }
 
 
+userEditSubmitUrl : Id -> String
+userEditSubmitUrl user_id =
+    B.relative
+        [ apiUrl
+        , "users"
+        , String.fromInt user_id
+        ]
+        []
+
+
+userAccessSearchUrl : Int -> Id -> String
+userAccessSearchUrl access_id user_id =
+    B.relative [ apiUrl, "user_access/" ]
+        [ B.string "access_id"
+            ("exact," ++ String.fromInt access_id)
+        , B.string "user_id"
+            ("exact," ++ String.fromInt user_id)
+        ]
+
+
+userAccessUrl : Int -> String
+userAccessUrl access_id =
+    B.relative
+        [ apiUrl
+        , "user_access"
+        , String.fromInt access_id
+        ]
+        []
+
+
+userAccessAddUrl : String
+userAccessAddUrl =
+    B.relative [ apiUrl, "user_access/" ] []
+
+
 
 -- BEGIN New User
 
@@ -225,7 +260,7 @@ type DetailMsg
     | AddedAccess Int (Result Http.Error ())
     | RemoveAccess Access
     | FinishRemoveAccess Int (Result Http.Error (Maybe Int))
-    | RemovedAccess (Result Http.Error ())
+    | RemovedAccess Int (Result Http.Error ())
     | Submit
     | Submitted (Result Http.Error ())
 
@@ -233,7 +268,7 @@ type DetailMsg
 type alias DetailResponse =
     { state : DetailState
     , cmd : Cmd DetailMsg
-    , request : Maybe RequestChange
+    , requests : List RequestChange
     , reload : Bool
     , notifications : List Notification
     }
@@ -250,7 +285,7 @@ updateDetail id_token state msg user_id =
         EditFirstName first_name ->
             { state = { state | first_name = Just first_name }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
@@ -258,7 +293,7 @@ updateDetail id_token state msg user_id =
         ResetFirstName ->
             { state = { state | first_name = Nothing }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
@@ -266,7 +301,7 @@ updateDetail id_token state msg user_id =
         EditLastName last_name ->
             { state = { state | last_name = Just last_name }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
@@ -274,7 +309,7 @@ updateDetail id_token state msg user_id =
         ResetLastName ->
             { state = { state | last_name = Nothing }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
@@ -284,7 +319,7 @@ updateDetail id_token state msg user_id =
                 Just id ->
                     { state = { state | banner_id = Just id }
                     , cmd = Cmd.none
-                    , request = Nothing
+                    , requests = []
                     , reload = False
                     , notifications = []
                     }
@@ -292,7 +327,7 @@ updateDetail id_token state msg user_id =
                 Nothing ->
                     { state = state
                     , cmd = Cmd.none
-                    , request = Nothing
+                    , requests = []
                     , reload = False
                     , notifications = []
                     }
@@ -300,7 +335,7 @@ updateDetail id_token state msg user_id =
         ResetBannerId ->
             { state = { state | banner_id = Nothing }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
@@ -308,7 +343,7 @@ updateDetail id_token state msg user_id =
         EditEmail email ->
             { state = { state | email = Just email }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
@@ -316,48 +351,34 @@ updateDetail id_token state msg user_id =
         ResetEmail ->
             { state = { state | email = Nothing }
             , cmd = Cmd.none
-            , request = Nothing
+            , requests = []
             , reload = False
             , notifications = []
             }
 
         Submit ->
-            let
-                tracker =
-                    "edit user " ++ String.fromInt user_id
-            in
             { state = state
             , cmd =
                 Http.request
                     { method = "PUT"
                     , headers = [ Http.header "id_token" id_token ]
-                    , url =
-                        B.relative
-                            [ apiUrl
-                            , "users"
-                            , String.fromInt user_id
-                            ]
-                            []
+                    , url = userEditSubmitUrl user_id
                     , body = Http.jsonBody (partialEncoder state)
                     , expect = Http.expectWhatever Submitted
                     , timeout = Nothing
-                    , tracker = Just tracker
+                    , tracker = userEditSubmitUrl user_id |> Just
                     }
-            , request = Just (AddRequest tracker)
+            , requests = [ userEditSubmitUrl user_id |> AddRequest ]
             , reload = False
             , notifications = []
             }
 
         Submitted result ->
-            let
-                tracker =
-                    "edit user " ++ String.fromInt user_id
-            in
             case result of
                 Ok _ ->
                     { state = initDetail
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests = [ userEditSubmitUrl user_id |> RemoveRequest ]
                     , reload = True
                     , notifications = []
                     }
@@ -365,7 +386,7 @@ updateDetail id_token state msg user_id =
                 Err e ->
                     { state = state
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests = [ userEditSubmitUrl user_id |> RemoveRequest ]
                     , reload = False
                     , notifications =
                         [ NError
@@ -374,34 +395,25 @@ updateDetail id_token state msg user_id =
                     }
 
         RemoveAccess access ->
-            let
-                tracker =
-                    "find user access "
-                        ++ String.fromInt access.id
-                        ++ " "
-                        ++ String.fromInt user_id
-            in
             { state = state
             , cmd =
                 Http.request
                     { method = "GET"
                     , headers = [ Http.header "id_token" id_token ]
-                    , url =
-                        B.relative [ apiUrl, "user_access/" ]
-                            [ B.string "access_id"
-                                ("exact," ++ String.fromInt access.id)
-                            , B.string "user_id"
-                                ("exact," ++ String.fromInt user_id)
-                            ]
+                    , url = userAccessSearchUrl access.id user_id
                     , body = Http.emptyBody
                     , expect =
                         Http.expectJson
                             (FinishRemoveAccess access.id)
                             (D.map List.head userAccessListDecoder)
                     , timeout = Nothing
-                    , tracker = Just tracker
+                    , tracker =
+                        userAccessSearchUrl access.id user_id |> Just
                     }
-            , request = Just (AddRequest tracker)
+            , requests =
+                [ userAccessSearchUrl access.id user_id
+                    |> AddRequest
+                ]
             , reload = False
             , notifications = []
             }
@@ -409,43 +421,38 @@ updateDetail id_token state msg user_id =
         FinishRemoveAccess access_id user_access_result ->
             case user_access_result of
                 Ok (Just id) ->
-                    let
-                        tracker =
-                            "remove user access " ++ String.fromInt id
-                    in
                     { state = state
                     , cmd =
                         Http.request
                             { method = "DELETE"
-                            , headers = [ Http.header "id_token" id_token ]
-                            , url =
-                                B.relative
-                                    [ apiUrl
-                                    , "user_access"
-                                    , String.fromInt id
-                                    ]
-                                    []
+                            , headers =
+                                [ Http.header "id_token" id_token
+                                ]
+                            , url = userAccessUrl access_id
                             , body = Http.emptyBody
-                            , expect = Http.expectWhatever RemovedAccess
+                            , expect =
+                                Http.expectWhatever
+                                    (RemovedAccess access_id)
                             , timeout = Nothing
-                            , tracker = Just tracker
+                            , tracker = userAccessUrl access_id |> Just
                             }
-                    , request = Just (AddRequest tracker)
+                    , requests =
+                        [ userAccessSearchUrl access_id user_id
+                            |> RemoveRequest
+                        , userAccessUrl access_id
+                            |> AddRequest
+                        ]
                     , reload = False
                     , notifications = []
                     }
 
                 Ok Nothing ->
-                    let
-                        tracker =
-                            "find user access "
-                                ++ String.fromInt access_id
-                                ++ " "
-                                ++ String.fromInt user_id
-                    in
                     { state = { state | access_edits = Nothing }
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests =
+                        [ userAccessSearchUrl access_id user_id
+                            |> RemoveRequest
+                        ]
                     , reload = True
                     , notifications =
                         [ NWarning
@@ -458,16 +465,12 @@ updateDetail id_token state msg user_id =
                     }
 
                 Err e ->
-                    let
-                        tracker =
-                            "find user access "
-                                ++ String.fromInt access_id
-                                ++ " "
-                                ++ String.fromInt user_id
-                    in
                     { state = state
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests =
+                        [ userAccessSearchUrl access_id user_id
+                            |> RemoveRequest
+                        ]
                     , reload = False
                     , notifications =
                         [ NError
@@ -478,16 +481,15 @@ updateDetail id_token state msg user_id =
                         ]
                     }
 
-        RemovedAccess result ->
-            let
-                tracker =
-                    "edit user " ++ String.fromInt user_id
-            in
+        RemovedAccess access_id result ->
             case result of
                 Ok _ ->
                     { state = { state | access_edits = Nothing }
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests =
+                        [ userAccessUrl access_id
+                            |> RemoveRequest
+                        ]
                     , reload = True
                     , notifications = []
                     }
@@ -495,11 +497,14 @@ updateDetail id_token state msg user_id =
                 Err e ->
                     { state = state
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests =
+                        [ userAccessUrl access_id
+                            |> RemoveRequest
+                        ]
                     , reload = False
                     , notifications =
                         [ NError
-                            "There was a network error submitting edits"
+                            "There was a network error removing the access"
                         ]
                     }
 
@@ -508,7 +513,7 @@ updateDetail id_token state msg user_id =
                 Just id ->
                     { state = { state | access_edits = Just id }
                     , cmd = Cmd.none
-                    , request = Nothing
+                    , requests = []
                     , reload = False
                     , notifications = []
                     }
@@ -516,7 +521,7 @@ updateDetail id_token state msg user_id =
                 Nothing ->
                     { state = state
                     , cmd = Cmd.none
-                    , request = Nothing
+                    , requests = []
                     , reload = False
                     , notifications = []
                     }
@@ -524,19 +529,14 @@ updateDetail id_token state msg user_id =
         AddAccess ->
             case state.access_edits of
                 Just new_access ->
-                    let
-                        tracker =
-                            "add access "
-                                ++ String.fromInt new_access
-                                ++ " "
-                                ++ String.fromInt user_id
-                    in
                     { state = state
                     , cmd =
                         Http.request
                             { method = "POST"
-                            , headers = [ Http.header "id_token" id_token ]
-                            , url = B.relative [ apiUrl, "user_access/" ] []
+                            , headers =
+                                [ Http.header "id_token" id_token
+                                ]
+                            , url = userAccessAddUrl
                             , body =
                                 Http.jsonBody
                                     (E.object
@@ -549,9 +549,9 @@ updateDetail id_token state msg user_id =
                                 Http.expectWhatever
                                     (AddedAccess new_access)
                             , timeout = Nothing
-                            , tracker = Just tracker
+                            , tracker = userAccessAddUrl |> Just
                             }
-                    , request = Just (AddRequest tracker)
+                    , requests = [ userAccessAddUrl |> AddRequest ]
                     , reload = False
                     , notifications = []
                     }
@@ -559,24 +559,17 @@ updateDetail id_token state msg user_id =
                 Nothing ->
                     { state = state
                     , cmd = Cmd.none
-                    , request = Nothing
+                    , requests = []
                     , reload = False
                     , notifications = []
                     }
 
         AddedAccess new_access result ->
-            let
-                tracker =
-                    "add access "
-                        ++ String.fromInt new_access
-                        ++ " "
-                        ++ String.fromInt user_id
-            in
             case result of
                 Ok _ ->
                     { state = initDetail
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests = [ userAccessAddUrl |> RemoveRequest ]
                     , reload = True
                     , notifications = []
                     }
@@ -584,7 +577,7 @@ updateDetail id_token state msg user_id =
                 Err e ->
                     { state = state
                     , cmd = Cmd.none
-                    , request = Just (RemoveRequest tracker)
+                    , requests = [ userAccessAddUrl |> RemoveRequest ]
                     , reload = False
                     , notifications =
                         [ NError
