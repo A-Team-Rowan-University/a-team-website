@@ -25,13 +25,9 @@ use webdev_lib::errors::ErrorKind;
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
-use webdev_lib::access::models::{AccessRequest, UserAccessRequest};
-<<<<<<< HEAD
-use webdev_lib::access::requests::get_user;
-=======
+use webdev_lib::access::models::{PermissionRequest, UserAccessRequest};
 use webdev_lib::access::requests::validate_token;
->>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
-use webdev_lib::access::requests::{handle_access, handle_user_access};
+use webdev_lib::access::requests::{handle_permission, handle_user_access};
 
 use webdev_lib::chemicals::models::{
     ChemicalInventoryRequest, ChemicalRequest,
@@ -139,48 +135,36 @@ fn handle_request(
     let mut requested_user = None;
 
     if let Some(id_token) = request.header("id_token") {
-<<<<<<< HEAD
-        requested_user = get_user(id_token, database_connection);
-=======
         trace!("Got id_token: {}", id_token);
         requested_user = validate_token(id_token, database_connection);
     } else {
         trace!("No id_token header!");
->>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
     }
 
     if let Some(user_request) = request.remove_prefix("/users") {
         match UserRequest::from_rouille(&user_request) {
             Err(err) => rouille::Response::from(err),
             Ok(user_request) => {
-<<<<<<< HEAD
-                match handle_user(user_request, requested_user, database_connection) {
-=======
                 match handle_user(
                     user_request,
                     requested_user,
                     database_connection,
                 ) {
->>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
                     Ok(user_response) => user_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
             }
         }
-    } else if let Some(access_request) = request.remove_prefix("/access") {
-        match AccessRequest::from_rouille(&access_request) {
+    } else if let Some(permission_request) = request.remove_prefix("/permission") {
+        match PermissionRequest::from_rouille(&permission_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(access_request) => {
-<<<<<<< HEAD
-                match handle_access(access_request, requested_user, database_connection) {
-=======
-                match handle_access(
-                    access_request,
+            Ok(permission_request) => {
+                match handle_permission(
+                    permission_request,
                     requested_user,
                     database_connection,
                 ) {
->>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
-                    Ok(access_response) => access_response.to_rouille(),
+                    Ok(permission_response) => permission_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
             }
@@ -223,15 +207,11 @@ fn handle_request(
         match ChemicalRequest::from_rouille(&chemical_request_url) {
             Err(err) => rouille::Response::from(err),
             Ok(chemical_request) => {
-<<<<<<< HEAD
-                match handle_chemical(chemical_request, requested_user, database_connection) {
-=======
                 match handle_chemical(
                     chemical_request,
                     requested_user,
                     database_connection,
                 ) {
->>>>>>> c13f328692ed428c350338e12bbdca1ddcf48ab0
                     Ok(chemical_response) => chemical_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
