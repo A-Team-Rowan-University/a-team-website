@@ -90,38 +90,20 @@ usersUrl =
 
 userUrl : Id -> String
 userUrl user_id =
-    B.relative [ apiUrl, "users", String.fromInt user_id ]
-        []
-
-
-userEditSubmitUrl : Id -> String
-userEditSubmitUrl user_id =
-    B.relative
-        [ apiUrl
-        , "users"
-        , String.fromInt user_id
-        ]
-        []
+    B.relative [ apiUrl, "users", String.fromInt user_id ] []
 
 
 userAccessSearchUrl : Int -> Id -> String
 userAccessSearchUrl access_id user_id =
     B.relative [ apiUrl, "user_access/" ]
-        [ B.string "access_id"
-            ("exact," ++ String.fromInt access_id)
-        , B.string "user_id"
-            ("exact," ++ String.fromInt user_id)
+        [ B.string "access_id" ("exact," ++ String.fromInt access_id)
+        , B.string "user_id" ("exact," ++ String.fromInt user_id)
         ]
 
 
 userAccessUrl : Int -> String
 userAccessUrl access_id =
-    B.relative
-        [ apiUrl
-        , "user_access"
-        , String.fromInt access_id
-        ]
-        []
+    B.relative [ apiUrl, "user_access", String.fromInt access_id ] []
 
 
 userAccessAddUrl : String
@@ -375,13 +357,13 @@ updateDetail id_token state msg user_id =
                 Http.request
                     { method = "PUT"
                     , headers = [ Http.header "id_token" id_token ]
-                    , url = userEditSubmitUrl user_id
+                    , url = userUrl user_id
                     , body = Http.jsonBody (partialEncoder state)
                     , expect = Http.expectWhatever Submitted
                     , timeout = Nothing
-                    , tracker = userEditSubmitUrl user_id |> Just
+                    , tracker = userUrl user_id |> Just
                     }
-            , requests = [ userEditSubmitUrl user_id |> AddRequest ]
+            , requests = [ userUrl user_id |> AddRequest ]
             , reload = False
             , notifications = []
             }
@@ -391,7 +373,7 @@ updateDetail id_token state msg user_id =
                 Ok _ ->
                     { state = initDetail
                     , cmd = Cmd.none
-                    , requests = [ userEditSubmitUrl user_id |> RemoveRequest ]
+                    , requests = [ userUrl user_id |> RemoveRequest ]
                     , reload = True
                     , notifications = []
                     }
@@ -399,7 +381,7 @@ updateDetail id_token state msg user_id =
                 Err e ->
                     { state = state
                     , cmd = Cmd.none
-                    , requests = [ userEditSubmitUrl user_id |> RemoveRequest ]
+                    , requests = [ userUrl user_id |> RemoveRequest ]
                     , reload = False
                     , notifications =
                         [ NError
