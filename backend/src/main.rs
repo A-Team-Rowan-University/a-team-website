@@ -25,9 +25,9 @@ use webdev_lib::errors::ErrorKind;
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
-use webdev_lib::access::models::{AccessRequest, UserAccessRequest};
+use webdev_lib::access::models::{PermissionRequest, UserAccessRequest};
 use webdev_lib::access::requests::validate_token;
-use webdev_lib::access::requests::{handle_access, handle_user_access};
+use webdev_lib::access::requests::{handle_permission, handle_user_access};
 
 use webdev_lib::chemicals::models::{
     ChemicalInventoryRequest, ChemicalRequest,
@@ -155,16 +155,16 @@ fn handle_request(
                 }
             }
         }
-    } else if let Some(access_request) = request.remove_prefix("/access") {
-        match AccessRequest::from_rouille(&access_request) {
+    } else if let Some(permission_request) = request.remove_prefix("/permission") {
+        match PermissionRequest::from_rouille(&permission_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(access_request) => {
-                match handle_access(
-                    access_request,
+            Ok(permission_request) => {
+                match handle_permission(
+                    permission_request,
                     requested_user,
                     database_connection,
                 ) {
-                    Ok(access_response) => access_response.to_rouille(),
+                    Ok(permission_response) => permission_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
                 }
             }
