@@ -10,7 +10,6 @@ use std::time;
 use log::debug;
 use log::error;
 use log::info;
-use log::trace;
 use log::warn;
 
 use diesel::r2d2::ConnectionManager;
@@ -25,9 +24,9 @@ use webdev_lib::errors::ErrorKind;
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
-use webdev_lib::access::models::{PermissionRequest, UserAccessRequest};
-use webdev_lib::access::requests::validate_token;
-use webdev_lib::access::requests::{handle_permission, handle_user_access};
+use webdev_lib::permissions::models::{PermissionRequest, UserPermissionRequest};
+use webdev_lib::permissions::requests::validate_token;
+use webdev_lib::permissions::requests::{handle_permission, handle_user_permission};
 
 use webdev_lib::chemicals::models::{
     ChemicalInventoryRequest, ChemicalRequest,
@@ -152,13 +151,13 @@ fn handle_request(
 
     let requested_user = if let Some(id_token) = request.header("id_token") {
 
-        if request.url() == "/access/first" {
-            return match handle_access(
-                AccessRequest::FirstAccess(id_token.to_string()),
+        if request.url() == "/permission/first" {
+            return match handle_permission(
+                PermissionRequest::FirstPermission(id_token.to_string()),
                 None,
                 database_connection,
             ) {
-                    Ok(access_response) => access_response.to_rouille(),
+                    Ok(permission_response) => permission_response.to_rouille(),
                     Err(err) => rouille::Response::from(err),
             };
         }
@@ -202,17 +201,17 @@ fn handle_request(
                 }
             }
         }
-    } else if let Some(user_access_request) =
-        request.remove_prefix("/user_access")
+    } else if let Some(user_permission_request) =
+        request.remove_prefix("/user_permission")
     {
-        match UserAccessRequest::from_rouille(&user_access_request) {
+        match UserPermissionRequest::from_rouille(&user_permission_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(user_access_request) => match handle_user_access(
-                user_access_request,
+            Ok(user_permission_request) => match handle_user_permission(
+                user_permission_request,
                 requested_user,
                 database_connection,
             ) {
-                Ok(user_access_response) => user_access_response.to_rouille(),
+                Ok(user_permission_response) => user_permission_response.to_rouille(),
                 Err(err) => rouille::Response::from(err),
             },
         }
