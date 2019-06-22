@@ -24,7 +24,7 @@ use crate::users::models::{
     UserList, UserRequest, UserResponse,
 };
 
-use crate::access::schema::access as access_schema;
+use crate::access::schema::permission as permission_schema;
 use crate::access::schema::user_access as user_access_schema;
 use crate::users::schema::users as users_schema;
 
@@ -117,7 +117,7 @@ pub(crate) fn search_users(
     database_connection: &MysqlConnection,
 ) -> Result<UserList, Error> {
     let mut users_query = users_schema::table
-        .left_join(user_access_schema::table.left_join(access_schema::table))
+        .left_join(user_access_schema::table.left_join(permission_schema::table))
         .select((
             (
                 users_schema::id,
@@ -126,7 +126,7 @@ pub(crate) fn search_users(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (access_schema::id, access_schema::access_name).nullable(),
+            (permission_schema::id, permission_schema::permission_name).nullable(),
         ))
         .into_boxed();
 
@@ -197,7 +197,7 @@ pub(crate) fn get_user(
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
     let joined_users = users_schema::table
-        .left_join(user_access_schema::table.left_join(access_schema::table))
+        .left_join(user_access_schema::table.left_join(permission_schema::table))
         .select((
             (
                 users_schema::id,
@@ -206,7 +206,7 @@ pub(crate) fn get_user(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (access_schema::id, access_schema::access_name).nullable(),
+            (permission_schema::id, permission_schema::permission_name).nullable(),
         ))
         .filter(users_schema::id.eq(id))
         .load::<JoinedUser>(database_connection)?;
@@ -240,10 +240,10 @@ pub(crate) fn create_user(
         .load::<RawUser>(database_connection)?;
 
     if let Some(inserted_user) = inserted_users.pop() {
-        let new_user_accesses: Vec<_> = user.accesses.into_iter().map(|access_id| NewUserAccess {
-            access_id: access_id,
+        let new_user_accesses: Vec<_> = user.accesses.into_iter().map(|permission_id| NewUserAccess {
+            permission_id: permission_id,
             user_id: inserted_user.id,
-            permission_level: None,
+            access_level: None,
         }).collect();
 
         diesel::insert_into(user_access_schema::table)
