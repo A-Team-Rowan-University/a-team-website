@@ -42,6 +42,13 @@ pub fn handle_user(
                 Err(e) => Err(e),
             }
         }
+
+        UserRequest::Current => match requested_user {
+            Some(id) => get_user(id, database_connection)
+                .map(|u| UserResponse::OneUser(u)),
+            None => Ok(UserResponse::NoResponse),
+        },
+
         UserRequest::GetUser(id) => {
             match check_to_run(requested_user, "GetUsers", database_connection)
             {
@@ -187,7 +194,7 @@ pub(crate) fn search_users(
 
     let mut users = condense_join(joined_users);
 
-    let user_list = UserList { users};
+    let user_list = UserList { users };
 
     Ok(user_list)
 }
@@ -223,7 +230,6 @@ pub(crate) fn create_user(
     user: NewUser,
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
-
     let new_raw_user = NewRawUser {
         first_name: user.first_name,
         last_name: user.last_name,
@@ -240,11 +246,16 @@ pub(crate) fn create_user(
         .load::<RawUser>(database_connection)?;
 
     if let Some(inserted_user) = inserted_users.pop() {
-        let new_user_accesses: Vec<_> = user.accesses.into_iter().map(|permission_id| NewUserAccess {
-            permission_id: permission_id,
-            user_id: inserted_user.id,
-            access_level: None,
-        }).collect();
+
+        let new_user_accesses: Vec<_> = user
+            .accesses
+            .into_iter()
+            .map(|access_id| NewUserAccess {
+                access_id: access_id,
+                user_id: inserted_user.id,
+                permission_level: None,
+            })
+            .collect();
 
         diesel::insert_into(user_access_schema::table)
             .values(new_user_accesses)
