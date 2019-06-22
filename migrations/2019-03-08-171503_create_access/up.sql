@@ -1,19 +1,19 @@
 -- Your SQL goes here
-CREATE TABLE access (
+CREATE TABLE permission (
   id SERIAL PRIMARY KEY,
-  access_name VARCHAR(255) NOT NULL
+  permission_name VARCHAR(255) NOT NULL
 );
 
-INSERT INTO access (access_name) VALUES
+INSERT INTO permission (permission_name) VALUES
   ("GetUsers"),
   ("CreateUsers"),
   ("UpdateUsers"),
   ("DeleteUsers"),
 
-  ("GetAccess"),
-  ("CreateAccess"),
-  ("UpdateAccess"),
-  ("DeleteAccess"),
+  ("GetPermission"),
+  ("CreatePermission"),
+  ("UpdatePermission"),
+  ("DeletePermission"),
 
   ("GetUserAccess"),
   ("CreateUserAccess"),
@@ -31,17 +31,16 @@ INSERT INTO access (access_name) VALUES
   ("DeleteChemicalInventory");
 
 CREATE TABLE user_access (
-  permission_id SERIAL PRIMARY KEY,
-  access_id BIGINT UNSIGNED NOT NULL,
+  access_id SERIAL PRIMARY KEY,
+  permission_id BIGINT UNSIGNED NOT NULL,
   user_id BIGINT UNSIGNED NOT NULL,
-  FOREIGN KEY (access_id)
-    REFERENCES access(id)
+  FOREIGN KEY (permission_name)
+    REFERENCES permission(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
   FOREIGN KEY (user_id)
     REFERENCES users(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  permission_level VARCHAR(255)
+  access_level VARCHAR(255)
 );
-

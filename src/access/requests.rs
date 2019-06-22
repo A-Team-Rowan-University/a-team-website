@@ -19,8 +19,8 @@ use crate::errors::{Error, ErrorKind};
 use crate::search::{NullableSearch, Search};
 
 use super::models::{
-    Access, AccessList, AccessRequest, AccessResponse, JoinedUserAccess,
-    JoinedUserAccessList, NewAccess, NewUserAccess, PartialAccess,
+    Permission, PermissionList, PermissionRequest, PermissionResponse, JoinedUserAccess,
+    JoinedUserAccessList, NewPermission, NewUserAccess, PartialPermission,
     PartialUserAccess, SearchUserAccess, UserAccess, UserAccessRequest,
     UserAccessResponse,
 };
@@ -29,7 +29,7 @@ use crate::users::models::{NewUser, SearchUser};
 use crate::users::requests::create_user;
 use crate::users::requests::search_users;
 
-use super::schema::access as access_schema;
+use super::schema::permission as permission_schema;
 use super::schema::user_access as user_access_schema;
 use crate::users::schema::users as users_schema;
 
@@ -70,19 +70,19 @@ pub fn validate_token(
 
 pub fn check_to_run(
     requesting_user_id: Option<u64>,
-    access_type: &str,
+    permission_name: &str,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
     trace!(
         "Checking if user {:?} has {}",
         requesting_user_id,
-        access_type
+        permission_name
     );
     match requesting_user_id {
         Some(user_id) => {
             match check_user_access(
                 user_id,
-                String::from(access_type),
+                String::from(permission_name),
                 database_connection,
             ) {
                 Ok(access) => {
@@ -100,78 +100,78 @@ pub fn check_to_run(
     }
 }
 
-pub fn handle_access(
-    request: AccessRequest,
+pub fn handle_permission(
+    request: PermissionRequest,
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<AccessResponse, Error> {
+) -> Result<PermissionResponse, Error> {
     match request {
-        AccessRequest::FirstAccess(id_token) => {
-            first_access(requesting_user, &id_token, database_connection)
-                .map(|_| AccessResponse::NoResponse)
+        PermissionRequest::FirstPermission(id_token) => {
+            first_permission(requesting_user, &id_token, database_connection)
+                .map(|_| PermissionResponse::NoResponse)
         }
-        AccessRequest::GetAccess(id) => {
+        PermissionRequest::GetPermission(id) => {
             match check_to_run(
                 requesting_user,
-                "GetAccess",
+                "GetPermission",
                 database_connection,
             ) {
-                Ok(()) => get_access(id, database_connection)
-                    .map(|a| AccessResponse::OneAccess(a)),
+                Ok(()) => get_permission(id, database_connection)
+                    .map(|a| PermissionResponse::OnePermission(a)),
                 Err(e) => Err(e),
             }
         }
-        AccessRequest::CreateAccess(access) => {
+        PermissionRequest::CreatePermission(permission) => {
             match check_to_run(
                 requesting_user,
-                "CreateAccess",
+                "CreatePermission",
                 database_connection,
             ) {
-                Ok(()) => create_access(access, database_connection)
-                    .map(|a| AccessResponse::OneAccess(a)),
+                Ok(()) => create_permission(permission, database_connection)
+                    .map(|a| PermissionResponse::OnePermission(a)),
                 Err(e) => Err(e),
             }
         }
-        AccessRequest::UpdateAccess(id, access) => {
+        PermissionRequest::UpdatePermission(id, permission) => {
             match check_to_run(
                 requesting_user,
-                "UpdateAccess",
+                "UpdatePermission",
                 database_connection,
             ) {
-                Ok(()) => update_access(id, access, database_connection)
-                    .map(|_| AccessResponse::NoResponse),
+                Ok(()) => update_permission(id, permission, database_connection)
+                    .map(|_| PermissionResponse::NoResponse),
                 Err(e) => Err(e),
             }
         }
-        AccessRequest::DeleteAccess(id) => {
+        PermissionRequest::DeletePermission(id) => {
             match check_to_run(
                 requesting_user,
-                "DeleteAccess",
+                "DeletePermission",
                 database_connection,
             ) {
-                Ok(()) => delete_access(id, database_connection)
-                    .map(|_| AccessResponse::NoResponse),
+                Ok(()) => delete_permission(id, database_connection)
+                    .map(|_| PermissionResponse::NoResponse),
                 Err(e) => Err(e),
             }
         }
     }
 }
 
-pub(crate) fn first_access(
+pub(crate) fn first_permission(
     requesting_user: Option<u64>,
     id_token: &str,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
     trace!(
-        "First access requested for user: {:?}, id_token: {}",
+        "First permission requested for user: {:?}, id_token: {}",
         requesting_user,
         id_token
     );
 
     let search = SearchUserAccess {
-        access_id: Search::NoSearch,
+        permission_id: Search::NoSearch,
         user_id: Search::NoSearch,
-        permission_level: NullableSearch::NoSearch,
+        access_level: NullableSearch::NoSearch,
     };
 
     let non_root_accesses = search_user_access(search, &database_connection)?
@@ -219,16 +219,16 @@ pub(crate) fn first_access(
             create_user(new_user, database_connection)?.id
         };
 
-        let accesses = access_schema::table
-            .filter(access_schema::access_name.ne("RootAccess"))
-            .load::<Access>(database_connection)?;
+        let permissions = permission_schema::table
+            .filter(permission_schema::permission_name.ne("RootAccess"))
+            .load::<Permission>(database_connection)?;
 
-        let new_user_accesses: Vec<_> = accesses
+        let new_user_accesses: Vec<_> = permissions
             .into_iter()
-            .map(|access| NewUserAccess {
-                access_id: access.id,
+            .map(|permission| NewUserAccess {
+                permission_id: permission.id,
                 user_id: user_id,
-                permission_level: None,
+                access_level: None,
             })
             .collect();
 
@@ -238,64 +238,64 @@ pub(crate) fn first_access(
 
         Ok(())
     } else {
-        warn!("First access request attempted, but access has already been setup.");
+        warn!("First permission request attempted, but permission has already been setup.");
         Err(Error::new(ErrorKind::AccessDenied))
     }
 }
 
-pub(crate) fn get_access(
+pub(crate) fn get_permission(
     id: u64,
     database_connection: &MysqlConnection,
-) -> Result<Access, Error> {
-    let mut found_access = access_schema::table
-        .filter(access_schema::id.eq(id))
-        .load::<Access>(database_connection)?;
+) -> Result<Permission, Error> {
+    let mut found_permission = permission_schema::table
+        .filter(permission_schema::id.eq(id))
+        .load::<Permission>(database_connection)?;
 
-    match found_access.pop() {
-        Some(access) => Ok(access),
+    match found_permission.pop() {
+        Some(permission) => Ok(permission),
         None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
-pub(crate) fn create_access(
-    access: NewAccess,
+pub(crate) fn create_permission(
+    permission: NewPermission,
     database_connection: &MysqlConnection,
-) -> Result<Access, Error> {
-    diesel::insert_into(access_schema::table)
-        .values(access)
+) -> Result<Permission, Error> {
+    diesel::insert_into(permission_schema::table)
+        .values(permission)
         .execute(database_connection)?;
 
     no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
-    let mut inserted_accesses = access_schema::table
-        .filter(access_schema::id.eq(last_insert_id))
+    let mut inserted_permissions = permission_schema::table
+        .filter(permission_schema::id.eq(last_insert_id))
         //.filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
-        .load::<Access>(database_connection)?;
+        .load::<Permission>(database_connection)?;
 
-    if let Some(inserted_access) = inserted_accesses.pop() {
-        Ok(inserted_access)
+    if let Some(inserted_permission) = inserted_permissions.pop() {
+        Ok(inserted_permission)
     } else {
         Err(Error::new(ErrorKind::Database))
     }
 }
 
-pub(crate) fn update_access(
+pub(crate) fn update_permission(
     id: u64,
-    access: PartialAccess,
+    permission: PartialPermission,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::update(access_schema::table)
-        .filter(access_schema::id.eq(id))
-        .set(&access)
+    diesel::update(permission_schema::table)
+        .filter(permission_schema::id.eq(id))
+        .set(&permission)
         .execute(database_connection)?;
     Ok(())
 }
 
-pub(crate) fn delete_access(
+pub(crate) fn delete_permission(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::delete(access_schema::table.filter(access_schema::id.eq(id)))
+    diesel::delete(permission_schema::table.filter(permission_schema::id.eq(id)))
         .execute(database_connection)?;
 
     Ok(())
@@ -336,7 +336,7 @@ pub fn handle_user_access(
         UserAccessRequest::CheckAccess(user_id, access_name) => {
             check_user_access(user_id, access_name, database_connection)
                 .map(|s| UserAccessResponse::AccessState(s))
-        }
+        },
         UserAccessRequest::CreateAccess(user_access) => {
             match check_to_run(
                 requesting_user,
@@ -380,19 +380,19 @@ pub(crate) fn search_user_access(
     database_connection: &MysqlConnection,
 ) -> Result<JoinedUserAccessList, Error> {
     let mut user_access_query = user_access_schema::table
-        .inner_join(access_schema::table)
+        .inner_join(permission_schema::table)
         .inner_join(users_schema::table)
         .select((
             user_access_schema::permission_id,
             users_schema::id,
-            access_schema::id,
+            permission_schema::id,
             users_schema::first_name,
             users_schema::last_name,
             users_schema::banner_id,
         ))
         .into_boxed::<Mysql>();
 
-    match user_access_search.access_id {
+    match user_access_search.permission_id {
         Search::Partial(s) => {
             user_access_query =
                 user_access_query.filter(user_access_schema::access_id.eq(s))
@@ -420,26 +420,26 @@ pub(crate) fn search_user_access(
         Search::NoSearch => {}
     }
 
-    match user_access_search.permission_level {
+    match user_access_search.access_level {
         NullableSearch::Partial(s) => {
             user_access_query = user_access_query.filter(
-                user_access_schema::permission_level.like(format!("%{}%", s)),
+                user_access_schema::access_level.like(format!("%{}%", s)),
             )
         }
 
         NullableSearch::Exact(s) => {
             user_access_query = user_access_query
-                .filter(user_access_schema::permission_level.eq(s))
+                .filter(user_access_schema::access_level.eq(s))
         }
 
         NullableSearch::Some => {
             user_access_query = user_access_query
-                .filter(user_access_schema::permission_level.is_not_null());
+                .filter(user_access_schema::access_level.is_not_null());
         }
 
         NullableSearch::None => {
             user_access_query = user_access_query
-                .filter(user_access_schema::permission_level.is_null());
+                .filter(user_access_schema::access_level.is_null());
         }
 
         NullableSearch::NoSearch => {}
@@ -457,15 +457,15 @@ pub(crate) fn search_user_access(
 pub(crate) fn get_current_user_access(
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<AccessList, Error> {
+) -> Result<PermissionList, Error> {
     if let Some(user_id) = requesting_user {
-        let accesses = access_schema::table
+        let permissions = permission_schema::table
             .inner_join(user_access_schema::table)
-            .select((access_schema::id, access_schema::access_name))
+            .select((permission_schema::id, permission_schema::permission_name))
             .filter(user_access_schema::user_id.eq(user_id))
-            .load::<Access>(database_connection)?;
+            .load::<Permission>(database_connection)?;
 
-        Ok(AccessList { accesses })
+        Ok(PermissionList { permissions })
     } else {
         Err(Error::new(ErrorKind::AccessDenied))
     }
@@ -487,14 +487,14 @@ pub(crate) fn get_user_access(
 
 pub(crate) fn check_user_access(
     user_id: u64,
-    access_name: String,
+    permission_name: String,
     database_connection: &MysqlConnection,
 ) -> Result<bool, Error> {
     let found_user_accesses = user_access_schema::table
-        .inner_join(access_schema::table)
-        .select((user_access_schema::user_id, access_schema::access_name))
+        .inner_join(permission_schema::table)
+        .select((user_access_schema::user_id, permission_schema::permission_name))
         .filter(user_access_schema::user_id.eq(user_id))
-        .filter(access_schema::access_name.eq(access_name))
+        .filter(permission_schema::permission_name.eq(permission_name))
         .execute(database_connection)?;
 
     if found_user_accesses != 0 {
@@ -511,7 +511,7 @@ pub(crate) fn create_user_access(
     //find if permission currently exists, should not duplicate (user_id, access_id) pairs
     let found_user_accesses = user_access_schema::table
         .filter(user_access_schema::user_id.eq(user_access.user_id))
-        .filter(user_access_schema::access_id.eq(user_access.access_id))
+        .filter(user_access_schema::permission_id.eq(user_access.permission_id))
         .execute(database_connection)?;
 
     if found_user_accesses != 0 {

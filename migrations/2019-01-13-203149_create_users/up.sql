@@ -6,4 +6,3 @@ CREATE TABLE users (
   banner_id INT(9) UNSIGNED NOT NULL,
   email VARCHAR(255) NOT NULL
 );
-
