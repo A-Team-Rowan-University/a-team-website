@@ -10,8 +10,11 @@ pub enum ErrorKind {
     Database,
     Url,
     Body,
-    AccessDenied,
     NotFound,
+    AccessDenied,
+    GoogleSignIn,
+    GoogleUserNoEmail,
+    GoogleUserNotFound,
     RegisteredTwiceForTest,
     RegistrationClosedForTest,
     OpenedTestNotRegistered,
@@ -34,6 +37,10 @@ impl std::fmt::Display for Error {
             ErrorKind::Url => write!(f, "Url parse error!"),
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
+            ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
+            ErrorKind::GoogleSignIn => write!(f, "Failed to validate Id Token with Google"),
+            ErrorKind::GoogleUserNoEmail => write!(f, "Google did not provide an email"),
+            ErrorKind::GoogleUserNotFound => write!(f, "The email provided by Google did not match any users' emails"),
             ErrorKind::Unimplemented => write!(f, "Method not implemented"),
             ErrorKind::RegisteredTwiceForTest => {
                 write!(f, "Registered twice for a test")
@@ -51,7 +58,6 @@ impl std::fmt::Display for Error {
             ErrorKind::SubmissionsClosedForTest => {
                 write!(f, "The test session is closed for submissions")
             }
-            ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
         }
     }
 }
@@ -143,8 +149,8 @@ impl From<Error> for rouille::Response {
         error!("{:?} -> {:?}", e.kind(), e.source());
 
         match e.kind() {
-            ErrorKind::NotFound => {
-                rouille::Response::text(e.to_string()).with_status_code(404)
+            ErrorKind::Database => {
+                rouille::Response::text(e.to_string()).with_status_code(500)
             }
             ErrorKind::Url => {
                 rouille::Response::text(e.to_string_with_source())
@@ -154,11 +160,20 @@ impl From<Error> for rouille::Response {
                 rouille::Response::text(e.to_string_with_source())
                     .with_status_code(400)
             }
-            ErrorKind::AccessDenied => {
+            ErrorKind::NotFound => {
+                rouille::Response::text(e.to_string()).with_status_code(404)
+            }
+            ErrorKind::GoogleSignIn => {
                 rouille::Response::text(e.to_string()).with_status_code(401)
             }
-            ErrorKind::Database => {
-                rouille::Response::text(e.to_string()).with_status_code(500)
+            ErrorKind::GoogleUserNoEmail => {
+                rouille::Response::text(e.to_string()).with_status_code(401)
+            }
+            ErrorKind::GoogleUserNotFound => {
+                rouille::Response::text(e.to_string()).with_status_code(401)
+            }
+            ErrorKind::AccessDenied => {
+                rouille::Response::text(e.to_string()).with_status_code(401)
             }
             ErrorKind::RegisteredTwiceForTest => {
                 rouille::Response::text(e.to_string()).with_status_code(409)

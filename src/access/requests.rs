@@ -36,37 +36,35 @@ use crate::users::schema::users as users_schema;
 pub fn validate_token(
     id_token: &str,
     database_connection: &MysqlConnection,
-) -> Option<u64> {
+) -> Result<u64, Error> {
     let mut client = google_signin::Client::new();
     client.audiences.push(String::from(
         "918184954544-jm1aufr31fi6sdjs1140p7p3rouaka14.apps.googleusercontent.com",
     ));
 
-    let id_info = client.verify(id_token);
+    let id_info = client.verify(id_token)?;
 
-    match id_info {
-        Ok(info) => {
-            trace!("Validated token: {:?}", info);
-            match info.email {
-                Some(email) => search_users(
-                    SearchUser {
-                        first_name: Search::NoSearch,
-                        last_name: Search::NoSearch,
-                        banner_id: Search::NoSearch,
-                        email: Search::Exact(email),
-                    },
-                    database_connection,
-                )
-                .ok()
-                .and_then(|mut l| l.users.pop())
-                .map(|u| u.id),
-                None => None,
-            }
+    trace!("Validated token: {:?}", id_info);
+
+    if let Some(email) = id_info.email {
+        let mut found_users = search_users(
+            SearchUser {
+                first_name: Search::NoSearch,
+                last_name: Search::NoSearch,
+                banner_id: Search::NoSearch,
+                email: Search::Exact(email),
+            },
+            database_connection,
+        )?;
+
+        if let Some(user) = found_users.users.pop() {
+            Ok(user.id)
+        } else {
+            Err(Error::new(ErrorKind::GoogleUserNotFound))
         }
-        Err(e) => {
-            trace!("Could not validate token: {:?}", e);
-            None
-        }
+
+    } else {
+         Err(Error::new(ErrorKind::GoogleUserNoEmail))
     }
 }
 
