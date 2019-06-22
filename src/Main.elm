@@ -1,4 +1,12 @@
-port module Main exposing (Model, Msg(..), init, main, subscriptions, update, view)
+port module Main exposing
+    ( Model
+    , Msg(..)
+    , init
+    , main
+    , subscriptions
+    , update
+    , view
+    )
 
 import Browser
 import Browser.Navigation as Nav
@@ -18,7 +26,9 @@ import Set exposing (Set)
 import Url
 import Url.Builder as B
 import Url.Parser as P exposing ((</>))
-import Users exposing (User)
+import Users.Detail
+import Users.New
+import Users.Users as User
 
 
 main =
@@ -69,11 +79,10 @@ routeParser =
 type alias Model =
     { navkey : Nav.Key
     , route : Route
-    , session : Session Users.Id
-    , users : Dict Users.Id User
-    , user_detail : Users.DetailState
-    , user_new : Users.New
-    , user_new_access : Maybe Int
+    , session : Session User.Id
+    , users : Dict User.Id User.User
+    , user_detail : Users.Detail.State
+    , user_new : Users.New.State
     , requests : Set String
     , notifications : List Notification
     }
@@ -100,15 +109,8 @@ init _ url key =
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , session = Session.NotSignedIn
       , users = Dict.empty
-      , user_detail = Users.initDetail
-      , user_new =
-            { first_name = ""
-            , last_name = ""
-            , banner_id = 0
-            , email = ""
-            , accesses = []
-            }
-      , user_new_access = Nothing
+      , user_detail = Users.Detail.init
+      , user_new = Users.New.init
       , requests = Set.empty
       , notifications = []
       }
@@ -122,21 +124,14 @@ init _ url key =
 
 type Msg
     = SignedIn E.Value
-    | Validated (Result Http.Error User)
+    | Validated (Result Http.Error User.User)
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
-    | GotUsers (Result Http.Error (List User))
-    | GotUser Users.Id (Result Http.Error User)
-    | UserDetailMsg Users.DetailMsg
+    | GotUsers (Result Http.Error (List User.User))
+    | GotUser User.Id (Result Http.Error User.User)
+    | UserDetailMsg Users.Detail.Msg
+    | UserNewMsg Users.New.Msg
     | Updated (Result Http.Error ())
-    | NewFirstName String
-    | NewLastName String
-    | NewBannerId (Maybe Int)
-    | NewEmail String
-    | EditNewUserAccess (Maybe Int)
-    | SubmitNewUserAccess
-    | RemoveNewUserAccess Int
-    | SubmitNewUser
     | CloseNotification Int
 
 
@@ -151,19 +146,25 @@ update msg model =
                       }
                     , Http.request
                         { method = "GET"
-                        , headers = [ header "id_token" google_user.id_token ]
+                        , headers =
+                            [ header
+                                "id_token"
+                                google_user.id_token
+                            ]
                         , url =
                             B.relative [ apiUrl, "users", "current" ]
                                 []
                         , body = emptyBody
-                        , expect = Http.expectJson Validated Users.decoder
+                        , expect = Http.expectJson Validated User.decoder
                         , timeout = Nothing
                         , tracker = Nothing
                         }
                     )
 
                 Err e ->
-                    ( { model | session = Session.GoogleError e }, Cmd.none )
+                    ( { model | session = Session.GoogleError e }
+                    , Cmd.none
+                    )
 
         Validated user_result ->
             case model.session of
@@ -179,7 +180,11 @@ update msg model =
                             in
                             ( { model
                                 | session = session
-                                , users = Dict.insert user.id user model.users
+                                , users =
+                                    Dict.insert
+                                        user.id
+                                        user
+                                        model.users
                                 , requests =
                                     handleRequestChanges
                                         request
@@ -207,7 +212,7 @@ update msg model =
                                 (List.map (\u -> ( u.id, u )) users)
                         , requests =
                             handleRequestChanges
-                                [ Users.usersUrl |> RemoveRequest ]
+                                [ User.manyUrl |> RemoveRequest ]
                                 model.requests
                     }
 
@@ -215,7 +220,7 @@ update msg model =
                     { model
                         | requests =
                             handleRequestChanges
-                                [ Users.usersUrl |> RemoveRequest ]
+                                [ User.manyUrl |> RemoveRequest ]
                                 model.requests
                     }
             , Cmd.none
@@ -228,7 +233,7 @@ update msg model =
                         | users = Dict.insert user.id user model.users
                         , requests =
                             handleRequestChanges
-                                [ Users.userUrl id |> RemoveRequest ]
+                                [ User.singleUrl id |> RemoveRequest ]
                                 model.requests
                     }
 
@@ -236,7 +241,7 @@ update msg model =
                     { model
                         | requests =
                             handleRequestChanges
-                                [ Users.userUrl id |> RemoveRequest ]
+                                [ User.singleUrl id |> RemoveRequest ]
                                 model.requests
                     }
             , Cmd.none
@@ -248,7 +253,7 @@ update msg model =
                     -- TODO Make this prettier
                     let
                         response =
-                            Users.updateDetail
+                            Users.Detail.update
                                 id_token
                                 model.user_detail
                                 detail_msg
@@ -293,6 +298,39 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        UserNewMsg new_msg ->
+            case idToken model.session of
+                Just id_token ->
+                    let
+                        response =
+                            Users.New.update
+                                id_token
+                                model.user_new
+                                new_msg
+                    in
+                    ( { model
+                        | user_new = response.state
+                        , requests =
+                            handleRequestChanges
+                                response.requests
+                                model.requests
+                        , notifications =
+                            model.notifications
+                                ++ response.notifications
+                      }
+                    , if response.done then
+                        Cmd.batch
+                            [ response.cmd |> Cmd.map UserNewMsg
+                            , Nav.pushUrl model.navkey "/users"
+                            ]
+
+                      else
+                        response.cmd |> Cmd.map UserNewMsg
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
         Updated _ ->
             let
                 ( cmd, request, notifications ) =
@@ -307,115 +345,6 @@ update msg model =
                     model.notifications ++ notifications
               }
             , cmd
-            )
-
-        NewFirstName first_name ->
-            let
-                new_user =
-                    model.user_new
-            in
-            ( { model
-                | user_new =
-                    { new_user | first_name = first_name }
-              }
-            , Cmd.none
-            )
-
-        NewLastName last_name ->
-            let
-                new_user =
-                    model.user_new
-            in
-            ( { model | user_new = { new_user | last_name = last_name } }, Cmd.none )
-
-        NewBannerId banner_id ->
-            case banner_id of
-                Just id ->
-                    let
-                        new_user =
-                            model.user_new
-                    in
-                    ( { model | user_new = { new_user | banner_id = id } }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        NewEmail email ->
-            let
-                new_user =
-                    model.user_new
-            in
-            ( { model | user_new = { new_user | email = email } }, Cmd.none )
-
-        EditNewUserAccess access_id ->
-            case access_id of
-                Just id ->
-                    ( { model | user_new_access = Just id }, Cmd.none )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        SubmitNewUserAccess ->
-            case model.user_new_access of
-                Just access_id ->
-                    let
-                        new_user =
-                            model.user_new
-                    in
-                    ( { model
-                        | user_new =
-                            { new_user | accesses = new_user.accesses ++ [ access_id ] }
-                        , user_new_access = Nothing
-                      }
-                    , Cmd.none
-                    )
-
-                Nothing ->
-                    ( model, Cmd.none )
-
-        RemoveNewUserAccess access_id ->
-            let
-                new_user =
-                    model.user_new
-
-                accesses =
-                    new_user.accesses
-            in
-            ( { model | user_new = { new_user | accesses = List.filter (\id -> id /= access_id) accesses } }
-            , Cmd.none
-            )
-
-        SubmitNewUser ->
-            ( { model
-                | user_new = Users.New "" "" 0 "" []
-              }
-            , case idToken model.session of
-                Just id_token ->
-                    case model.route of
-                        UserNew ->
-                            Cmd.batch
-                                [ Http.request
-                                    { method = "POST"
-                                    , headers = [ header "id_token" id_token ]
-                                    , url =
-                                        B.relative
-                                            [ apiUrl
-                                            , "users/"
-                                            ]
-                                            []
-                                    , body = jsonBody (Users.newEncoder model.user_new)
-                                    , expect = Http.expectWhatever Updated
-                                    , timeout = Nothing
-                                    , tracker = Nothing
-                                    }
-                                , Nav.pushUrl model.navkey "/users"
-                                ]
-
-                        _ ->
-                            Cmd.none
-
-                _ ->
-                    Cmd.none
             )
 
         -- 0 1 2 3 4 5 6
@@ -460,7 +389,7 @@ update msg model =
 
 
 loadData :
-    Session Users.Id
+    Session User.Id
     -> Route
     -> ( Cmd Msg, List RequestChange, List Notification )
 loadData session route =
@@ -474,13 +403,13 @@ loadData session route =
                     ( Http.request
                         { method = "GET"
                         , headers = [ header "id_token" id_token ]
-                        , url = Users.usersUrl
+                        , url = User.manyUrl
                         , body = emptyBody
-                        , expect = Http.expectJson GotUsers Users.listDecoder
+                        , expect = Http.expectJson GotUsers User.listDecoder
                         , timeout = Nothing
-                        , tracker = Users.usersUrl |> Just
+                        , tracker = User.manyUrl |> Just
                         }
-                    , [ Users.usersUrl |> AddRequest ]
+                    , [ User.manyUrl |> AddRequest ]
                     , []
                     )
 
@@ -500,16 +429,16 @@ loadData session route =
                     ( Http.request
                         { method = "GET"
                         , headers = [ header "id_token" id_token ]
-                        , url = Users.userUrl user_id
+                        , url = User.singleUrl user_id
                         , body = emptyBody
                         , expect =
                             Http.expectJson
                                 (GotUser user_id)
-                                Users.decoder
+                                User.decoder
                         , timeout = Nothing
-                        , tracker = Users.userUrl user_id |> Just
+                        , tracker = User.singleUrl user_id |> Just
                         }
-                    , [ Users.userUrl user_id |> AddRequest ]
+                    , [ User.singleUrl user_id |> AddRequest ]
                     , []
                     )
 
@@ -540,43 +469,23 @@ loadData session route =
 -}
 
 
-newUserConfig : Users.NewConfig Msg
-newUserConfig =
-    { onEditFirstName = NewFirstName
-    , onEditLastName = NewLastName
-    , onEditEmail = NewEmail
-    , onEditBannerId = NewBannerId
-    , onEditAccess = EditNewUserAccess
-    , onAddAccess = SubmitNewUserAccess
-    , onRemoveAccess = RemoveNewUserAccess
-    , onSubmit = SubmitNewUser
-    }
-
-
 viewPage : Model -> Html Msg
 viewPage model =
     case model.route of
         Users ->
-            Users.viewList model.users
+            User.viewList model.users
 
         UserDetail user_id ->
             case Dict.get user_id model.users of
                 Just user ->
-                    Html.map
-                        UserDetailMsg
-                        (Users.viewDetail
-                            user
-                            model.user_detail
-                        )
+                    Users.Detail.view user model.user_detail
+                        |> Html.map UserDetailMsg
 
                 Nothing ->
                     p [] [ text "User not found" ]
 
         UserNew ->
-            Users.viewNew
-                newUserConfig
-                model.user_new
-                model.user_new_access
+            Users.New.view model.user_new |> Html.map UserNewMsg
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
@@ -585,7 +494,7 @@ viewPage model =
             h1 [] [ text "Page not found!" ]
 
 
-viewSession : Session Users.Id -> Dict Users.Id User -> Html msg
+viewSession : Session User.Id -> Dict User.Id User.User -> Html msg
 viewSession model users =
     case model of
         Session.Validated user_id google_user ->
@@ -620,7 +529,7 @@ viewSession model users =
             div [] [ text "Access denied!" ]
 
 
-viewValidated : User -> Session.GoogleUser -> Html msg
+viewValidated : User.User -> Session.GoogleUser -> Html msg
 viewValidated user google_user =
     span [ class "level" ]
         ([ div [ class "level-left" ]
