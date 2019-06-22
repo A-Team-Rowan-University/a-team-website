@@ -12,7 +12,7 @@ use crate::errors::{Error, ErrorKind};
 
 use crate::search::Search;
 
-use crate::access::requests::check_to_run;
+use crate::permissions::requests::check_to_run;
 
 use super::models::{
     Chemical, ChemicalInventory, ChemicalInventoryList,

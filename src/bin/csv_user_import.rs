@@ -94,7 +94,7 @@ fn main() {
             last_name: csv_user.last_name,
             email: csv_user.email,
             banner_id: csv_user.banner_id as u32,
-            accesses: Vec::new(),
+            permissions: Vec::new(),
         };
         //Import new user into database
         let import_user = UserRequest::CreateUser(new_user);

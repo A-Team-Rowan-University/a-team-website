@@ -1,10 +1,10 @@
 -- Your SQL goes here
-CREATE TABLE permission (
+CREATE TABLE permissions (
   id SERIAL PRIMARY KEY,
   permission_name VARCHAR(255) NOT NULL
 );
 
-INSERT INTO permission (permission_name) VALUES
+INSERT INTO permissions (permission_name) VALUES
   ("GetUsers"),
   ("CreateUsers"),
   ("UpdateUsers"),
@@ -15,10 +15,10 @@ INSERT INTO permission (permission_name) VALUES
   ("UpdatePermission"),
   ("DeletePermission"),
 
-  ("GetUserAccess"),
-  ("CreateUserAccess"),
-  ("UpdateUserAccess"),
-  ("DeleteUserAccess"),
+  ("GetUserPermission"),
+  ("CreateUserPermission"),
+  ("UpdateUserPermission"),
+  ("DeleteUserPermission"),
 
   ("GetChemical"),
   ("CreateChemical"),
@@ -30,17 +30,16 @@ INSERT INTO permission (permission_name) VALUES
   ("UpdateChemicalInventory"),
   ("DeleteChemicalInventory");
 
-CREATE TABLE user_access (
-  access_id SERIAL PRIMARY KEY,
+CREATE TABLE user_permissions (
+  user_permission_id SERIAL PRIMARY KEY,
   permission_id BIGINT UNSIGNED NOT NULL,
   user_id BIGINT UNSIGNED NOT NULL,
-  FOREIGN KEY (permission_name)
-    REFERENCES permission(id)
+  FOREIGN KEY (permission_id)
+    REFERENCES permissions(id)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
   FOREIGN KEY (user_id)
     REFERENCES users(id)
     ON DELETE CASCADE
-    ON UPDATE CASCADE,
-  access_level VARCHAR(255)
+    ON UPDATE CASCADE
 );

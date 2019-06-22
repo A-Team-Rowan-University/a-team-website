@@ -17,7 +17,7 @@ use log::trace;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
-use crate::access::requests::check_to_run;
+use crate::permissions::requests::check_to_run;
 
 use crate::tests::test_sessions::models::{
     JoinedTestSession, NewRawTestSession, NewRawTestSessionRegistration,
@@ -154,7 +154,7 @@ pub(crate) fn register(
                 Err(Error::new(ErrorKind::RegisteredTwiceForTest))
             }
         } else {
-            Err(Error::new(ErrorKind::AccessDenied))
+            Err(Error::new(ErrorKind::PermissionDenied))
         }
     } else {
         Err(Error::new(ErrorKind::RegistrationClosedForTest))
@@ -272,7 +272,7 @@ pub(crate) fn open(
             Err(Error::new(ErrorKind::OpeningClosedForTest))
         }
     } else {
-        Err(Error::new(ErrorKind::AccessDenied))
+        Err(Error::new(ErrorKind::PermissionDenied))
     }
 }
 
@@ -365,7 +365,7 @@ pub(crate) fn submit(
             Err(Error::new(ErrorKind::SubmissionsClosedForTest))
         }
     } else {
-        Err(Error::new(ErrorKind::AccessDenied))
+        Err(Error::new(ErrorKind::PermissionDenied))
     }
 }
 

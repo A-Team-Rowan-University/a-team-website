@@ -8,7 +8,7 @@ use log::warn;
 
 use super::schema::users;
 
-use crate::access::models::Permission;
+use crate::permissions::models::Permission;
 
 use crate::errors::Error;
 use crate::errors::ErrorKind;
@@ -36,7 +36,7 @@ pub struct NewRawUser {
 #[derive(Queryable, Debug)]
 pub struct JoinedUser {
     pub user: RawUser,
-    pub access: Option<Permission>,
+    pub permission: Option<Permission>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -46,7 +46,7 @@ pub struct User {
     pub last_name: String,
     pub banner_id: u32,
     pub email: String,
-    pub accesses: Vec<Permission>,
+    pub permissions: Vec<Permission>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -55,7 +55,7 @@ pub struct NewUser {
     pub last_name: String,
     pub banner_id: u32,
     pub email: String,
-    pub accesses: Vec<u64>,
+    pub permissions: Vec<u64>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize)]

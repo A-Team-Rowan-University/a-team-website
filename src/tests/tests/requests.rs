@@ -7,7 +7,7 @@ use diesel::RunQueryDsl;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
-use crate::access::requests::check_to_run;
+use crate::permissions::requests::check_to_run;
 
 use crate::tests::tests::models::{
     JoinedTest, NewRawTest, NewTest, RawTest, RawTestQuestionCategory, Test,
@@ -91,7 +91,7 @@ pub(crate) fn create_test(
 ) -> Result<Test, Error> {
     let creator_id = match requesting_user {
         Some(user) => user,
-        None => return Err(Error::new(ErrorKind::AccessDenied)),
+        None => return Err(Error::new(ErrorKind::PermissionDenied)),
     };
 
     let new_raw_test = NewRawTest {
