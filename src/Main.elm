@@ -23,6 +23,7 @@ import Platform.Cmd
 import Platform.Sub
 import Session exposing (Session, googleUserDecoder, idToken)
 import Set exposing (Set)
+import Tests.List exposing (QuestionCategory, QuestionCategoryId)
 import Url
 import Url.Builder as B
 import Url.Parser as P exposing ((</>))
@@ -83,6 +84,8 @@ type alias Model =
     , users : Dict User.Id User.User
     , user_detail : Users.Detail.State
     , user_new : Users.New.State
+    , question_categories : Dict QuestionCategoryId QuestionCategory
+    , tests : Dict Tests.List.Id Tests.List.Test
     , requests : Set String
     , notifications : List Notification
     }
@@ -111,6 +114,8 @@ init _ url key =
       , users = Dict.empty
       , user_detail = Users.Detail.init
       , user_new = Users.New.init
+      , question_categories = Dict.empty
+      , tests = Dict.empty
       , requests = Set.empty
       , notifications = []
       }
