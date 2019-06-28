@@ -64,6 +64,7 @@ type Route
     | Users
     | UserDetail Int
     | UserNew
+    | Tests
     | NotFound
 
 
@@ -74,6 +75,7 @@ routeParser =
         , P.map Users (P.s "users")
         , P.map UserDetail (P.s "users" </> P.int)
         , P.map UserNew (P.s "users" </> P.s "new")
+        , P.map Tests (P.s "tests")
         ]
 
 
@@ -134,6 +136,7 @@ type Msg
     | UrlChanged Url.Url
     | GotUsers (Result Http.Error (List User.User))
     | GotUser User.Id (Result Http.Error User.User)
+    | GotTests (Result Http.Error (List Tests.List.Test))
     | UserDetailMsg Users.Detail.Msg
     | UserNewMsg Users.New.Msg
     | Updated (Result Http.Error ())
@@ -248,6 +251,38 @@ update msg model =
                             handleRequestChanges
                                 [ User.singleUrl id |> RemoveRequest ]
                                 model.requests
+                    }
+            , Cmd.none
+            )
+
+        GotTests tests_result ->
+            ( case tests_result of
+                Ok tests ->
+                    { model
+                        | tests =
+                            Dict.fromList
+                                (List.map (\u -> ( u.id, u )) tests)
+                        , requests =
+                            handleRequestChanges
+                                [ Tests.List.manyUrl |> RemoveRequest ]
+                                model.requests
+                    }
+
+                Err e ->
+                    let
+                        notifications =
+                            model.notifications
+                    in
+                    { model
+                        | requests =
+                            handleRequestChanges
+                                [ Tests.List.manyUrl |> RemoveRequest ]
+                                model.requests
+                        , notifications =
+                            notifications
+                                ++ [ NDebug
+                                        (httpErrorToString e)
+                                   ]
                     }
             , Cmd.none
             )
@@ -456,22 +491,30 @@ loadData session route =
         UserNew ->
             ( Cmd.none, [], [] )
 
+        Tests ->
+            case idToken session of
+                Just id_token ->
+                    ( Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" id_token ]
+                        , url = Tests.List.manyUrl
+                        , body = emptyBody
+                        , expect = Http.expectJson GotTests Tests.List.listDecoder
+                        , timeout = Nothing
+                        , tracker = Tests.List.manyUrl |> Just
+                        }
+                    , [ Tests.List.manyUrl |> AddRequest ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ NWarning "You must be logged in to get tests" ]
+                    )
+
         NotFound ->
             ( Cmd.none, [], [] )
-
-
-
--- VIEW
-{-
-   | NewFirstName String
-   | NewLastName String
-   | NewBannerId (Maybe Int)
-   | NewEmail String
-   | EditNewUserAccess (Maybe Int)
-   | SubmitNewUserAccess
-   | RemoveNewUserAccess Int
-   | SubmitNewUser
--}
 
 
 viewPage : Model -> Html Msg
@@ -491,6 +534,9 @@ viewPage model =
 
         UserNew ->
             Users.New.view model.user_new |> Html.map UserNewMsg
+
+        Tests ->
+            Tests.List.viewList model.users model.tests
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
@@ -594,6 +640,8 @@ view model =
                             [ text "Home" ]
                         , a [ class "navbar-item", href "/users" ]
                             [ text "Users" ]
+                        , a [ class "navbar-item", href "/tests" ]
+                            [ text "Tests" ]
                         ]
                     , div [ class "navbar-end" ]
                         [ div [ class "navbar-item" ]
@@ -641,3 +689,22 @@ viewNotification onClose index notification =
                 [ button [ class "delete", onClick (onClose index) ] []
                 , text t
                 ]
+
+
+httpErrorToString : Http.Error -> String
+httpErrorToString e =
+    case e of
+        Http.BadUrl s ->
+            "Bad url: " ++ s
+
+        Http.Timeout ->
+            "Timeout"
+
+        Http.NetworkError ->
+            "Network Error"
+
+        Http.BadStatus status ->
+            "Bad status: " ++ String.fromInt status
+
+        Http.BadBody s ->
+            "Bad body: \n" ++ s

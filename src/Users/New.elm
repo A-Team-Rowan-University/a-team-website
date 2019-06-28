@@ -16,7 +16,7 @@ type alias NewUser r =
         , last_name : String
         , banner_id : Int
         , email : String
-        , accesses : Set Int
+        , permissions : Set Int
     }
 
 
@@ -25,8 +25,8 @@ type alias State =
     , last_name : String
     , banner_id : Int
     , email : String
-    , accesses : Set Int
-    , access_edits : Maybe Int
+    , permissions : Set Int
+    , permission_edits : Maybe Int
     }
 
 
@@ -36,8 +36,8 @@ init =
     , last_name = ""
     , banner_id = 0
     , email = ""
-    , accesses = Set.empty
-    , access_edits = Nothing
+    , permissions = Set.empty
+    , permission_edits = Nothing
     }
 
 
@@ -46,9 +46,9 @@ type Msg
     | EditLastName String
     | EditEmail String
     | EditBannerId (Maybe Int)
-    | EditAccess (Maybe Int)
-    | AddAccess
-    | RemoveAccess Int
+    | EditPermission (Maybe Int)
+    | AddPermission
+    | RemovePermission Int
     | Submit
     | Submitted (Result Http.Error ())
 
@@ -107,10 +107,10 @@ update id_token state msg =
             , notifications = []
             }
 
-        EditAccess access_id ->
-            case access_id of
+        EditPermission permission_id ->
+            case permission_id of
                 Just id ->
-                    { state = { state | access_edits = Just id }
+                    { state = { state | permission_edits = Just id }
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
@@ -125,16 +125,16 @@ update id_token state msg =
                     , notifications = []
                     }
 
-        AddAccess ->
-            case state.access_edits of
-                Just access_id ->
+        AddPermission ->
+            case state.permission_edits of
+                Just permission_id ->
                     { state =
                         { state
-                            | accesses =
+                            | permissions =
                                 Set.insert
-                                    access_id
-                                    state.accesses
-                            , access_edits = Nothing
+                                    permission_id
+                                    state.permissions
+                            , permission_edits = Nothing
                         }
                     , cmd = Cmd.none
                     , requests = []
@@ -150,11 +150,11 @@ update id_token state msg =
                     , notifications = []
                     }
 
-        RemoveAccess access_id ->
+        RemovePermission permission_id ->
             { state =
                 { state
-                    | accesses =
-                        Set.filter (\id -> id /= access_id) state.accesses
+                    | permissions =
+                        Set.filter (\id -> id /= permission_id) state.permissions
                 }
             , cmd = Cmd.none
             , requests = []
@@ -260,20 +260,20 @@ view state =
                 [ p [ class "subtitle has-text-centered" ]
                     [ text "User Permissions" ]
                 , div [ class "box" ]
-                    (Set.toList state.accesses
-                        |> List.map (viewAccess RemoveAccess)
+                    (Set.toList state.permissions
+                        |> List.map (viewPermission RemovePermission)
                     )
-                , User.viewAddAccess
-                    state.access_edits
-                    EditAccess
-                    AddAccess
+                , User.viewAddPermission
+                    state.permission_edits
+                    EditPermission
+                    AddPermission
                 ]
             ]
         ]
 
 
-viewAccess : (Int -> msg) -> Int -> Html msg
-viewAccess onRemove id =
+viewPermission : (Int -> msg) -> Int -> Html msg
+viewPermission onRemove id =
     div [ class "columns" ]
         [ span [ class "column" ]
             [ String.fromInt id |> text ]
@@ -296,5 +296,5 @@ newEncoder user =
         , ( "last_name", Json.Encode.string user.last_name )
         , ( "banner_id", Json.Encode.int user.banner_id )
         , ( "email", Json.Encode.string user.email )
-        , ( "accesses", Json.Encode.list Json.Encode.int (Set.toList user.accesses) )
+        , ( "permissions", Json.Encode.list Json.Encode.int (Set.toList user.permissions) )
         ]
