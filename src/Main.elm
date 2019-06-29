@@ -23,7 +23,14 @@ import Platform.Cmd
 import Platform.Sub
 import Session exposing (Session, googleUserDecoder, idToken)
 import Set exposing (Set)
-import Tests.List exposing (QuestionCategory, QuestionCategoryId)
+import Tests.List
+    exposing
+        ( QuestionCategory
+        , QuestionCategoryId
+        , questionCategoriesUrl
+        , questionCategoryListDecoder
+        )
+import Tests.New
 import Url
 import Url.Builder as B
 import Url.Parser as P exposing ((</>))
@@ -65,6 +72,7 @@ type Route
     | UserDetail Int
     | UserNew
     | Tests
+    | TestNew
     | NotFound
 
 
@@ -76,6 +84,7 @@ routeParser =
         , P.map UserDetail (P.s "users" </> P.int)
         , P.map UserNew (P.s "users" </> P.s "new")
         , P.map Tests (P.s "tests")
+        , P.map TestNew (P.s "tests" </> P.s "new")
         ]
 
 
@@ -88,6 +97,7 @@ type alias Model =
     , user_new : Users.New.State
     , question_categories : Dict QuestionCategoryId QuestionCategory
     , tests : Dict Tests.List.Id Tests.List.Test
+    , test_new : Tests.New.State
     , requests : Set String
     , notifications : List Notification
     }
@@ -116,6 +126,7 @@ init _ url key =
       , users = Dict.empty
       , user_detail = Users.Detail.init
       , user_new = Users.New.init
+      , test_new = Tests.New.init
       , question_categories = Dict.empty
       , tests = Dict.empty
       , requests = Set.empty
@@ -137,8 +148,10 @@ type Msg
     | GotUsers (Result Http.Error (List User.User))
     | GotUser User.Id (Result Http.Error User.User)
     | GotTests (Result Http.Error (List Tests.List.Test))
+    | GotQuestionCategories (Result Http.Error (List QuestionCategory))
     | UserDetailMsg Users.Detail.Msg
     | UserNewMsg Users.New.Msg
+    | TestNewMsg Tests.New.Msg
     | Updated (Result Http.Error ())
     | CloseNotification Int
 
@@ -287,6 +300,38 @@ update msg model =
             , Cmd.none
             )
 
+        GotQuestionCategories question_categories_result ->
+            ( case question_categories_result of
+                Ok question_categories ->
+                    { model
+                        | question_categories =
+                            Dict.fromList
+                                (List.map (\u -> ( u.id, u )) question_categories)
+                        , requests =
+                            handleRequestChanges
+                                [ questionCategoriesUrl |> RemoveRequest ]
+                                model.requests
+                    }
+
+                Err e ->
+                    let
+                        notifications =
+                            model.notifications
+                    in
+                    { model
+                        | requests =
+                            handleRequestChanges
+                                [ questionCategoriesUrl |> RemoveRequest ]
+                                model.requests
+                        , notifications =
+                            notifications
+                                ++ [ NDebug
+                                        (httpErrorToString e)
+                                   ]
+                    }
+            , Cmd.none
+            )
+
         UserDetailMsg detail_msg ->
             case ( model.route, idToken model.session ) of
                 ( UserDetail id, Just id_token ) ->
@@ -371,6 +416,39 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        TestNewMsg new_msg ->
+            case idToken model.session of
+                Just id_token ->
+                    let
+                        response =
+                            Tests.New.update
+                                id_token
+                                model.test_new
+                                new_msg
+                    in
+                    ( { model
+                        | test_new = response.state
+                        , requests =
+                            handleRequestChanges
+                                response.requests
+                                model.requests
+                        , notifications =
+                            model.notifications
+                                ++ response.notifications
+                      }
+                    , if response.done then
+                        Cmd.batch
+                            [ response.cmd |> Cmd.map TestNewMsg
+                            , Nav.pushUrl model.navkey "/tests"
+                            ]
+
+                      else
+                        response.cmd |> Cmd.map TestNewMsg
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
         Updated _ ->
             let
                 ( cmd, request, notifications ) =
@@ -387,7 +465,6 @@ update msg model =
             , cmd
             )
 
-        -- 0 1 2 3 4 5 6
         CloseNotification index ->
             ( { model
                 | notifications =
@@ -513,6 +590,30 @@ loadData session route =
                     , [ NWarning "You must be logged in to get tests" ]
                     )
 
+        TestNew ->
+            case idToken session of
+                Just id_token ->
+                    ( Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" id_token ]
+                        , url = questionCategoriesUrl
+                        , body = emptyBody
+                        , expect =
+                            Http.expectJson GotQuestionCategories
+                                questionCategoryListDecoder
+                        , timeout = Nothing
+                        , tracker = Just questionCategoriesUrl
+                        }
+                    , [ AddRequest questionCategoriesUrl ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ NWarning "You must be logged in to get question categories" ]
+                    )
+
         NotFound ->
             ( Cmd.none, [], [] )
 
@@ -537,6 +638,10 @@ viewPage model =
 
         Tests ->
             Tests.List.viewList model.users model.tests
+
+        TestNew ->
+            Tests.New.view model.question_categories model.test_new
+                |> Html.map TestNewMsg
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]

@@ -163,7 +163,7 @@ update id_token state msg =
             }
 
         Submit ->
-            { state = init
+            { state = state
             , cmd =
                 Http.request
                     { method = "POST"
@@ -172,9 +172,9 @@ update id_token state msg =
                     , body = Http.jsonBody (newEncoder state)
                     , expect = Http.expectWhatever Submitted
                     , timeout = Nothing
-                    , tracker = Nothing
+                    , tracker = User.manyUrl |> Just
                     }
-            , requests = [ User.manyUrl |> RemoveRequest ]
+            , requests = [ User.manyUrl |> AddRequest ]
             , done = False
             , notifications = []
             }

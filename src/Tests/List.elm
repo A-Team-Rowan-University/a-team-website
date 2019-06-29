@@ -5,6 +5,8 @@ module Tests.List exposing
     , Test
     , listDecoder
     , manyUrl
+    , questionCategoriesUrl
+    , questionCategoryListDecoder
     , viewList
     )
 
@@ -20,6 +22,11 @@ import Users.Users as User
 manyUrl : String
 manyUrl =
     B.relative [ apiUrl, "tests/" ] []
+
+
+questionCategoriesUrl : String
+questionCategoriesUrl =
+    B.relative [ apiUrl, "question_categories/" ] []
 
 
 type alias QuestionCategoryId =
@@ -55,12 +62,10 @@ view users test =
         , p [ class "subtitle is-5 columns" ]
             [ span [ class "column" ]
                 [ text
-                    ("Created by "
-                        ++ (Dict.get test.creator users
-                                |> Maybe.map
-                                    (\u -> u.first_name ++ u.last_name)
-                                |> Maybe.withDefault ""
-                           )
+                    (Dict.get test.creator users
+                        |> Maybe.map
+                            (\u -> "Created by " ++ u.first_name ++ " " ++ u.last_name)
+                        |> Maybe.withDefault "The creator of this test has been removed"
                     )
                 ]
             ]
@@ -89,6 +94,11 @@ questionCategoryDecoder =
     Decode.map2 QuestionCategory
         (Decode.field "id" Decode.int)
         (Decode.field "title" Decode.string)
+
+
+questionCategoryListDecoder : Decode.Decoder (List QuestionCategory)
+questionCategoryListDecoder =
+    Decode.field "question_categories" (Decode.list questionCategoryDecoder)
 
 
 decoder : Decode.Decoder Test
