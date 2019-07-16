@@ -4,18 +4,17 @@ extern crate diesel_migrations;
 extern crate diesel;
 
 use std::env;
-use std::sync::Mutex;
 use std::thread;
 use std::time;
 
 use log::debug;
 use log::error;
 use log::info;
-use log::trace;
 use log::warn;
 
-use diesel::prelude::*;
+use diesel::r2d2::ConnectionManager;
 use diesel::MysqlConnection;
+use r2d2::Pool;
 
 use dotenv::dotenv;
 
@@ -25,9 +24,9 @@ use webdev_lib::errors::ErrorKind;
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
-use webdev_lib::access::models::{PermissionRequest, UserAccessRequest};
-use webdev_lib::access::requests::validate_token;
-use webdev_lib::access::requests::{handle_permission, handle_user_access};
+use webdev_lib::permissions::models::{PermissionRequest, UserPermissionRequest};
+use webdev_lib::permissions::requests::validate_token;
+use webdev_lib::permissions::requests::{handle_permission, handle_user_permission};
 
 use webdev_lib::chemicals::models::{
     ChemicalInventoryRequest, ChemicalRequest,
@@ -46,6 +45,29 @@ use webdev_lib::tests::tests::models::TestRequest;
 use webdev_lib::tests::tests::requests::handle_test;
 
 embed_migrations!("./webdev_lib/migrations");
+
+pub fn init_database(
+    url: &str,
+) -> Result<Pool<ConnectionManager<MysqlConnection>>, Error> {
+    info!("Connecting to database");
+    let manager = ConnectionManager::new(url);
+
+    let pool = Pool::builder().max_size(15).build(manager);
+
+    let pool = match pool {
+        Ok(p) => p,
+        Err(e) => {
+            return Err(Error::with_source(ErrorKind::Database, Box::new(e)))
+        }
+    };
+
+    info!("Running migrations");
+    if let Err(e) = embedded_migrations::run(&pool.get()?) {
+        warn!("Could not run migrations: {}", e);
+    }
+
+    Ok(pool)
+}
 
 fn main() {
     dotenv().ok();
@@ -68,8 +90,8 @@ fn main() {
 
     debug!("Connecting to {}", database_url);
 
-    let connection = loop {
-        match MysqlConnection::establish(&database_url) {
+    let connection_pool = loop {
+        match init_database(&database_url) {
             Ok(c) => break c,
             Err(e) => {
                 warn!("Could not connect to database: {}", e);
@@ -80,13 +102,6 @@ fn main() {
     };
 
     info!("Connected to database");
-
-    info!("Running migrations");
-    if let Err(e) = embedded_migrations::run(&connection) {
-        warn!("Could not run migrations: {}", e);
-    }
-
-    let connection_mutex = Mutex::new(connection);
 
     info!("Starting server on 0.0.0.0:8000");
 
@@ -111,7 +126,7 @@ fn main() {
                 )
                 .with_additional_header("Access-Control-Max-Age", "86400")
         } else {
-            let current_connection = match connection_mutex.lock() {
+            let current_connection = match connection_pool.get() {
                 Ok(c) => c,
                 Err(_e) => {
                     error!("Could not lock database");
@@ -132,14 +147,31 @@ fn handle_request(
     request: &rouille::Request,
     database_connection: &MysqlConnection,
 ) -> rouille::Response {
-    let mut requested_user = None;
 
-    if let Some(id_token) = request.header("id_token") {
-        trace!("Got id_token: {}", id_token);
-        requested_user = validate_token(id_token, database_connection);
+
+    let requested_user = if let Some(id_token) = request.header("id_token") {
+
+        if request.url() == "/permission/first" {
+            return match handle_permission(
+                PermissionRequest::FirstPermission(id_token.to_string()),
+                None,
+                database_connection,
+            ) {
+                    Ok(permission_response) => permission_response.to_rouille(),
+                    Err(err) => rouille::Response::from(err),
+            };
+        }
+
+        match validate_token(id_token, database_connection) {
+            Ok(user) => Some(user),
+            Err(e) => {
+                warn!("Failed to verify user: {}", e.to_string_with_source());
+                return rouille::Response::from(e);
+            }
+        }
     } else {
-        trace!("No id_token header!");
-    }
+        None
+    };
 
     if let Some(user_request) = request.remove_prefix("/users") {
         match UserRequest::from_rouille(&user_request) {
@@ -169,17 +201,17 @@ fn handle_request(
                 }
             }
         }
-    } else if let Some(user_access_request) =
-        request.remove_prefix("/user_access")
+    } else if let Some(user_permission_request) =
+        request.remove_prefix("/user_permission")
     {
-        match UserAccessRequest::from_rouille(&user_access_request) {
+        match UserPermissionRequest::from_rouille(&user_permission_request) {
             Err(err) => rouille::Response::from(err),
-            Ok(user_access_request) => match handle_user_access(
-                user_access_request,
+            Ok(user_permission_request) => match handle_user_permission(
+                user_permission_request,
                 requested_user,
                 database_connection,
             ) {
-                Ok(user_access_response) => user_access_response.to_rouille(),
+                Ok(user_permission_response) => user_permission_response.to_rouille(),
                 Err(err) => rouille::Response::from(err),
             },
         }
