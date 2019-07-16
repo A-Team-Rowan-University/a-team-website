@@ -24,7 +24,7 @@ type alias State =
     , last_name : Maybe String
     , banner_id : Maybe Int
     , email : Maybe String
-    , access_edits : Maybe Int
+    , permission_edits : Maybe Int
     }
 
 
@@ -34,7 +34,7 @@ init =
     , last_name = Nothing
     , banner_id = Nothing
     , email = Nothing
-    , access_edits = Nothing
+    , permission_edits = Nothing
     }
 
 
@@ -47,12 +47,12 @@ type Msg
     | ResetEmail
     | EditBannerId (Maybe Int)
     | ResetBannerId
-    | EditAccess (Maybe Int)
-    | AddAccess
-    | AddedAccess Int (Result Http.Error ())
-    | RemoveAccess Users.Access
-    | FinishRemoveAccess Int (Result Http.Error (Maybe Int))
-    | RemovedAccess Int (Result Http.Error ())
+    | EditPermission (Maybe Int)
+    | AddPermission
+    | AddedPermission Int (Result Http.Error ())
+    | RemovePermission Users.Permission
+    | FinishRemovePermission Int (Result Http.Error (Maybe Int))
+    | RemovedPermission Int (Result Http.Error ())
     | Submit
     | Submitted (Result Http.Error ())
 
@@ -192,32 +192,32 @@ update id_token state msg user_id =
                         ]
                     }
 
-        RemoveAccess access ->
+        RemovePermission permission ->
             { state = state
             , cmd =
                 Http.request
                     { method = "GET"
                     , headers = [ Http.header "id_token" id_token ]
-                    , url = Users.accessSearchUrl access.id user_id
+                    , url = Users.permissionSearchUrl permission.id user_id
                     , body = Http.emptyBody
                     , expect =
                         Http.expectJson
-                            (FinishRemoveAccess access.id)
-                            (Decode.map List.head Users.userAccessListDecoder)
+                            (FinishRemovePermission permission.id)
+                            (Decode.map List.head Users.userPermissionListDecoder)
                     , timeout = Nothing
                     , tracker =
-                        Users.accessSearchUrl access.id user_id |> Just
+                        Users.permissionSearchUrl permission.id user_id |> Just
                     }
             , requests =
-                [ Users.accessSearchUrl access.id user_id
+                [ Users.permissionSearchUrl permission.id user_id
                     |> AddRequest
                 ]
             , reload = False
             , notifications = []
             }
 
-        FinishRemoveAccess access_id user_access_result ->
-            case user_access_result of
+        FinishRemovePermission permission_id user_permission_result ->
+            case user_permission_result of
                 Ok (Just id) ->
                     { state = state
                     , cmd =
@@ -226,18 +226,18 @@ update id_token state msg user_id =
                             , headers =
                                 [ Http.header "id_token" id_token
                                 ]
-                            , url = Users.accessUrl access_id
+                            , url = Users.permissionUrl permission_id
                             , body = Http.emptyBody
                             , expect =
                                 Http.expectWhatever
-                                    (RemovedAccess access_id)
+                                    (RemovedPermission permission_id)
                             , timeout = Nothing
-                            , tracker = Users.accessUrl access_id |> Just
+                            , tracker = Users.permissionUrl permission_id |> Just
                             }
                     , requests =
-                        [ Users.accessSearchUrl access_id user_id
+                        [ Users.permissionSearchUrl permission_id user_id
                             |> RemoveRequest
-                        , Users.accessUrl access_id
+                        , Users.permissionUrl permission_id
                             |> AddRequest
                         ]
                     , reload = False
@@ -245,17 +245,17 @@ update id_token state msg user_id =
                     }
 
                 Ok Nothing ->
-                    { state = { state | access_edits = Nothing }
+                    { state = { state | permission_edits = Nothing }
                     , cmd = Cmd.none
                     , requests =
-                        [ Users.accessSearchUrl access_id user_id
+                        [ Users.permissionSearchUrl permission_id user_id
                             |> RemoveRequest
                         ]
                     , reload = True
                     , notifications =
                         [ NWarning
                             """
-                            The user access dissapeared while I was
+                            The user permission dissapeared while I was
                             trying to remove it! Strange, but probably
                             fine
                             """
@@ -266,26 +266,26 @@ update id_token state msg user_id =
                     { state = state
                     , cmd = Cmd.none
                     , requests =
-                        [ Users.accessSearchUrl access_id user_id
+                        [ Users.permissionSearchUrl permission_id user_id
                             |> RemoveRequest
                         ]
                     , reload = False
                     , notifications =
                         [ NError
                             """
-                            There was a network error finding the access
+                            There was a network error finding the permission
                             to remove
                             """
                         ]
                     }
 
-        RemovedAccess access_id result ->
+        RemovedPermission permission_id result ->
             case result of
                 Ok _ ->
-                    { state = { state | access_edits = Nothing }
+                    { state = { state | permission_edits = Nothing }
                     , cmd = Cmd.none
                     , requests =
-                        [ Users.accessUrl access_id
+                        [ Users.permissionUrl permission_id
                             |> RemoveRequest
                         ]
                     , reload = True
@@ -296,20 +296,20 @@ update id_token state msg user_id =
                     { state = state
                     , cmd = Cmd.none
                     , requests =
-                        [ Users.accessUrl access_id
+                        [ Users.permissionUrl permission_id
                             |> RemoveRequest
                         ]
                     , reload = False
                     , notifications =
                         [ NError
-                            "There was a network error removing the access"
+                            "There was a network error removing the permission"
                         ]
                     }
 
-        EditAccess access_id ->
-            case access_id of
+        EditPermission permission_id ->
+            case permission_id of
                 Just id ->
-                    { state = { state | access_edits = Just id }
+                    { state = { state | permission_edits = Just id }
                     , cmd = Cmd.none
                     , requests = []
                     , reload = False
@@ -324,9 +324,9 @@ update id_token state msg user_id =
                     , notifications = []
                     }
 
-        AddAccess ->
-            case state.access_edits of
-                Just new_access ->
+        AddPermission ->
+            case state.permission_edits of
+                Just new_permission ->
                     { state = state
                     , cmd =
                         Http.request
@@ -334,22 +334,22 @@ update id_token state msg user_id =
                             , headers =
                                 [ Http.header "id_token" id_token
                                 ]
-                            , url = Users.accessAddUrl
+                            , url = Users.permissionAddUrl
                             , body =
                                 Http.jsonBody
                                     (Encode.object
-                                        [ ( "access_id", Encode.int new_access )
+                                        [ ( "permission_id", Encode.int new_permission )
                                         , ( "user_id", Encode.int user_id )
                                         , ( "permission_level", Encode.null )
                                         ]
                                     )
                             , expect =
                                 Http.expectWhatever
-                                    (AddedAccess new_access)
+                                    (AddedPermission new_permission)
                             , timeout = Nothing
-                            , tracker = Users.accessAddUrl |> Just
+                            , tracker = Users.permissionAddUrl |> Just
                             }
-                    , requests = [ Users.accessAddUrl |> AddRequest ]
+                    , requests = [ Users.permissionAddUrl |> AddRequest ]
                     , reload = False
                     , notifications = []
                     }
@@ -362,12 +362,12 @@ update id_token state msg user_id =
                     , notifications = []
                     }
 
-        AddedAccess new_access result ->
+        AddedPermission new_permission result ->
             case result of
                 Ok _ ->
                     { state = init
                     , cmd = Cmd.none
-                    , requests = [ Users.accessAddUrl |> RemoveRequest ]
+                    , requests = [ Users.permissionAddUrl |> RemoveRequest ]
                     , reload = True
                     , notifications = []
                     }
@@ -375,7 +375,7 @@ update id_token state msg user_id =
                 Err e ->
                     { state = state
                     , cmd = Cmd.none
-                    , requests = [ Users.accessAddUrl |> RemoveRequest ]
+                    , requests = [ Users.permissionAddUrl |> RemoveRequest ]
                     , reload = False
                     , notifications =
                         [ NError
@@ -436,8 +436,8 @@ view user state =
                 ]
             , div [ class "column" ]
                 [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
-                , div [ class "box" ] (List.map (Users.viewAccess RemoveAccess user) user.accesses)
-                , Users.viewAddAccess state.access_edits EditAccess AddAccess
+                , div [ class "box" ] (List.map (Users.viewPermission RemovePermission user) user.permissions)
+                , Users.viewAddPermission state.permission_edits EditPermission AddPermission
                 ]
             ]
         ]

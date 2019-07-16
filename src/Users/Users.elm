@@ -1,21 +1,21 @@
 module Users.Users exposing
-    ( Access
-    , Id
+    ( Id
+    , Permission
     , User
-    , accessAddUrl
-    , accessSearchUrl
-    , accessUrl
     , decoder
     , listDecoder
     , manyUrl
+    , permissionAddUrl
+    , permissionSearchUrl
+    , permissionUrl
     , singleUrl
-    , userAccessListDecoder
+    , userPermissionListDecoder
     , view
-    , viewAccess
-    , viewAddAccess
+    , viewAddPermission
     , viewEditableInt
     , viewEditableText
     , viewList
+    , viewPermission
     )
 
 import Config exposing (..)
@@ -40,9 +40,9 @@ import Test
 import Url.Builder as B
 
 
-type alias Access =
+type alias Permission =
     { id : Int
-    , access_name : String
+    , permission_name : String
     }
 
 
@@ -56,7 +56,7 @@ type alias User =
     , last_name : String
     , email : String
     , banner_id : Int
-    , accesses : List Access
+    , permissions : List Permission
     }
 
 
@@ -70,22 +70,22 @@ singleUrl user_id =
     B.relative [ apiUrl, "users", String.fromInt user_id ] []
 
 
-accessSearchUrl : Int -> Id -> String
-accessSearchUrl access_id user_id =
-    B.relative [ apiUrl, "user_access/" ]
-        [ B.string "access_id" ("exact," ++ String.fromInt access_id)
+permissionSearchUrl : Int -> Id -> String
+permissionSearchUrl permission_id user_id =
+    B.relative [ apiUrl, "user_permission/" ]
+        [ B.string "permission_id" ("exact," ++ String.fromInt permission_id)
         , B.string "user_id" ("exact," ++ String.fromInt user_id)
         ]
 
 
-accessUrl : Int -> String
-accessUrl access_id =
-    B.relative [ apiUrl, "user_access", String.fromInt access_id ] []
+permissionUrl : Int -> String
+permissionUrl permission_id =
+    B.relative [ apiUrl, "user_permission", String.fromInt permission_id ] []
 
 
-accessAddUrl : String
-accessAddUrl =
-    B.relative [ apiUrl, "user_access/" ] []
+permissionAddUrl : String
+permissionAddUrl =
+    B.relative [ apiUrl, "user_permission/" ] []
 
 
 
@@ -111,8 +111,12 @@ viewList users =
 
 view : User -> Html msg
 view user =
-    a [ class "box", href (B.relative [ "users", String.fromInt user.id ] []) ]
-        [ p [ class "title is-5" ] [ text (user.first_name ++ " " ++ user.last_name) ]
+    a
+        [ class "box"
+        , href (B.relative [ "users", String.fromInt user.id ] [])
+        ]
+        [ p [ class "title is-5" ]
+            [ text (user.first_name ++ " " ++ user.last_name) ]
         , p [ class "subtitle is-5 columns" ]
             [ span [ class "column" ]
                 [ text ("Email: " ++ user.email) ]
@@ -122,14 +126,14 @@ view user =
         ]
 
 
-viewAccess : (Access -> msg) -> User -> Access -> Html msg
-viewAccess onRemove user access =
+viewPermission : (Permission -> msg) -> User -> Permission -> Html msg
+viewPermission onRemove user permission =
     div [ class "columns" ]
-        [ span [ class "column" ] [ text (String.fromInt access.id ++ ": " ++ access.access_name) ]
+        [ span [ class "column" ] [ text (String.fromInt permission.id ++ ": " ++ permission.permission_name) ]
         , div [ class "column" ]
             [ button
                 [ class "button is-danger is-pulled-right"
-                , onClick (onRemove access)
+                , onClick (onRemove permission)
                 ]
                 [ text "Remove" ]
             ]
@@ -193,9 +197,9 @@ viewEditableInt default edited onEdit onReset =
                 ]
 
 
-viewAddAccess : Maybe Int -> (Maybe Int -> msg) -> msg -> Html msg
-viewAddAccess access_id onEdit onSubmit =
-    case access_id of
+viewAddPermission : Maybe Int -> (Maybe Int -> msg) -> msg -> Html msg
+viewAddPermission permission_id onEdit onSubmit =
+    case permission_id of
         Nothing ->
             button
                 [ class "button is-primary", onClick (onEdit (Just 0)) ]
@@ -230,7 +234,7 @@ decoder =
         (D.field "last_name" D.string)
         (D.field "email" D.string)
         (D.field "banner_id" D.int)
-        (D.field "accesses" (D.list accessDecoder))
+        (D.field "permissions" (D.list permissionDecoder))
 
 
 listDecoder : D.Decoder (List User)
@@ -238,18 +242,18 @@ listDecoder =
     D.field "users" (D.list decoder)
 
 
-accessDecoder : D.Decoder Access
-accessDecoder =
-    D.map2 Access
+permissionDecoder : D.Decoder Permission
+permissionDecoder =
+    D.map2 Permission
         (D.field "id" D.int)
-        (D.field "access_name" D.string)
+        (D.field "permission_name" D.string)
 
 
-userAccessDecoder : D.Decoder Int
-userAccessDecoder =
+userPermissionDecoder : D.Decoder Int
+userPermissionDecoder =
     D.field "permission_id" D.int
 
 
-userAccessListDecoder : D.Decoder (List Int)
-userAccessListDecoder =
-    D.field "entries" (D.list userAccessDecoder)
+userPermissionListDecoder : D.Decoder (List Int)
+userPermissionListDecoder =
+    D.field "entries" (D.list userPermissionDecoder)

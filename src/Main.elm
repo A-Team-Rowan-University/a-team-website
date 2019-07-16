@@ -23,6 +23,17 @@ import Platform.Cmd
 import Platform.Sub
 import Session exposing (Session, googleUserDecoder, idToken)
 import Set exposing (Set)
+import Task
+import Tests.List
+    exposing
+        ( QuestionCategory
+        , QuestionCategoryId
+        , questionCategoriesUrl
+        , questionCategoryListDecoder
+        )
+import Tests.New
+import Tests.Session
+import Time
 import Url
 import Url.Builder as B
 import Url.Parser as P exposing ((</>))
@@ -61,8 +72,11 @@ port signIn : (E.Value -> msg) -> Sub msg
 type Route
     = Home
     | Users
-    | UserDetail Int
+    | UserDetail User.Id
     | UserNew
+    | Tests
+    | TestNew
+    | Session Tests.Session.Id
     | NotFound
 
 
@@ -73,6 +87,9 @@ routeParser =
         , P.map Users (P.s "users")
         , P.map UserDetail (P.s "users" </> P.int)
         , P.map UserNew (P.s "users" </> P.s "new")
+        , P.map Tests (P.s "tests")
+        , P.map TestNew (P.s "tests" </> P.s "new")
+        , P.map Session (P.s "tests" </> P.s "sessions" </> P.int)
         ]
 
 
@@ -80,9 +97,15 @@ type alias Model =
     { navkey : Nav.Key
     , route : Route
     , session : Session User.Id
+    , timezone : Maybe Time.Zone
     , users : Dict User.Id User.User
     , user_detail : Users.Detail.State
     , user_new : Users.New.State
+    , question_categories : Dict QuestionCategoryId QuestionCategory
+    , tests : Dict Tests.List.Id Tests.List.Test
+    , test_new : Tests.New.State
+    , registrations : Dict Tests.Session.RegistrationId Tests.Session.Registration
+    , sessions : Dict Tests.Session.Id Tests.Session.Session
     , requests : Set String
     , notifications : List Notification
     }
@@ -108,13 +131,19 @@ init _ url key =
     ( { navkey = key
       , route = Maybe.withDefault NotFound (P.parse routeParser url)
       , session = Session.NotSignedIn
+      , timezone = Nothing
       , users = Dict.empty
       , user_detail = Users.Detail.init
       , user_new = Users.New.init
+      , test_new = Tests.New.init
+      , question_categories = Dict.empty
+      , tests = Dict.empty
+      , registrations = Dict.empty
+      , sessions = Dict.empty
       , requests = Set.empty
       , notifications = []
       }
-    , Cmd.none
+    , Task.perform GotTimezone Time.here
     )
 
 
@@ -127,10 +156,16 @@ type Msg
     | Validated (Result Http.Error User.User)
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
+    | GotTimezone Time.Zone
     | GotUsers (Result Http.Error (List User.User))
     | GotUser User.Id (Result Http.Error User.User)
+    | GotTests (Result Http.Error (List Tests.List.Test))
+    | GotQuestionCategories (Result Http.Error (List QuestionCategory))
+    | GotSession Tests.Session.Id (Result Http.Error Tests.Session.Session)
     | UserDetailMsg Users.Detail.Msg
     | UserNewMsg Users.New.Msg
+    | TestNewMsg Tests.New.Msg
+    | SessionMsg Tests.Session.Msg
     | Updated (Result Http.Error ())
     | CloseNotification Int
 
@@ -203,6 +238,9 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
+        GotTimezone zone ->
+            ( { model | timezone = Just zone }, Cmd.none )
+
         GotUsers users_result ->
             ( case users_result of
                 Ok users ->
@@ -242,6 +280,91 @@ update msg model =
                         | requests =
                             handleRequestChanges
                                 [ User.singleUrl id |> RemoveRequest ]
+                                model.requests
+                    }
+            , Cmd.none
+            )
+
+        GotTests tests_result ->
+            ( case tests_result of
+                Ok tests ->
+                    { model
+                        | tests =
+                            Dict.fromList
+                                (List.map (\u -> ( u.id, u )) tests)
+                        , requests =
+                            handleRequestChanges
+                                [ Tests.List.manyUrl |> RemoveRequest ]
+                                model.requests
+                    }
+
+                Err e ->
+                    let
+                        notifications =
+                            model.notifications
+                    in
+                    { model
+                        | requests =
+                            handleRequestChanges
+                                [ Tests.List.manyUrl |> RemoveRequest ]
+                                model.requests
+                        , notifications =
+                            notifications
+                                ++ [ NDebug
+                                        (httpErrorToString e)
+                                   ]
+                    }
+            , Cmd.none
+            )
+
+        GotQuestionCategories question_categories_result ->
+            ( case question_categories_result of
+                Ok question_categories ->
+                    { model
+                        | question_categories =
+                            Dict.fromList
+                                (List.map (\u -> ( u.id, u )) question_categories)
+                        , requests =
+                            handleRequestChanges
+                                [ questionCategoriesUrl |> RemoveRequest ]
+                                model.requests
+                    }
+
+                Err e ->
+                    let
+                        notifications =
+                            model.notifications
+                    in
+                    { model
+                        | requests =
+                            handleRequestChanges
+                                [ questionCategoriesUrl |> RemoveRequest ]
+                                model.requests
+                        , notifications =
+                            notifications
+                                ++ [ NDebug
+                                        (httpErrorToString e)
+                                   ]
+                    }
+            , Cmd.none
+            )
+
+        GotSession id session_result ->
+            ( case session_result of
+                Ok session ->
+                    { model
+                        | sessions = Dict.insert session.id session model.sessions
+                        , requests =
+                            handleRequestChanges
+                                [ RemoveRequest (Tests.Session.url id) ]
+                                model.requests
+                    }
+
+                Err e ->
+                    { model
+                        | requests =
+                            handleRequestChanges
+                                [ RemoveRequest (Tests.Session.url id) ]
                                 model.requests
                     }
             , Cmd.none
@@ -331,6 +454,88 @@ update msg model =
                 Nothing ->
                     ( model, Cmd.none )
 
+        TestNewMsg new_msg ->
+            case idToken model.session of
+                Just id_token ->
+                    let
+                        response =
+                            Tests.New.update
+                                id_token
+                                model.test_new
+                                new_msg
+                    in
+                    ( { model
+                        | test_new = response.state
+                        , requests =
+                            handleRequestChanges
+                                response.requests
+                                model.requests
+                        , notifications =
+                            model.notifications
+                                ++ response.notifications
+                      }
+                    , if response.done then
+                        Cmd.batch
+                            [ response.cmd |> Cmd.map TestNewMsg
+                            , Nav.pushUrl model.navkey "/tests"
+                            ]
+
+                      else
+                        response.cmd |> Cmd.map TestNewMsg
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        SessionMsg session_msg ->
+            case ( model.route, idToken model.session ) of
+                ( Session id, Just id_token ) ->
+                    -- TODO Make this prettier
+                    let
+                        response =
+                            Tests.Session.update
+                                id_token
+                                session_msg
+                                id
+
+                        ( cmd, requests, notifications ) =
+                            if response.reload then
+                                let
+                                    ( load_cmd, load_request, load_notifications ) =
+                                        loadData
+                                            model.session
+                                            model.route
+                                in
+                                ( Cmd.batch
+                                    [ Cmd.map SessionMsg response.cmd
+                                    , load_cmd
+                                    ]
+                                , response.requests ++ load_request
+                                , response.notifications
+                                    ++ load_notifications
+                                )
+
+                            else
+                                ( Cmd.map SessionMsg response.cmd
+                                , response.requests
+                                , response.notifications
+                                )
+                    in
+                    ( { model
+                        | requests =
+                            handleRequestChanges
+                                requests
+                                model.requests
+                        , notifications =
+                            model.notifications
+                                ++ notifications
+                      }
+                    , cmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
         Updated _ ->
             let
                 ( cmd, request, notifications ) =
@@ -347,7 +552,6 @@ update msg model =
             , cmd
             )
 
-        -- 0 1 2 3 4 5 6
         CloseNotification index ->
             ( { model
                 | notifications =
@@ -451,22 +655,76 @@ loadData session route =
         UserNew ->
             ( Cmd.none, [], [] )
 
+        Tests ->
+            case idToken session of
+                Just id_token ->
+                    ( Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" id_token ]
+                        , url = Tests.List.manyUrl
+                        , body = emptyBody
+                        , expect = Http.expectJson GotTests Tests.List.listDecoder
+                        , timeout = Nothing
+                        , tracker = Tests.List.manyUrl |> Just
+                        }
+                    , [ Tests.List.manyUrl |> AddRequest ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ NWarning "You must be logged in to get tests" ]
+                    )
+
+        TestNew ->
+            case idToken session of
+                Just id_token ->
+                    ( Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" id_token ]
+                        , url = questionCategoriesUrl
+                        , body = emptyBody
+                        , expect =
+                            Http.expectJson GotQuestionCategories
+                                questionCategoryListDecoder
+                        , timeout = Nothing
+                        , tracker = Just questionCategoriesUrl
+                        }
+                    , [ AddRequest questionCategoriesUrl ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ NWarning "You must be logged in to get question categories" ]
+                    )
+
+        Session session_id ->
+            case idToken session of
+                Just id_token ->
+                    ( Http.request
+                        { method = "GET"
+                        , headers = [ header "id_token" id_token ]
+                        , url = Tests.Session.url session_id
+                        , body = emptyBody
+                        , expect = Http.expectJson (GotSession session_id) Tests.Session.decoder
+                        , timeout = Nothing
+                        , tracker = Just (Tests.Session.url session_id)
+                        }
+                    , [ AddRequest (Tests.Session.url session_id) ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ NWarning "You must be logged in to get test sessions" ]
+                    )
+
         NotFound ->
             ( Cmd.none, [], [] )
-
-
-
--- VIEW
-{-
-   | NewFirstName String
-   | NewLastName String
-   | NewBannerId (Maybe Int)
-   | NewEmail String
-   | EditNewUserAccess (Maybe Int)
-   | SubmitNewUserAccess
-   | RemoveNewUserAccess Int
-   | SubmitNewUser
--}
 
 
 viewPage : Model -> Html Msg
@@ -486,6 +744,21 @@ viewPage model =
 
         UserNew ->
             Users.New.view model.user_new |> Html.map UserNewMsg
+
+        Tests ->
+            Tests.List.viewList model.users model.tests
+
+        TestNew ->
+            Tests.New.view model.question_categories model.test_new
+                |> Html.map TestNewMsg
+
+        Session session_id ->
+            case Dict.get session_id model.sessions of
+                Just session ->
+                    Tests.Session.view model.timezone model.users session |> Html.map SessionMsg
+
+                Nothing ->
+                    p [] [ text "Test session not found" ]
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
@@ -589,6 +862,8 @@ view model =
                             [ text "Home" ]
                         , a [ class "navbar-item", href "/users" ]
                             [ text "Users" ]
+                        , a [ class "navbar-item", href "/tests" ]
+                            [ text "Tests" ]
                         ]
                     , div [ class "navbar-end" ]
                         [ div [ class "navbar-item" ]
@@ -636,3 +911,22 @@ viewNotification onClose index notification =
                 [ button [ class "delete", onClick (onClose index) ] []
                 , text t
                 ]
+
+
+httpErrorToString : Http.Error -> String
+httpErrorToString e =
+    case e of
+        Http.BadUrl s ->
+            "Bad url: " ++ s
+
+        Http.Timeout ->
+            "Timeout"
+
+        Http.NetworkError ->
+            "Network Error"
+
+        Http.BadStatus status ->
+            "Bad status: " ++ String.fromInt status
+
+        Http.BadBody s ->
+            "Bad body: \n" ++ s
