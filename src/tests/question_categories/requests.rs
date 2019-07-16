@@ -8,7 +8,7 @@ use diesel::RunQueryDsl;
 use crate::errors::Error;
 use crate::errors::ErrorKind;
 
-use crate::access::requests::check_to_run;
+use crate::permissions::requests::check_to_run;
 
 use crate::tests::question_categories::models::{
     JoinedQuestionCategory, NewQuestionCategory, NewRawQuestionCategory,

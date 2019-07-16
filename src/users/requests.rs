@@ -1,7 +1,6 @@
 use crate::diesel::NullableExpressionMethods;
 use diesel;
 use diesel::mysql::MysqlConnection;
-use diesel::query_builder::AsQuery;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
@@ -15,17 +14,17 @@ use crate::errors::ErrorKind;
 
 use crate::search::Search;
 
-use crate::access::requests::check_to_run;
+use crate::permissions::requests::check_to_run;
 
-use crate::access::models::NewUserAccess;
+use crate::permissions::models::NewUserPermission;
 
 use crate::users::models::{
     JoinedUser, NewRawUser, NewUser, PartialUser, RawUser, SearchUser, User,
     UserList, UserRequest, UserResponse,
 };
 
-use crate::access::schema::permission as permission_schema;
-use crate::access::schema::user_access as user_access_schema;
+use crate::permissions::schema::permissions as permissions_schema;
+use crate::permissions::schema::user_permissions as user_permissions_schema;
 use crate::users::schema::users as users_schema;
 
 pub fn handle_user(
@@ -94,15 +93,15 @@ fn condense_join(joined: Vec<JoinedUser>) -> Vec<User> {
     let mut condensed: Vec<User> = Vec::new();
 
     for join in joined {
-        let mut access = if let Some(access) = &join.access {
-            vec![access.clone()]
+        let mut permission = if let Some(permission) = &join.permission {
+            vec![permission.clone()]
         } else {
             Vec::new()
         };
 
         if let Some(user) = condensed.iter_mut().find(|u| u.id == join.user.id)
         {
-            user.accesses.append(&mut access);
+            user.permissions.append(&mut permission);
         } else {
             let user = User {
                 id: join.user.id,
@@ -110,7 +109,7 @@ fn condense_join(joined: Vec<JoinedUser>) -> Vec<User> {
                 last_name: join.user.last_name,
                 banner_id: join.user.banner_id,
                 email: join.user.email,
-                accesses: access,
+                permissions: permission,
             };
 
             condensed.push(user);
@@ -124,7 +123,7 @@ pub(crate) fn search_users(
     database_connection: &MysqlConnection,
 ) -> Result<UserList, Error> {
     let mut users_query = users_schema::table
-        .left_join(user_access_schema::table.left_join(permission_schema::table))
+        .left_join(user_permissions_schema::table.left_join(permissions_schema::table))
         .select((
             (
                 users_schema::id,
@@ -133,7 +132,7 @@ pub(crate) fn search_users(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (permission_schema::id, permission_schema::permission_name).nullable(),
+            (permissions_schema::id, permissions_schema::permission_name).nullable(),
         ))
         .into_boxed();
 
@@ -192,7 +191,7 @@ pub(crate) fn search_users(
 
     let joined_users = users_query.load::<JoinedUser>(database_connection)?;
 
-    let mut users = condense_join(joined_users);
+    let users = condense_join(joined_users);
 
     let user_list = UserList { users };
 
@@ -204,7 +203,7 @@ pub(crate) fn get_user(
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
     let joined_users = users_schema::table
-        .left_join(user_access_schema::table.left_join(permission_schema::table))
+        .left_join(user_permissions_schema::table.left_join(permissions_schema::table))
         .select((
             (
                 users_schema::id,
@@ -213,7 +212,7 @@ pub(crate) fn get_user(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (permission_schema::id, permission_schema::permission_name).nullable(),
+            (permissions_schema::id, permissions_schema::permission_name).nullable(),
         ))
         .filter(users_schema::id.eq(id))
         .load::<JoinedUser>(database_connection)?;
@@ -247,18 +246,17 @@ pub(crate) fn create_user(
 
     if let Some(inserted_user) = inserted_users.pop() {
 
-        let new_user_accesses: Vec<_> = user
-            .accesses
+        let new_user_permissions: Vec<_> = user
+            .permissions
             .into_iter()
-            .map(|access_id| NewUserAccess {
-                access_id: access_id,
+            .map(|permission_id| NewUserPermission {
+                permission_id: permission_id,
                 user_id: inserted_user.id,
-                permission_level: None,
             })
             .collect();
 
-        diesel::insert_into(user_access_schema::table)
-            .values(new_user_accesses)
+        diesel::insert_into(user_permissions_schema::table)
+            .values(new_user_permissions)
             .execute(database_connection)?;
 
         let inserted_user = get_user(inserted_user.id, database_connection)?;

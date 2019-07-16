@@ -60,10 +60,10 @@ pub struct ChemicalList {
 
 pub enum ChemicalRequest {
     Search(SearchChemical),
-    GetChemical(u64),            //id of access name searched
-    CreateChemical(NewChemical), //new access type of some name to be created
-    UpdateChemical(u64, PartialChemical), //Contains id to be changed to new access_name
-    DeleteChemical(u64),                  //if of access to be deleted
+    GetChemical(u64),
+    CreateChemical(NewChemical),
+    UpdateChemical(u64, PartialChemical),
+    DeleteChemical(u64),
 }
 
 impl ChemicalRequest {

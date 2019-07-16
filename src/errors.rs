@@ -11,7 +11,7 @@ pub enum ErrorKind {
     Url,
     Body,
     NotFound,
-    AccessDenied,
+    PermissionDenied,
     GoogleSignIn,
     GoogleUserNoEmail,
     GoogleUserNotFound,
@@ -37,7 +37,7 @@ impl std::fmt::Display for Error {
             ErrorKind::Url => write!(f, "Url parse error!"),
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
-            ErrorKind::AccessDenied => write!(f, "Accessed denied!"),
+            ErrorKind::PermissionDenied => write!(f, "Permission denied!"),
             ErrorKind::GoogleSignIn => write!(f, "Failed to validate Id Token with Google"),
             ErrorKind::GoogleUserNoEmail => write!(f, "Google did not provide an email"),
             ErrorKind::GoogleUserNotFound => write!(f, "The email provided by Google did not match any users' emails"),
@@ -134,7 +134,7 @@ impl From<url::ParseError> for Error {
 
 impl From<google_signin::Error> for Error {
     fn from(e: google_signin::Error) -> Error {
-        Error::with_source(ErrorKind::AccessDenied, Box::new(e))
+        Error::with_source(ErrorKind::PermissionDenied, Box::new(e))
     }
 }
 
@@ -172,7 +172,7 @@ impl From<Error> for rouille::Response {
             ErrorKind::GoogleUserNotFound => {
                 rouille::Response::text(e.to_string()).with_status_code(401)
             }
-            ErrorKind::AccessDenied => {
+            ErrorKind::PermissionDenied => {
                 rouille::Response::text(e.to_string()).with_status_code(401)
             }
             ErrorKind::RegisteredTwiceForTest => {

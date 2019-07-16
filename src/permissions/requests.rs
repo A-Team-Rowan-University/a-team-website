@@ -6,7 +6,6 @@ use diesel::sql_types;
 use diesel::ExpressionMethods;
 use diesel::QueryDsl;
 use diesel::RunQueryDsl;
-use diesel::TextExpressionMethods;
 
 use google_signin;
 
@@ -16,21 +15,21 @@ use log::warn;
 
 use crate::errors::{Error, ErrorKind};
 
-use crate::search::{NullableSearch, Search};
+use crate::search::Search;
 
 use super::models::{
-    Permission, PermissionList, PermissionRequest, PermissionResponse, JoinedUserAccess,
-    JoinedUserAccessList, NewPermission, NewUserAccess, PartialPermission,
-    PartialUserAccess, SearchUserAccess, UserAccess, UserAccessRequest,
-    UserAccessResponse,
+    Permission, PermissionList, PermissionRequest, PermissionResponse, JoinedUserPermission,
+    JoinedUserPermissionList, NewPermission, NewUserPermission, PartialPermission,
+    PartialUserPermission, SearchUserPermission, UserPermission, UserPermissionRequest,
+    UserPermissionResponse,
 };
 
 use crate::users::models::{NewUser, SearchUser};
 use crate::users::requests::create_user;
 use crate::users::requests::search_users;
 
-use super::schema::permission as permission_schema;
-use super::schema::user_access as user_access_schema;
+use super::schema::permissions as permissions_schema;
+use super::schema::user_permissions as user_permissions_schema;
 use crate::users::schema::users as users_schema;
 
 pub fn validate_token(
@@ -80,23 +79,23 @@ pub fn check_to_run(
     );
     match requesting_user_id {
         Some(user_id) => {
-            match check_user_access(
+            match check_user_permission(
                 user_id,
                 String::from(permission_name),
                 database_connection,
             ) {
-                Ok(access) => {
-                    if access {
-                        debug!("Access granted!");
+                Ok(permission) => {
+                    if permission {
+                        debug!("Permission granted!");
                         Ok(())
                     } else {
-                        Err(Error::new(ErrorKind::AccessDenied))
+                        Err(Error::new(ErrorKind::PermissionDenied))
                     }
                 }
                 Err(e) => Err(e),
             }
         }
-        None => Err(Error::new(ErrorKind::AccessDenied)),
+        None => Err(Error::new(ErrorKind::PermissionDenied)),
     }
 }
 
@@ -168,21 +167,20 @@ pub(crate) fn first_permission(
         id_token
     );
 
-    let search = SearchUserAccess {
+    let search = SearchUserPermission {
         permission_id: Search::NoSearch,
         user_id: Search::NoSearch,
-        access_level: NullableSearch::NoSearch,
     };
 
-    let non_root_accesses = search_user_access(search, &database_connection)?
+    let non_root_permissions = search_user_permission(search, &database_connection)?
         .entries
         .into_iter()
-        .filter(|access| access.permission_id != 1)
+        .filter(|permission| permission.permission_id != 1)
         .count();
 
-    trace!("Found {} non-root accesses", non_root_accesses);
+    trace!("Found {} non-root permissions", non_root_permissions);
 
-    if non_root_accesses == 0 {
+    if non_root_permissions == 0 {
         let user_id = if let Some(user_id) = requesting_user {
             user_id
         } else {
@@ -198,7 +196,7 @@ pub(crate) fn first_permission(
             let email = match info.email {
                 Some(email) => email,
                 None => {
-                    return Err(Error::new(ErrorKind::AccessDenied));
+                    return Err(Error::new(ErrorKind::PermissionDenied));
                 }
             };
 
@@ -211,7 +209,7 @@ pub(crate) fn first_permission(
                     .unwrap_or("Not supplied by Google".to_owned()),
                 email: email,
                 banner_id: 0,
-                accesses: Vec::new(),
+                permissions: Vec::new(),
             };
 
             trace!("New user: {:#?}", new_user);
@@ -219,27 +217,26 @@ pub(crate) fn first_permission(
             create_user(new_user, database_connection)?.id
         };
 
-        let permissions = permission_schema::table
-            .filter(permission_schema::permission_name.ne("RootAccess"))
+        let permissions = permissions_schema::table
+            .filter(permissions_schema::permission_name.ne("RootPermission"))
             .load::<Permission>(database_connection)?;
 
-        let new_user_accesses: Vec<_> = permissions
+        let new_user_permissions: Vec<_> = permissions
             .into_iter()
-            .map(|permission| NewUserAccess {
+            .map(|permission| NewUserPermission {
                 permission_id: permission.id,
                 user_id: user_id,
-                access_level: None,
             })
             .collect();
 
-        diesel::insert_into(user_access_schema::table)
-            .values(new_user_accesses)
+        diesel::insert_into(user_permissions_schema::table)
+            .values(new_user_permissions)
             .execute(database_connection)?;
 
         Ok(())
     } else {
         warn!("First permission request attempted, but permission has already been setup.");
-        Err(Error::new(ErrorKind::AccessDenied))
+        Err(Error::new(ErrorKind::PermissionDenied))
     }
 }
 
@@ -247,8 +244,8 @@ pub(crate) fn get_permission(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<Permission, Error> {
-    let mut found_permission = permission_schema::table
-        .filter(permission_schema::id.eq(id))
+    let mut found_permission = permissions_schema::table
+        .filter(permissions_schema::id.eq(id))
         .load::<Permission>(database_connection)?;
 
     match found_permission.pop() {
@@ -261,14 +258,14 @@ pub(crate) fn create_permission(
     permission: NewPermission,
     database_connection: &MysqlConnection,
 ) -> Result<Permission, Error> {
-    diesel::insert_into(permission_schema::table)
+    diesel::insert_into(permissions_schema::table)
         .values(permission)
         .execute(database_connection)?;
 
     no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
-    let mut inserted_permissions = permission_schema::table
-        .filter(permission_schema::id.eq(last_insert_id))
+    let mut inserted_permissions = permissions_schema::table
+        .filter(permissions_schema::id.eq(last_insert_id))
         //.filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
         .load::<Permission>(database_connection)?;
 
@@ -284,8 +281,8 @@ pub(crate) fn update_permission(
     permission: PartialPermission,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::update(permission_schema::table)
-        .filter(permission_schema::id.eq(id))
+    diesel::update(permissions_schema::table)
+        .filter(permissions_schema::id.eq(id))
         .set(&permission)
         .execute(database_connection)?;
     Ok(())
@@ -295,269 +292,245 @@ pub(crate) fn delete_permission(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::delete(permission_schema::table.filter(permission_schema::id.eq(id)))
+    diesel::delete(permissions_schema::table.filter(permissions_schema::id.eq(id)))
         .execute(database_connection)?;
 
     Ok(())
 }
 
-pub fn handle_user_access(
-    request: UserAccessRequest,
+pub fn handle_user_permission(
+    request: UserPermissionRequest,
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<UserAccessResponse, Error> {
+) -> Result<UserPermissionResponse, Error> {
     match request {
-        UserAccessRequest::SearchAccess(user_access) => {
+        UserPermissionRequest::SearchPermission(user_permission) => {
             match check_to_run(
                 requesting_user,
-                "GetUserAccess",
+                "GetUserPermission",
                 database_connection,
             ) {
-                Ok(()) => search_user_access(user_access, database_connection)
-                    .map(|u| UserAccessResponse::ManyUserAccess(u)),
+                Ok(()) => search_user_permission(user_permission, database_connection)
+                    .map(|u| UserPermissionResponse::ManyUserPermission(u)),
                 Err(e) => Err(e),
             }
         }
-        UserAccessRequest::GetCurrentUserAccess => {
-            get_current_user_access(requesting_user, database_connection)
-                .map(|u| UserAccessResponse::ManyAccess(u))
+        UserPermissionRequest::GetCurrentUserPermission => {
+            get_current_user_permission(requesting_user, database_connection)
+                .map(|u| UserPermissionResponse::ManyPermission(u))
         }
-        UserAccessRequest::GetAccess(permission_id) => {
+        UserPermissionRequest::GetPermission(permission_id) => {
             match check_to_run(
                 requesting_user,
-                "GetUserAccess",
+                "GetUserPermission",
                 database_connection,
             ) {
-                Ok(()) => get_user_access(permission_id, database_connection)
-                    .map(|a| UserAccessResponse::OneUserAccess(a)),
+                Ok(()) => get_user_permission(permission_id, database_connection)
+                    .map(|a| UserPermissionResponse::OneUserPermission(a)),
                 Err(e) => Err(e),
             }
         }
-        UserAccessRequest::CheckAccess(user_id, access_name) => {
-            check_user_access(user_id, access_name, database_connection)
-                .map(|s| UserAccessResponse::AccessState(s))
+        UserPermissionRequest::CheckPermission(user_id, permission_name) => {
+            check_user_permission(user_id, permission_name, database_connection)
+                .map(|s| UserPermissionResponse::PermissionState(s))
         },
-        UserAccessRequest::CreateAccess(user_access) => {
+        UserPermissionRequest::CreatePermission(user_permission) => {
             match check_to_run(
                 requesting_user,
-                "CreateUserAccess",
+                "CreateUserPermission",
                 database_connection,
             ) {
-                Ok(()) => create_user_access(user_access, database_connection)
-                    .map(|a| UserAccessResponse::OneUserAccess(a)),
+                Ok(()) => create_user_permission(user_permission, database_connection)
+                    .map(|a| UserPermissionResponse::OneUserPermission(a)),
                 Err(e) => Err(e),
             }
         }
-        UserAccessRequest::UpdateAccess(id, user_access) => {
+        UserPermissionRequest::UpdatePermission(id, user_permission) => {
             match check_to_run(
                 requesting_user,
-                "UpdateUserAccess",
+                "UpdateUserPermission",
                 database_connection,
             ) {
                 Ok(()) => {
-                    update_user_access(id, user_access, database_connection)
-                        .map(|_| UserAccessResponse::NoResponse)
+                    update_user_permission(id, user_permission, database_connection)
+                        .map(|_| UserPermissionResponse::NoResponse)
                 }
                 Err(e) => Err(e),
             }
         }
-        UserAccessRequest::DeleteAccess(id) => {
+        UserPermissionRequest::DeletePermission(id) => {
             match check_to_run(
                 requesting_user,
-                "DeleteUserAccess",
+                "DeleteUserPermission",
                 database_connection,
             ) {
-                Ok(()) => delete_user_access(id, database_connection)
-                    .map(|_| UserAccessResponse::NoResponse),
+                Ok(()) => delete_user_permission(id, database_connection)
+                    .map(|_| UserPermissionResponse::NoResponse),
                 Err(e) => Err(e),
             }
         }
     }
 }
 
-pub(crate) fn search_user_access(
-    user_access_search: SearchUserAccess,
+pub(crate) fn search_user_permission(
+    user_permission_search: SearchUserPermission,
     database_connection: &MysqlConnection,
-) -> Result<JoinedUserAccessList, Error> {
-    let mut user_access_query = user_access_schema::table
-        .inner_join(permission_schema::table)
+) -> Result<JoinedUserPermissionList, Error> {
+    let mut user_permission_query = user_permissions_schema::table
+        .inner_join(permissions_schema::table)
         .inner_join(users_schema::table)
         .select((
-            user_access_schema::permission_id,
+            user_permissions_schema::permission_id,
             users_schema::id,
-            permission_schema::id,
+            permissions_schema::id,
             users_schema::first_name,
             users_schema::last_name,
             users_schema::banner_id,
         ))
         .into_boxed::<Mysql>();
 
-    match user_access_search.permission_id {
+    match user_permission_search.permission_id {
         Search::Partial(s) => {
-            user_access_query =
-                user_access_query.filter(user_access_schema::access_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::permission_id.eq(s))
         }
 
         Search::Exact(s) => {
-            user_access_query =
-                user_access_query.filter(user_access_schema::access_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::permission_id.eq(s))
         }
 
         Search::NoSearch => {}
     }
 
-    match user_access_search.user_id {
+    match user_permission_search.user_id {
         Search::Partial(s) => {
-            user_access_query =
-                user_access_query.filter(user_access_schema::user_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::user_id.eq(s))
         }
 
         Search::Exact(s) => {
-            user_access_query =
-                user_access_query.filter(user_access_schema::user_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::user_id.eq(s))
         }
 
         Search::NoSearch => {}
     }
 
-    match user_access_search.access_level {
-        NullableSearch::Partial(s) => {
-            user_access_query = user_access_query.filter(
-                user_access_schema::access_level.like(format!("%{}%", s)),
-            )
-        }
 
-        NullableSearch::Exact(s) => {
-            user_access_query = user_access_query
-                .filter(user_access_schema::access_level.eq(s))
-        }
-
-        NullableSearch::Some => {
-            user_access_query = user_access_query
-                .filter(user_access_schema::access_level.is_not_null());
-        }
-
-        NullableSearch::None => {
-            user_access_query = user_access_query
-                .filter(user_access_schema::access_level.is_null());
-        }
-
-        NullableSearch::NoSearch => {}
-    }
-
-    let found_access_entries =
-        user_access_query.load::<JoinedUserAccess>(database_connection)?;
-    let joined_list = JoinedUserAccessList {
-        entries: found_access_entries,
+    let found_permission_entries =
+        user_permission_query.load::<JoinedUserPermission>(database_connection)?;
+    let joined_list = JoinedUserPermissionList {
+        entries: found_permission_entries,
     };
 
     Ok(joined_list)
 }
 
-pub(crate) fn get_current_user_access(
+pub(crate) fn get_current_user_permission(
     requesting_user: Option<u64>,
     database_connection: &MysqlConnection,
 ) -> Result<PermissionList, Error> {
     if let Some(user_id) = requesting_user {
-        let permissions = permission_schema::table
-            .inner_join(user_access_schema::table)
-            .select((permission_schema::id, permission_schema::permission_name))
-            .filter(user_access_schema::user_id.eq(user_id))
+        let permissions = permissions_schema::table
+            .inner_join(user_permissions_schema::table)
+            .select((permissions_schema::id, permissions_schema::permission_name))
+            .filter(user_permissions_schema::user_id.eq(user_id))
             .load::<Permission>(database_connection)?;
 
         Ok(PermissionList { permissions })
     } else {
-        Err(Error::new(ErrorKind::AccessDenied))
+        Err(Error::new(ErrorKind::PermissionDenied))
     }
 }
 
-pub(crate) fn get_user_access(
+pub(crate) fn get_user_permission(
     permission_id: u64,
     database_connection: &MysqlConnection,
-) -> Result<UserAccess, Error> {
-    let mut found_user_accesses = user_access_schema::table
-        .filter(user_access_schema::permission_id.eq(permission_id))
-        .load::<UserAccess>(database_connection)?;
+) -> Result<UserPermission, Error> {
+    let mut found_user_permissions = user_permissions_schema::table
+        .filter(user_permissions_schema::permission_id.eq(permission_id))
+        .load::<UserPermission>(database_connection)?;
 
-    match found_user_accesses.pop() {
-        Some(found_user_access) => Ok(found_user_access),
+    match found_user_permissions.pop() {
+        Some(found_user_permission) => Ok(found_user_permission),
         None => Err(Error::new(ErrorKind::NotFound)),
     }
 }
 
-pub(crate) fn check_user_access(
+pub(crate) fn check_user_permission(
     user_id: u64,
     permission_name: String,
     database_connection: &MysqlConnection,
 ) -> Result<bool, Error> {
-    let found_user_accesses = user_access_schema::table
-        .inner_join(permission_schema::table)
-        .select((user_access_schema::user_id, permission_schema::permission_name))
-        .filter(user_access_schema::user_id.eq(user_id))
-        .filter(permission_schema::permission_name.eq(permission_name))
+    let found_user_permissions = user_permissions_schema::table
+        .inner_join(permissions_schema::table)
+        .select((user_permissions_schema::user_id, permissions_schema::permission_name))
+        .filter(user_permissions_schema::user_id.eq(user_id))
+        .filter(permissions_schema::permission_name.eq(permission_name))
         .execute(database_connection)?;
 
-    if found_user_accesses != 0 {
+    if found_user_permissions != 0 {
         Ok(true)
     } else {
         Ok(false)
     }
 }
 
-pub(crate) fn create_user_access(
-    user_access: NewUserAccess,
+pub(crate) fn create_user_permission(
+    user_permission: NewUserPermission,
     database_connection: &MysqlConnection,
-) -> Result<UserAccess, Error> {
-    //find if permission currently exists, should not duplicate (user_id, access_id) pairs
-    let found_user_accesses = user_access_schema::table
-        .filter(user_access_schema::user_id.eq(user_access.user_id))
-        .filter(user_access_schema::permission_id.eq(user_access.permission_id))
+) -> Result<UserPermission, Error> {
+    //find if permission currently exists, should not duplicate (user_id, permission_id) pairs
+    let found_user_permissions = user_permissions_schema::table
+        .filter(user_permissions_schema::user_id.eq(user_permission.user_id))
+        .filter(user_permissions_schema::permission_id.eq(user_permission.permission_id))
         .execute(database_connection)?;
 
-    if found_user_accesses != 0 {
+    if found_user_permissions != 0 {
         return Err(Error::new(ErrorKind::Database));
     }
 
     //permission most definitely does not exist at this point
 
-    diesel::insert_into(user_access_schema::table)
-        .values(user_access)
+    diesel::insert_into(user_permissions_schema::table)
+        .values(user_permission)
         .execute(database_connection)?;
 
     no_arg_sql_function!(last_insert_id, Unsigned<sql_types::Bigint>);
 
-    let mut inserted_accesses = user_access_schema::table
-        .filter(user_access_schema::permission_id.eq(last_insert_id))
+    let mut inserted_permissions = user_permissions_schema::table
+        .filter(user_permissions_schema::user_permission_id.eq(last_insert_id))
         //.filter(diesel::dsl::sql("permission_id = LAST_INSERT_ID()"))
-        .load::<UserAccess>(database_connection)?;
+        .load::<UserPermission>(database_connection)?;
 
-    if let Some(inserted_access) = inserted_accesses.pop() {
-        Ok(inserted_access)
+    if let Some(inserted_permission) = inserted_permissions.pop() {
+        Ok(inserted_permission)
     } else {
         Err(Error::new(ErrorKind::Database))
     }
 }
 
-pub(crate) fn update_user_access(
+pub(crate) fn update_user_permission(
     id: u64,
-    user_access: PartialUserAccess,
+    user_permission: PartialUserPermission,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::update(user_access_schema::table)
-        .filter(user_access_schema::permission_id.eq(id))
-        .set(&user_access)
+    diesel::update(user_permissions_schema::table)
+        .filter(user_permissions_schema::permission_id.eq(id))
+        .set(&user_permission)
         .execute(database_connection)?;
 
     Ok(())
 }
 
-pub(crate) fn delete_user_access(
+pub(crate) fn delete_user_permission(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
     diesel::delete(
-        user_access_schema::table
-            .filter(user_access_schema::permission_id.eq(id)),
+        user_permissions_schema::table
+            .filter(user_permissions_schema::permission_id.eq(id)),
     )
     .execute(database_connection)?;
 

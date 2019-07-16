@@ -11,9 +11,9 @@ use log::warn;
 
 use crate::errors::{Error, ErrorKind};
 
-use crate::search::{NullableSearch, Search};
+use crate::search::Search;
 
-use super::schema::{permission, user_access};
+use super::schema::{permissions, user_permissions};
 
 #[derive(Queryable, Serialize, Deserialize, Clone, Debug)]
 pub struct Permission {
@@ -22,13 +22,13 @@ pub struct Permission {
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug)]
-#[table_name = "permission"]
+#[table_name = "permissions"]
 pub struct NewPermission {
     pub permission_name: String,
 }
 
 #[derive(AsChangeset, Serialize, Deserialize, Debug)]
-#[table_name = "permission"]
+#[table_name = "permissions"]
 pub struct PartialPermission {
     pub permission_name: Option<String>,
 }
@@ -39,10 +39,10 @@ pub struct PermissionList {
 }
 
 pub enum PermissionRequest {
-    GetPermission(u64),                   //id of access name searched
-    CreatePermission(NewPermission), //new access type of some name to be created
-    UpdatePermission(u64, PartialPermission), //Contains id to be changed to new access_name
-    DeletePermission(u64),                //if of access to be deleted
+    GetPermission(u64),                   //id of permission name searched
+    CreatePermission(NewPermission), //new permission type of some name to be created
+    UpdatePermission(u64, PartialPermission), //Contains id to be changed to new permission_name
+    DeletePermission(u64),                //if of permission to be deleted
     FirstPermission(String),
 }
 
@@ -77,7 +77,7 @@ impl PermissionRequest {
                 if let Some(id_token) = request.header("id_token") {
                     Ok(PermissionRequest::FirstPermission(id_token.to_string()))
                 } else {
-                    Err(Error::new(ErrorKind::AccessDenied))
+                    Err(Error::new(ErrorKind::PermissionDenied))
                 }
             },
 
@@ -106,157 +106,149 @@ impl PermissionResponse {
 }
 
 #[derive(Queryable, Serialize, Deserialize, Debug)]
-pub struct UserAccess {
-    pub access_id: u64,
+pub struct UserPermission {
+    pub user_permission_id: u64,
     pub permission_id: u64,
     pub user_id: u64,
-    pub access_level: Option<String>,
 }
 
 #[derive(Insertable, Serialize, Deserialize, Debug)]
-#[table_name = "user_access"]
-pub struct NewUserAccess {
+#[table_name = "user_permissions"]
+pub struct NewUserPermission {
     pub permission_id: u64,
     pub user_id: u64,
-    pub access_level: Option<String>,
 }
 
 #[derive(AsChangeset, Serialize, Deserialize, Debug)]
-#[table_name = "user_access"]
-pub struct PartialUserAccess {
+#[table_name = "user_permissions"]
+pub struct PartialUserPermission {
     pub permission_id: Option<u64>,
     pub user_id: Option<u64>,
-    pub access_level: Option<Option<String>>,
 }
 
-pub struct SearchUserAccess {
+pub struct SearchUserPermission {
     pub permission_id: Search<u64>,
     pub user_id: Search<u64>,
-    pub access_level: NullableSearch<String>,
 }
 
-pub enum UserAccessRequest {
-    SearchAccess(SearchUserAccess), //list of users with access id or (?) name
-    GetCurrentUserAccess,           // Get the access for the logged in user
-    GetAccess(u64),                 //get individual access entry from its id
-    CheckAccess(u64, String), //entry allowing user of user_id to perform action of action_id
-    CreateAccess(NewUserAccess), //entry to add to database
-    UpdateAccess(u64, PartialUserAccess), //entry to update with new information
-    DeleteAccess(u64),        //entry to delete from database
+pub enum UserPermissionRequest {
+    SearchPermission(SearchUserPermission), //list of users with permission id or (?) name
+    GetCurrentUserPermission,           // Get the permission for the logged in user
+    GetPermission(u64),                 //get individual permission entry from its id
+    CheckPermission(u64, String), //entry allowing user of user_id to perform action of action_id
+    CreatePermission(NewUserPermission), //entry to add to database
+    UpdatePermission(u64, PartialUserPermission), //entry to update with new information
+    DeletePermission(u64),        //entry to delete from database
 }
 
-impl UserAccessRequest {
+impl UserPermissionRequest {
     pub fn from_rouille(
         request: &rouille::Request,
-    ) -> Result<UserAccessRequest, Error> {
+    ) -> Result<UserPermissionRequest, Error> {
         let url_queries =
             form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
 
-                let mut access_id_search = Search::NoSearch;
+                let mut permission_id_search = Search::NoSearch;
                 let mut user_id_search = Search::NoSearch;
-                let mut permission_level_search = NullableSearch::NoSearch;
 
                 for (field, query) in url_queries {
                     match field.as_ref() as &str {
-                        "access_id" => access_id_search =
+                        "permission_id" => permission_id_search =
                             Search::from_query(query.as_ref())?,
                         "user_id" => user_id_search =
                             Search::from_query(query.as_ref())?,
-                        "permission_level" => permission_level_search =
-                            NullableSearch::from_query(query.as_ref())?,
                         _ => return Err(Error::new(ErrorKind::Url)),
                     }
                 }
 
-                Ok(UserAccessRequest::SearchAccess(SearchUserAccess {
-                    permission_id: access_id_search,
+                Ok(UserPermissionRequest::SearchPermission(SearchUserPermission {
+                    permission_id: permission_id_search,
                     user_id: user_id_search,
-                    access_level: permission_level_search,
                 }))
             },
 
             (GET) (/current) => {
-                Ok(UserAccessRequest::GetCurrentUserAccess)
+                Ok(UserPermissionRequest::GetCurrentUserPermission)
             },
 
             (GET) (/{permission_id: u64}) => {
-                Ok(UserAccessRequest::GetAccess(permission_id))
+                Ok(UserPermissionRequest::GetPermission(permission_id))
             },
 
             (GET) (/{user_id:u64}/{permission_name: String}) => {
-                Ok(UserAccessRequest::CheckAccess(user_id, permission_name))
+                Ok(UserPermissionRequest::CheckPermission(user_id, permission_name))
             },
 
             (POST) (/) => {
                 let request_body = request.data()
                     .ok_or(Error::new(ErrorKind::Body))?;
-                let new_user_access: NewUserAccess =
+                let new_user_permission: NewUserPermission =
                     serde_json::from_reader(request_body)?;
-                Ok(UserAccessRequest::CreateAccess(new_user_access))
+                Ok(UserPermissionRequest::CreatePermission(new_user_permission))
             },
 
             (PUT) (/{id: u64}) => {
                 let request_body = request.data()
                     .ok_or(Error::new(ErrorKind::Body))?;
-                let update_user_access: PartialUserAccess =
+                let update_user_permission: PartialUserPermission =
                     serde_json::from_reader(request_body)?;
-                Ok(UserAccessRequest::UpdateAccess(id, update_user_access))
+                Ok(UserPermissionRequest::UpdatePermission(id, update_user_permission))
             },
 
             (DELETE) (/{id: u64}) => {
-                Ok(UserAccessRequest::DeleteAccess(id))
+                Ok(UserPermissionRequest::DeletePermission(id))
             },
 
             _ => {
-                warn!("Could not create a user access request for the given rouille request");
+                warn!("Could not create a user permission request for the given rouille request");
                 Err(Error::new(ErrorKind::NotFound))
             }
         ) //end router
     }
 }
 
-pub enum UserAccessResponse {
-    AccessState(bool),
-    ManyUserAccess(JoinedUserAccessList),
-    ManyAccess(PermissionList),
-    OneUserAccess(UserAccess),
+pub enum UserPermissionResponse {
+    PermissionState(bool),
+    ManyUserPermission(JoinedUserPermissionList),
+    ManyPermission(PermissionList),
+    OneUserPermission(UserPermission),
     NoResponse,
 }
 
-impl UserAccessResponse {
+impl UserPermissionResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            UserAccessResponse::AccessState(state) => {
+            UserPermissionResponse::PermissionState(state) => {
                 rouille::Response::text(if state { "true" } else { "false" })
             }
-            UserAccessResponse::ManyUserAccess(user_accesses) => {
-                rouille::Response::json(&user_accesses)
+            UserPermissionResponse::ManyUserPermission(user_permissions) => {
+                rouille::Response::json(&user_permissions)
             }
-            UserAccessResponse::ManyAccess(accesses) => {
-                rouille::Response::json(&accesses)
+            UserPermissionResponse::ManyPermission(permissions) => {
+                rouille::Response::json(&permissions)
             }
-            UserAccessResponse::OneUserAccess(user_access) => {
-                rouille::Response::json(&user_access)
+            UserPermissionResponse::OneUserPermission(user_permission) => {
+                rouille::Response::json(&user_permission)
             }
-            UserAccessResponse::NoResponse => rouille::Response::empty_204(),
+            UserPermissionResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }
 
 #[derive(Queryable, Serialize, Deserialize)]
-pub struct JoinedUserAccess {
-    pub permission_id: u64,
+pub struct JoinedUserPermission {
+    pub user_permission_id: u64,
     pub user_id: u64,
-    pub access_id: u64,
+    pub permission_id: u64,
     pub first_name: String,
     pub last_name: String,
     pub banner_id: u32,
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct JoinedUserAccessList {
-    pub entries: Vec<JoinedUserAccess>,
+pub struct JoinedUserPermissionList {
+    pub entries: Vec<JoinedUserPermission>,
 }

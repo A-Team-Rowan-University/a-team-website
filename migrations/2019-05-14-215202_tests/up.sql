@@ -74,7 +74,7 @@ CREATE TABLE test_session_registrations (
       ON UPDATE CASCADE
 );
 
-INSERT INTO access (access_name) VALUES
+INSERT INTO permissions (permission_name) VALUES
   ("GetQuestions"),
   ("CreateQuestions"),
   ("UpdateQuestions"),
