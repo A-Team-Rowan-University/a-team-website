@@ -65,7 +65,7 @@ view users test =
                     (Dict.get test.creator users
                         |> Maybe.map
                             (\u -> "Created by " ++ u.first_name ++ " " ++ u.last_name)
-                        |> Maybe.withDefault "The creator of this test has been removed"
+                        |> Maybe.withDefault "Unknown User"
                     )
                 ]
             ]
