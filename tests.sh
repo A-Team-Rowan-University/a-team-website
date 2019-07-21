@@ -12,8 +12,8 @@ function first_permission {
 
 function insert_users {
     echo
-    echo Inserting John
-    curl --data '{"first_name": "John", "last_name": "McAvoy", "banner_id": 987654321, "email": "mcavoyj5@students.rowan.edu", "permissions": []}' -H id_token:$ID_TOKEN $URL/users/
+    echo Inserting Pandaman
+    curl --data '{"first_name": "Panda", "last_name": "Man", "banner_id": 91600000, "email": "pandaman@students.rowan.edu", "permissions": []}' -H id_token:$ID_TOKEN $URL/users/
 }
 
 function insert_tests {
