@@ -1,4 +1,4 @@
-module Tests.Session exposing (Id, Msg, Registration, RegistrationId, Session, decoder, registrationDecoder, update, url, view)
+module TestSessions.TestSession exposing (Id, Msg, Registration, RegistrationId, Session, decoder, registrationDecoder, update, url, view)
 
 import Config exposing (..)
 import Dict exposing (Dict)
