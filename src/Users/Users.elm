@@ -129,7 +129,10 @@ view user =
 viewPermission : (Permission -> msg) -> User -> Permission -> Html msg
 viewPermission onRemove user permission =
     div [ class "columns" ]
-        [ span [ class "column" ] [ text (String.fromInt permission.id ++ ": " ++ permission.permission_name) ]
+        [ span [ class "column" ]
+            [ text
+                (String.fromInt permission.id ++ ": " ++ permission.permission_name)
+            ]
         , div [ class "column" ]
             [ button
                 [ class "button is-danger is-pulled-right"
