@@ -1,4 +1,4 @@
-module TestSessions.TestSession exposing (Id, Msg, Registration, RegistrationId, Session, decoder, registrationDecoder, update, url, view)
+module TestSessions.TestSession exposing (Id, Msg, Registration, RegistrationId, Session, decoder, newEncoder, registrationDecoder, update, url, view)
 
 import Config exposing (..)
 import Dict exposing (Dict)
@@ -47,6 +47,12 @@ type alias Session =
     , registrations_enabled : Bool
     , opening_enabled : Bool
     , submissions_enabled : Bool
+    }
+
+
+type alias NewSession =
+    { test_id : Id
+    , name : String
     }
 
 
@@ -372,6 +378,14 @@ decoder =
         (Decode.field "registrations_enabled" Decode.bool)
         (Decode.field "opening_enabled" Decode.bool)
         (Decode.field "submissions_enabled" Decode.bool)
+
+
+newEncoder : NewSession -> Encode.Value
+newEncoder session =
+    Encode.object
+        [ ( "test_id", Encode.int session.test_id )
+        , ( "name", Encode.string session.name )
+        ]
 
 
 partialEncoder : Partial r -> Encode.Value

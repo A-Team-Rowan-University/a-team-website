@@ -1,10 +1,10 @@
-module TestSessions.List exposing (Msg, decoder, update, url, view)
+module TestSessions.List exposing (Msg, State, decoder, init, update, url, view)
 
 import Config exposing (..)
 import Dict exposing (Dict)
-import Html exposing (Html, a, button, div, p, span, text)
-import Html.Attributes exposing (class, href)
-import Html.Events exposing (onClick)
+import Html exposing (Html, a, button, div, input, p, span, text)
+import Html.Attributes exposing (class, href, value)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Decode
 import Network exposing (Notification(..), RequestChange(..))
@@ -24,30 +24,100 @@ urlRegister id =
     B.relative [ apiUrl, "test_sessions", String.fromInt id, "register" ] []
 
 
+type alias State =
+    { new_test_session : Maybe String }
+
+
+init : State
+init =
+    { new_test_session = Nothing }
+
+
 type Msg
-    = Register Id
-    | Submitted Id (Result Http.Error ())
+    = EditNewTestSession String
+    | SubmitNewTestSession Id String
+    | SubmittedNewTestSession (Result Http.Error ())
+    | Register Id
+    | Registered Id (Result Http.Error ())
 
 
 type alias Response =
-    { cmd : Cmd Msg
+    { state : State
+    , cmd : Cmd Msg
     , requests : List RequestChange
     , reload : Bool
     , notifications : List Notification
     }
 
 
-update : String -> Msg -> Response
-update id_token msg =
+update : String -> State -> Msg -> Response
+update id_token state msg =
     case msg of
+        EditNewTestSession name ->
+            { state = { state | new_test_session = Just name }
+            , cmd = Cmd.none
+            , requests = []
+            , reload = False
+            , notifications = []
+            }
+
+        SubmitNewTestSession test_id name ->
+            --curl --data '{
+            --    "test_id": 1,
+            --    "name": "ECE Safety Test Session 1"
+            --}' -H id_token:$ID_TOKEN  $URL/test_sessions/
+            { state = state
+            , cmd =
+                Http.request
+                    { method = "POST"
+                    , headers = [ Http.header "id_token" id_token ]
+                    , url = url
+                    , body =
+                        Http.jsonBody
+                            (TestSessions.TestSession.newEncoder
+                                { test_id = test_id, name = name }
+                            )
+                    , expect = Http.expectWhatever SubmittedNewTestSession
+                    , timeout = Nothing
+                    , tracker = Just url
+                    }
+            , requests = [ AddRequest url ]
+            , reload = False
+            , notifications = []
+            }
+
+        SubmittedNewTestSession result ->
+            case result of
+                Ok _ ->
+                    { state = init
+                    , cmd = Cmd.none
+                    , requests =
+                        [ RemoveRequest url ]
+                    , reload = True
+                    , notifications = []
+                    }
+
+                Err e ->
+                    { state = state
+                    , cmd = Cmd.none
+                    , requests =
+                        [ RemoveRequest url ]
+                    , reload = False
+                    , notifications =
+                        [ NError
+                            "There was a network error submitting the new test session"
+                        ]
+                    }
+
         Register session_id ->
-            { cmd =
+            { state = state
+            , cmd =
                 Http.request
                     { method = "POST"
                     , headers = [ Http.header "id_token" id_token ]
                     , url = urlRegister session_id
                     , body = Http.emptyBody
-                    , expect = Http.expectWhatever (Submitted session_id)
+                    , expect = Http.expectWhatever (Registered session_id)
                     , timeout = Nothing
                     , tracker = Just (urlRegister session_id)
                     }
@@ -56,10 +126,11 @@ update id_token msg =
             , notifications = []
             }
 
-        Submitted session_id result ->
+        Registered session_id result ->
             case result of
                 Ok _ ->
-                    { cmd = Cmd.none
+                    { state = state
+                    , cmd = Cmd.none
                     , requests =
                         [ RemoveRequest (urlRegister session_id) ]
                     , reload = True
@@ -67,7 +138,8 @@ update id_token msg =
                     }
 
                 Err e ->
-                    { cmd = Cmd.none
+                    { state = state
+                    , cmd = Cmd.none
                     , requests =
                         [ RemoveRequest (urlRegister session_id) ]
                     , reload = False
@@ -82,11 +154,7 @@ viewTestSession : User.Id -> Session -> Html Msg
 viewTestSession userid testsession =
     let
         registered =
-            List.length
-                (List.filter (\r -> r.taker_id == userid)
-                    testsession.registrations
-                )
-                > 0
+            List.head (List.filter (\r -> r.taker_id == userid) testsession.registrations) |> Maybe.map (\r -> r.score)
 
         action =
             case
@@ -95,7 +163,10 @@ viewTestSession userid testsession =
                 , registered
                 )
             of
-                ( True, _, False ) ->
+                ( False, _, Nothing ) ->
+                    [ text "Closed" ]
+
+                ( True, _, Nothing ) ->
                     [ button
                         [ class "button is-primary"
                         , onClick (Register testsession.id)
@@ -103,17 +174,23 @@ viewTestSession userid testsession =
                         [ text "Register" ]
                     ]
 
-                ( True, False, True ) ->
+                ( _, False, Just Nothing ) ->
                     [ text "Registered" ]
 
-                ( _, True, True ) ->
-                    [ button [ class "button is-primary" ] [ text "Take" ] ]
+                ( _, True, Just Nothing ) ->
+                    [ a
+                        [ class "button is-primary"
+                        , href (B.absolute [ "tests", "sessions", String.fromInt testsession.id, "take" ] [])
+                        ]
+                        [ text "Take" ]
+                    ]
 
-                ( False, True, False ) ->
-                    [ text "Closed" ]
-
-                ( False, False, _ ) ->
-                    [ text "Closed" ]
+                ( _, _, Just (Just score) ) ->
+                    let
+                        s =
+                            String.fromFloat (score * 100)
+                    in
+                    [ text ("Taken (" ++ (String.split "." s |> List.head |> Maybe.withDefault s) ++ "%)") ]
     in
     div
         [ class "box" ]
@@ -143,8 +220,8 @@ viewTestSession userid testsession =
         ]
 
 
-view : User.Id -> Dict Id Session -> Maybe Test -> Html Msg
-view userid testsessions test_filter =
+view : User.Id -> Dict Id Session -> Maybe Test -> State -> Html Msg
+view userid testsessions test_filter state =
     let
         title =
             case test_filter of
@@ -175,8 +252,34 @@ view userid testsessions test_filter =
                     (List.map (viewTestSession userid)
                         (Dict.values filtered_sessions)
                     )
-                , a [ class "button is-primary", href "/tests/sessions/new" ]
-                    [ text "New Test Session" ]
+                , case test_filter of
+                    Just test ->
+                        case state.new_test_session of
+                            Just name ->
+                                div [ class "field has-addons" ]
+                                    [ div [ class "control" ]
+                                        [ input
+                                            [ class "input"
+                                            , value name
+                                            , onInput EditNewTestSession
+                                            ]
+                                            []
+                                        ]
+                                    , div [ class "control" ]
+                                        [ button
+                                            [ class "button is-primary"
+                                            , onClick (SubmitNewTestSession test.id name)
+                                            ]
+                                            [ text "Submit" ]
+                                        ]
+                                    ]
+
+                            Nothing ->
+                                button [ class "button is-primary", onClick (EditNewTestSession "") ]
+                                    [ text "New Test Session" ]
+
+                    Nothing ->
+                        p [] []
                 ]
             ]
         ]

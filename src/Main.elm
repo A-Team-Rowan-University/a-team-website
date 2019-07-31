@@ -25,6 +25,7 @@ import Session exposing (Session, googleUserDecoder, idToken)
 import Set exposing (Set)
 import Task
 import TestSessions.List
+import TestSessions.TakeTest
 import TestSessions.TestSession
 import Tests.List
     exposing
@@ -79,6 +80,7 @@ type Route
     | TestNew
     | TestSessions (Maybe Tests.List.Id)
     | TestSession TestSessions.TestSession.Id
+    | TestTake TestSessions.TestSession.Id
     | NotFound
 
 
@@ -94,6 +96,7 @@ routeParser =
         , P.map (TestSessions Nothing) (P.s "tests" </> P.s "sessions")
         , P.map (\id -> TestSessions (Just id)) (P.s "tests" </> P.int)
         , P.map TestSession (P.s "tests" </> P.s "sessions" </> P.int)
+        , P.map TestTake (P.s "tests" </> P.s "sessions" </> P.int </> P.s "take")
         ]
 
 
@@ -110,6 +113,9 @@ type alias Model =
     , test_new : Tests.New.State
     , registrations : Dict TestSessions.TestSession.RegistrationId TestSessions.TestSession.Registration
     , test_sessions : Dict TestSessions.TestSession.Id TestSessions.TestSession.Session
+    , test_sessions_state : TestSessions.List.State
+    , test_questions : Dict TestSessions.TakeTest.QuestionId TestSessions.TakeTest.AnonymousQuestion
+    , test_take : Maybe TestSessions.TakeTest.State
     , requests : Set String
     , notifications : List Notification
     }
@@ -144,6 +150,9 @@ init _ url key =
       , tests = Dict.empty
       , registrations = Dict.empty
       , test_sessions = Dict.empty
+      , test_sessions_state = TestSessions.List.init
+      , test_questions = Dict.empty
+      , test_take = Nothing
       , requests = Set.empty
       , notifications = []
       }
@@ -172,6 +181,7 @@ type Msg
     | TestNewMsg Tests.New.Msg
     | TestSessionMsg TestSessions.TestSession.Msg
     | TestSessionsMsg TestSessions.List.Msg
+    | TestTakeMsg TestSessions.TakeTest.Msg
     | Updated (Result Http.Error ())
     | CloseNotification Int
 
@@ -582,6 +592,7 @@ update msg model =
                         response =
                             TestSessions.List.update
                                 id_token
+                                model.test_sessions_state
                                 session_msg
 
                         ( cmd, requests, notifications ) =
@@ -608,7 +619,8 @@ update msg model =
                                 )
                     in
                     ( { model
-                        | requests =
+                        | test_sessions_state = response.state
+                        , requests =
                             handleRequestChanges
                                 requests
                                 model.requests
@@ -617,6 +629,40 @@ update msg model =
                                 ++ notifications
                       }
                     , cmd
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        TestTakeMsg new_msg ->
+            case ( model.route, idToken model.session ) of
+                ( TestTake test_session_id, Just id_token ) ->
+                    let
+                        response =
+                            TestSessions.TakeTest.update
+                                id_token
+                                test_session_id
+                                model.test_take
+                                new_msg
+                    in
+                    ( { model
+                        | test_take = response.state
+                        , requests =
+                            handleRequestChanges
+                                response.requests
+                                model.requests
+                        , notifications =
+                            model.notifications
+                                ++ response.notifications
+                      }
+                    , if response.done then
+                        Cmd.batch
+                            [ response.cmd |> Cmd.map TestTakeMsg
+                            , Nav.pushUrl model.navkey "/tests"
+                            ]
+
+                      else
+                        response.cmd |> Cmd.map TestTakeMsg
                     )
 
                 _ ->
@@ -831,6 +877,21 @@ loadData session route =
                     , [ NWarning "You must be logged in to get test test_sessions" ]
                     )
 
+        TestTake test_session_id ->
+            case idToken session of
+                Just id_token ->
+                    let
+                        ( cmd, requests, notifications ) =
+                            TestSessions.TakeTest.loadData id_token test_session_id
+                    in
+                    ( Cmd.map TestTakeMsg cmd, requests, notifications )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ NWarning "You must be logged in to take a test" ]
+                    )
+
         NotFound ->
             ( Cmd.none, [], [] )
 
@@ -869,6 +930,7 @@ viewPage model =
                             (\test -> Dict.get test model.tests)
                             test_filter
                         )
+                        model.test_sessions_state
                         |> Html.map TestSessionsMsg
 
                 _ ->
@@ -881,6 +943,9 @@ viewPage model =
 
                 Nothing ->
                     p [] [ text "Test session not found" ]
+
+        TestTake session_id ->
+            TestSessions.TakeTest.view model.test_take |> Html.map TestTakeMsg
 
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
