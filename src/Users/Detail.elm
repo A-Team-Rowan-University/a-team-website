@@ -436,8 +436,15 @@ view user state =
                 ]
             , div [ class "column" ]
                 [ p [ class "subtitle has-text-centered" ] [ text "User Permissions" ]
-                , div [ class "box" ] (List.map (Users.viewPermission RemovePermission user) user.permissions)
-                , Users.viewAddPermission state.permission_edits EditPermission AddPermission
+                , div [ class "box" ]
+                    (List.map
+                        (Users.viewPermission RemovePermission user)
+                        user.permissions
+                    )
+                , Users.viewAddPermission
+                    state.permission_edits
+                    EditPermission
+                    AddPermission
                 ]
             ]
         ]
