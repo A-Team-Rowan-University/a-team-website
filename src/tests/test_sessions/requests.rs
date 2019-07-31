@@ -123,16 +123,21 @@ pub(crate) fn register(
             let existing_open_registrations =
                 test_session_registrations_schema::table
                     .filter(
+                        test_session_registrations_schema::id.eq(test_session_id).and(
                         test_session_registrations_schema::taker_id
                             .eq(user_id)
                             .and(
-                                test_session_registrations_schema::opened_test
-                                    .is_null(),
-                            )
-                            .or(test_session_registrations_schema::submitted_test
-                                .is_null()),
+                                test_session_registrations_schema::opened_test.is_not_null()
+                                .or(test_session_registrations_schema::submitted_test.is_not_null()),
+                            ))
                     )
                     .load::<RawTestSessionRegistration>(database_connection)?;
+
+            trace!(
+                "open sessions for user {}: {:#?}",
+                user_id,
+                existing_open_registrations
+            );
 
             if existing_open_registrations.len() == 0 {
                 let new_raw_test_session_registration =
@@ -173,18 +178,21 @@ pub(crate) fn open(
             let existing_open_registrations =
                 test_session_registrations_schema::table
                     .filter(
+                        test_session_registrations_schema::id.eq(test_session_id).and(
                         test_session_registrations_schema::taker_id
                             .eq(user_id)
                             .and(
-                                test_session_registrations_schema::opened_test
-                                    .is_null(),
-                            )
-                            .and(
                                 test_session_registrations_schema::submitted_test
                                     .is_null(),
-                            ),
+                            ))
                     )
                     .load::<RawTestSessionRegistration>(database_connection)?;
+
+            trace!(
+                "Open test registrations for user {}: {:#?}",
+                user_id,
+                existing_open_registrations
+            );
 
             if existing_open_registrations.len() == 1 {
                 let test_session =
@@ -289,6 +297,7 @@ pub(crate) fn submit(
             let existing_open_registrations =
                 test_session_registrations_schema::table
                     .filter(
+                        test_session_registrations_schema::id.eq(test_session_id).and(
                         test_session_registrations_schema::taker_id
                             .eq(user_id)
                             .and(
@@ -298,7 +307,7 @@ pub(crate) fn submit(
                             .and(
                                 test_session_registrations_schema::submitted_test
                                     .is_null(),
-                            ),
+                            ))
                     )
                     .load::<RawTestSessionRegistration>(database_connection)?;
 

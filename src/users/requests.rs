@@ -123,7 +123,9 @@ pub(crate) fn search_users(
     database_connection: &MysqlConnection,
 ) -> Result<UserList, Error> {
     let mut users_query = users_schema::table
-        .left_join(user_permissions_schema::table.left_join(permissions_schema::table))
+        .left_join(
+            user_permissions_schema::table.left_join(permissions_schema::table),
+        )
         .select((
             (
                 users_schema::id,
@@ -132,7 +134,8 @@ pub(crate) fn search_users(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (permissions_schema::id, permissions_schema::permission_name).nullable(),
+            (permissions_schema::id, permissions_schema::permission_name)
+                .nullable(),
         ))
         .into_boxed();
 
@@ -203,7 +206,9 @@ pub(crate) fn get_user(
     database_connection: &MysqlConnection,
 ) -> Result<User, Error> {
     let joined_users = users_schema::table
-        .left_join(user_permissions_schema::table.left_join(permissions_schema::table))
+        .left_join(
+            user_permissions_schema::table.left_join(permissions_schema::table),
+        )
         .select((
             (
                 users_schema::id,
@@ -212,7 +217,8 @@ pub(crate) fn get_user(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (permissions_schema::id, permissions_schema::permission_name).nullable(),
+            (permissions_schema::id, permissions_schema::permission_name)
+                .nullable(),
         ))
         .filter(users_schema::id.eq(id))
         .load::<JoinedUser>(database_connection)?;
@@ -245,7 +251,6 @@ pub(crate) fn create_user(
         .load::<RawUser>(database_connection)?;
 
     if let Some(inserted_user) = inserted_users.pop() {
-
         let new_user_permissions: Vec<_> = user
             .permissions
             .into_iter()
