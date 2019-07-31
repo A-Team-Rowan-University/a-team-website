@@ -38,9 +38,16 @@ impl std::fmt::Display for Error {
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
             ErrorKind::PermissionDenied => write!(f, "Permission denied!"),
-            ErrorKind::GoogleSignIn => write!(f, "Failed to validate Id Token with Google"),
-            ErrorKind::GoogleUserNoEmail => write!(f, "Google did not provide an email"),
-            ErrorKind::GoogleUserNotFound => write!(f, "The email provided by Google did not match any users' emails"),
+            ErrorKind::GoogleSignIn => {
+                write!(f, "Failed to validate Id Token with Google")
+            }
+            ErrorKind::GoogleUserNoEmail => {
+                write!(f, "Google did not provide an email")
+            }
+            ErrorKind::GoogleUserNotFound => write!(
+                f,
+                "The email provided by Google did not match any users' emails"
+            ),
             ErrorKind::Unimplemented => write!(f, "Method not implemented"),
             ErrorKind::RegisteredTwiceForTest => {
                 write!(f, "Registered twice for a test")
