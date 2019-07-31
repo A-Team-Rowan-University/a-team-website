@@ -297,7 +297,7 @@ pub(crate) fn submit(
             let existing_open_registrations =
                 test_session_registrations_schema::table
                     .filter(
-                        test_session_registrations_schema::id.eq(test_session_id).and(
+                        test_session_registrations_schema::test_session_id.eq(test_session_id).and(
                         test_session_registrations_schema::taker_id
                             .eq(user_id)
                             .and(
