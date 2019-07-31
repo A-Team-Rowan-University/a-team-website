@@ -24,9 +24,13 @@ use webdev_lib::errors::ErrorKind;
 use webdev_lib::users::models::UserRequest;
 use webdev_lib::users::requests::handle_user;
 
-use webdev_lib::permissions::models::{PermissionRequest, UserPermissionRequest};
+use webdev_lib::permissions::models::{
+    PermissionRequest, UserPermissionRequest,
+};
 use webdev_lib::permissions::requests::validate_token;
-use webdev_lib::permissions::requests::{handle_permission, handle_user_permission};
+use webdev_lib::permissions::requests::{
+    handle_permission, handle_user_permission,
+};
 
 use webdev_lib::chemicals::models::{
     ChemicalInventoryRequest, ChemicalRequest,
@@ -147,18 +151,15 @@ fn handle_request(
     request: &rouille::Request,
     database_connection: &MysqlConnection,
 ) -> rouille::Response {
-
-
     let requested_user = if let Some(id_token) = request.header("id_token") {
-
         if request.url() == "/permission/first" {
             return match handle_permission(
                 PermissionRequest::FirstPermission(id_token.to_string()),
                 None,
                 database_connection,
             ) {
-                    Ok(permission_response) => permission_response.to_rouille(),
-                    Err(err) => rouille::Response::from(err),
+                Ok(permission_response) => permission_response.to_rouille(),
+                Err(err) => rouille::Response::from(err),
             };
         }
 
@@ -187,7 +188,9 @@ fn handle_request(
                 }
             }
         }
-    } else if let Some(permission_request) = request.remove_prefix("/permission") {
+    } else if let Some(permission_request) =
+        request.remove_prefix("/permission")
+    {
         match PermissionRequest::from_rouille(&permission_request) {
             Err(err) => rouille::Response::from(err),
             Ok(permission_request) => {
@@ -211,7 +214,9 @@ fn handle_request(
                 requested_user,
                 database_connection,
             ) {
-                Ok(user_permission_response) => user_permission_response.to_rouille(),
+                Ok(user_permission_response) => {
+                    user_permission_response.to_rouille()
+                }
                 Err(err) => rouille::Response::from(err),
             },
         }
