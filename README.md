@@ -1,7 +1,7 @@
 ## resource-website/backend [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website-backend.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website-backend)
 Coded in Rust, manages database manipulation using AJAX requests from frontend.
 
-### Github Pages: [a-team-rowan-university.github.io/resource-website-backend](a-team-rowan-university.github.io/resource-website-backend)
+### Github Pages: [http://a-team-rowan-university.github.io/resource-website-backend](http://a-team-rowan-university.github.io/resource-website-backend)
 ### Dependencies:
 * [Rouille 3.0.0](https://github.com/tomaka/rouille)
 * [Diesel 1.3.3](https://github.com/diesel-rs/diesel)
