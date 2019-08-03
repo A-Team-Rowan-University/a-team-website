@@ -3,7 +3,7 @@ script:
   - cargo build --verbose --all
   - cargo test --verbose --all
   - cargo doc
-  - ln -s webdev_lib/index.html target/doc
+  - echo '<html><head><meta http-equiv="refresh" content="0; URL=./webdev_lib"><meta name="keywords" content="automatic redirection"></head></html>' > target/doc/index.html
 
 deploy:
   provider: pages
