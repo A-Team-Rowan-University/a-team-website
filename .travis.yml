@@ -2,3 +2,15 @@ language: rust
 script:
   - cargo build --verbose --all
   - cargo test --verbose --all
+  - cargo doc
+  - ln -s webdev_lib/index.html target/doc
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN
+  keep-history: false
+  on:
+    branch: master
+
+  local_dir: target/doc
