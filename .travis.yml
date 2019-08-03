@@ -1,0 +1,27 @@
+language: node_js
+node_js:
+  - "11"
+npm:
+  - "6"
+
+install:
+  - echo 'do nothing'
+
+before_script:
+  - npm install -g aglio
+
+script:
+  - mkdir docs
+  - touch docs/.nojekyll
+  - aglio -i ./api_spec.apib -o docs/index.html
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN
+  keep-history: false
+  on:
+    branch: master
+
+  local_dir: docs
+
