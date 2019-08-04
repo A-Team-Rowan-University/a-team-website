@@ -1,0 +1,14 @@
+language: node_js
+node_js:
+  - "11"
+npm:
+  - "6"
+
+install:
+  - echo 'do nothing'
+
+before_script:
+  - npm install -g elm
+
+script:
+  - elm make --docs=./elm.json src/Main.elm
