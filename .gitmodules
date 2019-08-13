@@ -1,6 +1,8 @@
 [submodule "resource-website-backend"]
 	path = backend/webdev_lib
-	url = git@github.com:A-Team-Rowan-University/resource-website-backend.git
+	url = https://github.com/A-Team-Rowan-University/resource-website-backend
+	branch = master
 [submodule "frontend/elm-src"]
 	path = frontend/elm-src
-	url = git@github.com:A-Team-Rowan-University/resource-website-frontend.git
+	url = https://github.com/A-Team-Rowan-University/resource-website-frontend
+	branch = master

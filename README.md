@@ -2,6 +2,7 @@
 
 The central server used for managing the databases of the ECE Apprengineering Team at Rowan University.
 
+## Github Pages: [http://a-team-rowan-university.github.io/resource-website](http://a-team-rowan-university.github.io/resource-website)
 ## Usage
 First, clone this repo:
 ```
