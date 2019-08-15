@@ -562,7 +562,7 @@ pub(crate) fn delete_user_permission(
     Ok(())
 }
 
-pub(crate) fn get_all_possible_permissions(
+pub(crate) fn get_permissions(
     database_connection: &MysqlConnection
 ) -> Result<PermissionList, Error> {
     let permissions = permissions_schema::table // builds a sql query to select all entrys from the permissions table

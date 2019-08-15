@@ -44,7 +44,7 @@ pub enum PermissionRequest {
     UpdatePermission(u64, PartialPermission), //Contains id to be changed to new permission_name
     DeletePermission(u64),                    //if of permission to be deleted
     FirstPermission(String),
-    GetAllPossiblePermissions // get all possible permissions from sql table
+    GetPermissions // get all possible permissions from sql table
 }
 
 impl PermissionRequest {
@@ -82,7 +82,7 @@ impl PermissionRequest {
                 }
             },
 
-            (GET) (/allpermissions) => {
+            (GET) (/) => {
                 Ok(PermissionRequest::GetAllPossiblePermissions)
             }
             ,
