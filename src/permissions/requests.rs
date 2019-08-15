@@ -22,7 +22,7 @@ use super::models::{
     NewUserPermission, PartialPermission, PartialUserPermission, Permission,
     PermissionList, PermissionRequest, PermissionResponse,
     SearchUserPermission, UserPermission, UserPermissionRequest,
-    UserPermissionResponse,
+    UserPermissionResponse
 };
 
 use crate::users::models::{NewUser, SearchUser};
@@ -154,6 +154,10 @@ pub fn handle_permission(
                     .map(|_| PermissionResponse::NoResponse),
                 Err(e) => Err(e),
             }
+        }
+        PermissionRequest::GetPermissions => {
+            get_permissions(database_connection)
+                .map(|u| PermissionResponse::ManyPermissions(u))
         }
     }
 }
@@ -556,4 +560,16 @@ pub(crate) fn delete_user_permission(
     .execute(database_connection)?;
 
     Ok(())
+}
+
+pub(crate) fn get_permissions(
+    database_connection: &MysqlConnection
+) -> Result<PermissionList, Error> {
+    let permissions = permissions_schema::table // builds a sql query to select all entrys from the permissions table
+        .select((
+            permissions_schema::id,
+            permissions_schema::permission_name,
+        ))
+        .load::<Permission>(database_connection)?;
+    Ok(PermissionList { permissions })
 }

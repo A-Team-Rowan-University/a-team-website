@@ -39,11 +39,12 @@ pub struct PermissionList {
 }
 
 pub enum PermissionRequest {
-    GetPermission(u64), //id of permission name searched
+    GetPermission(u64), //id of permission name searched permission
     CreatePermission(NewPermission), //new permission type of some name to be created
     UpdatePermission(u64, PartialPermission), //Contains id to be changed to new permission_name
     DeletePermission(u64),                    //if of permission to be deleted
     FirstPermission(String),
+    GetPermissions // get all possible permissions from sql table
 }
 
 impl PermissionRequest {
@@ -81,6 +82,11 @@ impl PermissionRequest {
                 }
             },
 
+            (GET) (/) => {
+                Ok(PermissionRequest::GetPermissions)
+            }
+            ,
+
             _ => {
                 warn!("Could not create an permission request for the given rouille request");
                 Err(Error::new(ErrorKind::NotFound))
@@ -92,6 +98,7 @@ impl PermissionRequest {
 pub enum PermissionResponse {
     OnePermission(Permission),
     NoResponse,
+    ManyPermissions(PermissionList)
 }
 
 impl PermissionResponse {
@@ -100,7 +107,12 @@ impl PermissionResponse {
             PermissionResponse::OnePermission(permission) => {
                 rouille::Response::json(&permission)
             }
+            PermissionResponse::ManyPermissions(permissions) => {
+                rouille::Response::json(&permissions)
+            }
+
             PermissionResponse::NoResponse => rouille::Response::empty_204(),
+
         }
     }
 }
