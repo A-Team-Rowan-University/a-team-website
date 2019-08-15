@@ -83,7 +83,7 @@ impl PermissionRequest {
             },
 
             (GET) (/) => {
-                Ok(PermissionRequest::GetAllPossiblePermissions)
+                Ok(PermissionRequest::GetPermissions)
             }
             ,
 
