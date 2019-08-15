@@ -155,8 +155,8 @@ pub fn handle_permission(
                 Err(e) => Err(e),
             }
         }
-        PermissionRequest::GetAllPossiblePermissions => {
-            get_all_possible_permissions(database_connection)
+        PermissionRequest::GetPermissions => {
+            get_permissions(database_connection)
                 .map(|u| PermissionResponse::ManyPermissions(u))
         }
     }
