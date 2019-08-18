@@ -150,19 +150,26 @@ handleResponse :
     -> ( Model, Cmd Msg )
 handleResponse model local_state msg response =
     let
+        done_cmd =
+            if response.done then
+                Nav.back model.navkey 1
+
+            else
+                Cmd.none
+
         ( cmd, requests, errors ) =
             if response.reload then
                 let
                     ( load_cmd, load_request, load_errors ) =
                         loadData model.session model.route
                 in
-                ( Cmd.batch [ Cmd.map msg response.cmd, load_cmd ]
+                ( Cmd.batch [ Cmd.map msg response.cmd, load_cmd, done_cmd ]
                 , response.requests ++ load_request
                 , response.errors ++ load_errors
                 )
 
             else
-                ( Cmd.map msg response.cmd
+                ( Cmd.batch [ Cmd.map msg response.cmd, done_cmd ]
                 , response.requests
                 , response.errors
                 )
