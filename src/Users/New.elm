@@ -1,11 +1,13 @@
 module Users.New exposing (Msg, State, init, update, view)
 
+import Errors
 import Html exposing (Html, button, div, input, p, span, text)
 import Html.Attributes exposing (class, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Encode
-import Network exposing (Notification(..), RequestChange(..))
+import Network exposing (RequestChange(..))
+import Response exposing (Response)
 import Set exposing (Set)
 import Users.Users as User
 
@@ -50,19 +52,10 @@ type Msg
     | AddPermission
     | RemovePermission Int
     | Submit
-    | Submitted (Result Http.Error ())
+    | Submitted (Result Errors.Error ())
 
 
-type alias Response =
-    { state : State
-    , cmd : Cmd Msg
-    , requests : List RequestChange
-    , done : Bool
-    , notifications : List Notification
-    }
-
-
-update : String -> State -> Msg -> Response
+update : String -> State -> Msg -> Response State Msg
 update id_token state msg =
     case msg of
         EditFirstName first_name ->
@@ -70,7 +63,8 @@ update id_token state msg =
             , cmd = Cmd.none
             , requests = []
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         EditLastName last_name ->
@@ -78,7 +72,8 @@ update id_token state msg =
             , cmd = Cmd.none
             , requests = []
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         EditBannerId banner_id ->
@@ -88,7 +83,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -96,7 +92,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
         EditEmail email ->
@@ -104,7 +101,8 @@ update id_token state msg =
             , cmd = Cmd.none
             , requests = []
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         EditPermission permission_id ->
@@ -114,7 +112,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -122,7 +121,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
         AddPermission ->
@@ -139,7 +139,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -147,7 +148,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
         RemovePermission permission_id ->
@@ -159,7 +161,8 @@ update id_token state msg =
             , cmd = Cmd.none
             , requests = []
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         Submit ->
@@ -170,13 +173,14 @@ update id_token state msg =
                     , headers = [ Http.header "id_token" id_token ]
                     , url = User.manyUrl
                     , body = Http.jsonBody (newEncoder state)
-                    , expect = Http.expectWhatever Submitted
+                    , expect = Errors.expectWhateverWithError Submitted
                     , timeout = Nothing
                     , tracker = User.manyUrl |> Just
                     }
             , requests = [ User.manyUrl |> AddRequest ]
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         Submitted result ->
@@ -186,7 +190,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = [ User.manyUrl |> RemoveRequest ]
                     , done = True
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -194,12 +199,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = [ User.manyUrl |> RemoveRequest ]
                     , done = False
-                    , notifications =
-                        [ NError
-                            """
-                            There was a network error submitting the new user
-                            """
-                        ]
+                    , reload = False
+                    , errors = [ e ]
                     }
 
 

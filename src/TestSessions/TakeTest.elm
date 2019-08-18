@@ -2,13 +2,15 @@ module TestSessions.TakeTest exposing (AnonymousQuestion, Msg, QuestionId, State
 
 import Config exposing (..)
 import Dict exposing (Dict)
+import Errors
 import Html exposing (Html, button, div, p, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Network exposing (Notification(..), RequestChange(..))
+import Network exposing (RequestChange(..))
+import Response exposing (Response)
 import Session exposing (Session)
 import TestSessions.TestSession exposing (Id)
 import Url.Builder as B
@@ -77,14 +79,14 @@ type alias State =
     { questions : Dict QuestionId ( AnonymousQuestion, Maybe String ) }
 
 
-loadData : String -> TestSessions.TestSession.Id -> ( Cmd Msg, List RequestChange, List Notification )
+loadData : String -> TestSessions.TestSession.Id -> ( Cmd Msg, List RequestChange, List Errors.Error )
 loadData id_token test_session_id =
     ( Http.request
         { method = "GET"
         , headers = [ Http.header "id_token" id_token ]
         , url = openUrl test_session_id
         , body = Http.emptyBody
-        , expect = Http.expectJson Loaded anonymousQuestionListDecoder
+        , expect = Errors.expectJsonWithError Loaded anonymousQuestionListDecoder
         , timeout = Nothing
         , tracker = Just (submitUrl test_session_id)
         }
@@ -94,19 +96,10 @@ loadData id_token test_session_id =
 
 
 type Msg
-    = Loaded (Result Http.Error (List AnonymousQuestion))
+    = Loaded (Result Errors.Error (List AnonymousQuestion))
     | ResponseClicked QuestionId String
     | Submit
-    | Submitted (Result Http.Error ())
-
-
-type alias Response =
-    { state : Maybe State
-    , cmd : Cmd Msg
-    , requests : List RequestChange
-    , done : Bool
-    , notifications : List Notification
-    }
+    | Submitted (Result Errors.Error ())
 
 
 foldQuestions :
@@ -122,7 +115,7 @@ foldQuestions ( question, response ) submission =
             Nothing
 
 
-update : String -> TestSessions.TestSession.Id -> Maybe State -> Msg -> Response
+update : String -> TestSessions.TestSession.Id -> Maybe State -> Msg -> Response (Maybe State) Msg
 update id_token test_session_id state msg =
     case msg of
         Loaded result ->
@@ -136,17 +129,18 @@ update id_token test_session_id state msg =
                             }
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest (openUrl test_session_id) ]
+                    , reload = False
                     , done = False
-                    , notifications = []
+                    , errors = []
                     }
 
                 Err err ->
                     { state = state
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest (openUrl test_session_id) ]
+                    , reload = False
                     , done = False
-                    , notifications =
-                        [ NError "There was a network error getting the test" ]
+                    , errors = [ err ]
                     }
 
         ResponseClicked questionid response ->
@@ -169,16 +163,18 @@ update id_token test_session_id state msg =
                             }
                     , cmd = Cmd.none
                     , requests = []
+                    , reload = False
                     , done = False
-                    , notifications = []
+                    , errors = []
                     }
 
                 Nothing ->
                     { state = Nothing
                     , cmd = Cmd.none
                     , requests = []
+                    , reload = False
                     , done = False
-                    , notifications = []
+                    , errors = []
                     }
 
         Submit ->
@@ -197,29 +193,32 @@ update id_token test_session_id state msg =
                                     , headers = [ Http.header "id_token" id_token ]
                                     , url = submitUrl test_session_id
                                     , body = Http.jsonBody (responseQuestionListEncoder responses)
-                                    , expect = Http.expectWhatever Submitted
+                                    , expect = Errors.expectWhateverWithError Submitted
                                     , timeout = Nothing
                                     , tracker = Just (submitUrl test_session_id)
                                     }
                             , requests = [ AddRequest (submitUrl test_session_id) ]
+                            , reload = False
                             , done = False
-                            , notifications = []
+                            , errors = []
                             }
 
                         Nothing ->
                             { state = Just s
                             , cmd = Cmd.none
                             , requests = []
+                            , reload = False
                             , done = False
-                            , notifications = [ NError "Answer all the questions!" ]
+                            , errors = [ Errors.TestNotComplete ]
                             }
 
                 Nothing ->
                     { state = Nothing
                     , cmd = Cmd.none
                     , requests = []
+                    , reload = False
                     , done = False
-                    , notifications = []
+                    , errors = []
                     }
 
         Submitted result ->
@@ -228,16 +227,18 @@ update id_token test_session_id state msg =
                     { state = Nothing
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest (submitUrl test_session_id) ]
+                    , reload = False
                     , done = True
-                    , notifications = []
+                    , errors = []
                     }
 
                 Err e ->
                     { state = state
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest (submitUrl test_session_id) ]
+                    , reload = False
                     , done = False
-                    , notifications = [ NError "There was a network error submitting the test" ]
+                    , errors = [ e ]
                     }
 
 

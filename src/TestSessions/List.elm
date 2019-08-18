@@ -2,12 +2,14 @@ module TestSessions.List exposing (Msg, State, decoder, init, update, url, view)
 
 import Config exposing (..)
 import Dict exposing (Dict)
+import Errors
 import Html exposing (Html, a, button, div, input, p, span, text)
 import Html.Attributes exposing (class, href, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Decode
-import Network exposing (Notification(..), RequestChange(..))
+import Network exposing (RequestChange(..))
+import Response exposing (Response)
 import TestSessions.TestSession exposing (Id, Session)
 import Tests.List exposing (Test)
 import Url.Builder as B
@@ -36,21 +38,12 @@ init =
 type Msg
     = EditNewTestSession String
     | SubmitNewTestSession Id String
-    | SubmittedNewTestSession (Result Http.Error ())
+    | SubmittedNewTestSession (Result Errors.Error ())
     | Register Id
-    | Registered Id (Result Http.Error ())
+    | Registered Id (Result Errors.Error ())
 
 
-type alias Response =
-    { state : State
-    , cmd : Cmd Msg
-    , requests : List RequestChange
-    , reload : Bool
-    , notifications : List Notification
-    }
-
-
-update : String -> State -> Msg -> Response
+update : String -> State -> Msg -> Response State Msg
 update id_token state msg =
     case msg of
         EditNewTestSession name ->
@@ -58,7 +51,8 @@ update id_token state msg =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         SubmitNewTestSession test_id name ->
@@ -77,13 +71,14 @@ update id_token state msg =
                             (TestSessions.TestSession.newEncoder
                                 { test_id = test_id, name = name }
                             )
-                    , expect = Http.expectWhatever SubmittedNewTestSession
+                    , expect = Errors.expectWhateverWithError SubmittedNewTestSession
                     , timeout = Nothing
                     , tracker = Just url
                     }
             , requests = [ AddRequest url ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         SubmittedNewTestSession result ->
@@ -94,7 +89,8 @@ update id_token state msg =
                     , requests =
                         [ RemoveRequest url ]
                     , reload = True
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -103,10 +99,8 @@ update id_token state msg =
                     , requests =
                         [ RemoveRequest url ]
                     , reload = False
-                    , notifications =
-                        [ NError
-                            "There was a network error submitting the new test session"
-                        ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
         Register session_id ->
@@ -117,13 +111,14 @@ update id_token state msg =
                     , headers = [ Http.header "id_token" id_token ]
                     , url = urlRegister session_id
                     , body = Http.emptyBody
-                    , expect = Http.expectWhatever (Registered session_id)
+                    , expect = Errors.expectWhateverWithError (Registered session_id)
                     , timeout = Nothing
                     , tracker = Just (urlRegister session_id)
                     }
             , requests = [ AddRequest (urlRegister session_id) ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         Registered session_id result ->
@@ -134,7 +129,8 @@ update id_token state msg =
                     , requests =
                         [ RemoveRequest (urlRegister session_id) ]
                     , reload = True
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -143,10 +139,8 @@ update id_token state msg =
                     , requests =
                         [ RemoveRequest (urlRegister session_id) ]
                     , reload = False
-                    , notifications =
-                        [ NError
-                            "There was a network error registering"
-                        ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
 

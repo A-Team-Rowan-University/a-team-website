@@ -1,6 +1,5 @@
 module Network exposing
     ( Network(..)
-    , Notification(..)
     , RequestChange(..)
     , viewNetwork
     )
@@ -8,14 +7,6 @@ module Network exposing
 import Html exposing (Html, div, progress, text)
 import Html.Attributes exposing (class)
 import Http
-
-
-type Notification
-    = NError String
-    | NWarning String
-    | NInfo String
-    | NDebug String
-
 
 type RequestChange
     = AddRequest String
