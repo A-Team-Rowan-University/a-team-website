@@ -12,6 +12,7 @@ import Browser
 import Browser.Navigation as Nav
 import Config exposing (..)
 import Dict exposing (Dict)
+import Errors
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onInput)
@@ -21,7 +22,8 @@ import Json.Encode as E
 import Network exposing (..)
 import Platform.Cmd
 import Platform.Sub
-import Session exposing (Session, googleUserDecoder, idToken)
+import Response exposing (Response)
+import Session exposing (Session, googleUserDecoder, idToken, isValidated)
 import Set exposing (Set)
 import Task
 import TestSessions.List
@@ -65,6 +67,9 @@ subscriptions model =
 
 
 port signIn : (E.Value -> msg) -> Sub msg
+
+
+port signOut : () -> Cmd msg
 
 
 
@@ -117,7 +122,8 @@ type alias Model =
     , test_questions : Dict TestSessions.TakeTest.QuestionId TestSessions.TakeTest.AnonymousQuestion
     , test_take : Maybe TestSessions.TakeTest.State
     , requests : Set String
-    , notifications : List Notification
+    , notifications : List Errors.Display
+    , burger_open : Bool
     }
 
 
@@ -134,6 +140,42 @@ handleRequestChanges request_changes original_requests =
         )
         original_requests
         request_changes
+
+
+handleResponse :
+    Model
+    -> (Model -> s -> Model)
+    -> (msg -> Msg)
+    -> Response s msg
+    -> ( Model, Cmd Msg )
+handleResponse model local_state msg response =
+    let
+        ( cmd, requests, errors ) =
+            if response.reload then
+                let
+                    ( load_cmd, load_request, load_errors ) =
+                        loadData model.session model.route
+                in
+                ( Cmd.batch [ Cmd.map msg response.cmd, load_cmd ]
+                , response.requests ++ load_request
+                , response.errors ++ load_errors
+                )
+
+            else
+                ( Cmd.map msg response.cmd
+                , response.requests
+                , response.errors
+                )
+
+        updated_model =
+            local_state model response.state
+    in
+    ( { updated_model
+        | requests = handleRequestChanges requests model.requests
+        , notifications = model.notifications ++ List.map Errors.display errors
+      }
+    , cmd
+    )
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -155,6 +197,7 @@ init _ url key =
       , test_take = Nothing
       , requests = Set.empty
       , notifications = []
+      , burger_open = False
       }
     , Task.perform GotTimezone Time.here
     )
@@ -166,24 +209,26 @@ init _ url key =
 
 type Msg
     = SignedIn E.Value
-    | Validated (Result Http.Error User.User)
+    | Validated (Result Errors.Error User.User)
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | GotTimezone Time.Zone
-    | GotUsers (Result Http.Error (List User.User))
-    | GotUser User.Id (Result Http.Error User.User)
-    | GotTests (Result Http.Error (List Tests.List.Test))
-    | GotQuestionCategories (Result Http.Error (List QuestionCategory))
-    | GotTestSession TestSessions.TestSession.Id (Result Http.Error TestSessions.TestSession.Session)
-    | GotTestSessions (Result Http.Error (List TestSessions.TestSession.Session))
+    | GotUsers (Result Errors.Error (List User.User))
+    | GotUser User.Id (Result Errors.Error User.User)
+    | GotTests (Result Errors.Error (List Tests.List.Test))
+    | GotQuestionCategories (Result Errors.Error (List QuestionCategory))
+    | GotTestSession TestSessions.TestSession.Id (Result Errors.Error TestSessions.TestSession.Session)
+    | GotTestSessions (Result Errors.Error (List TestSessions.TestSession.Session))
     | UserDetailMsg Users.Detail.Msg
     | UserNewMsg Users.New.Msg
     | TestNewMsg Tests.New.Msg
     | TestSessionMsg TestSessions.TestSession.Msg
     | TestSessionsMsg TestSessions.List.Msg
     | TestTakeMsg TestSessions.TakeTest.Msg
-    | Updated (Result Http.Error ())
+    | Updated (Result Errors.Error ())
     | CloseNotification Int
+    | BurgerToggle
+    | SignOut
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -206,7 +251,7 @@ update msg model =
                             B.relative [ apiUrl, "users", "current" ]
                                 []
                         , body = emptyBody
-                        , expect = Http.expectJson Validated User.decoder
+                        , expect = Errors.expectJsonWithError Validated User.decoder
                         , timeout = Nothing
                         , tracker = Nothing
                         }
@@ -226,7 +271,7 @@ update msg model =
                                 session =
                                     Session.Validated user.id google_user
 
-                                ( cmd, request, notifications ) =
+                                ( cmd, request, errors ) =
                                     loadData session model.route
                             in
                             ( { model
@@ -241,14 +286,18 @@ update msg model =
                                         request
                                         model.requests
                                 , notifications =
-                                    model.notifications ++ notifications
+                                    model.notifications ++ List.map Errors.display errors
                               }
                             , cmd
                             )
 
                         Err e ->
-                            ( { model | session = Session.NetworkError e }
-                            , Cmd.none
+                            ( { model
+                                | session = Session.NotSignedIn
+                                , notifications =
+                                    model.notifications ++ [ Errors.display e ]
+                              }
+                            , signOut ()
                             )
 
                 _ ->
@@ -315,20 +364,12 @@ update msg model =
                     }
 
                 Err e ->
-                    let
-                        notifications =
-                            model.notifications
-                    in
                     { model
                         | requests =
                             handleRequestChanges
                                 [ Tests.List.manyUrl |> RemoveRequest ]
                                 model.requests
-                        , notifications =
-                            notifications
-                                ++ [ NDebug
-                                        (httpErrorToString e)
-                                   ]
+                        , notifications = model.notifications ++ [ Errors.display e ]
                     }
             , Cmd.none
             )
@@ -356,11 +397,7 @@ update msg model =
                             handleRequestChanges
                                 [ questionCategoriesUrl |> RemoveRequest ]
                                 model.requests
-                        , notifications =
-                            notifications
-                                ++ [ NDebug
-                                        (httpErrorToString e)
-                                   ]
+                        , notifications = model.notifications ++ [ Errors.display e ]
                     }
             , Cmd.none
             )
@@ -388,11 +425,7 @@ update msg model =
                             handleRequestChanges
                                 [ RemoveRequest TestSessions.List.url ]
                                 model.requests
-                        , notifications =
-                            notifications
-                                ++ [ NDebug
-                                        (httpErrorToString e)
-                                   ]
+                        , notifications = model.notifications ++ [ Errors.display e ]
                     }
             , Cmd.none
             )
@@ -421,50 +454,11 @@ update msg model =
         UserDetailMsg detail_msg ->
             case ( model.route, idToken model.session ) of
                 ( UserDetail id, Just id_token ) ->
-                    -- TODO Make this prettier
-                    let
-                        response =
-                            Users.Detail.update
-                                id_token
-                                model.user_detail
-                                detail_msg
-                                id
-
-                        ( cmd, requests, notifications ) =
-                            if response.reload then
-                                let
-                                    ( load_cmd, load_request, load_notifications ) =
-                                        loadData
-                                            model.session
-                                            model.route
-                                in
-                                ( Cmd.batch
-                                    [ Cmd.map UserDetailMsg response.cmd
-                                    , load_cmd
-                                    ]
-                                , response.requests ++ load_request
-                                , response.notifications
-                                    ++ load_notifications
-                                )
-
-                            else
-                                ( Cmd.map UserDetailMsg response.cmd
-                                , response.requests
-                                , response.notifications
-                                )
-                    in
-                    ( { model
-                        | user_detail = response.state
-                        , requests =
-                            handleRequestChanges
-                                requests
-                                model.requests
-                        , notifications =
-                            model.notifications
-                                ++ notifications
-                      }
-                    , cmd
-                    )
+                    Users.Detail.update id_token model.user_detail detail_msg id
+                        |> handleResponse
+                            model
+                            (\m s -> { m | user_detail = s })
+                            UserDetailMsg
 
                 _ ->
                     ( model, Cmd.none )
@@ -472,32 +466,11 @@ update msg model =
         UserNewMsg new_msg ->
             case idToken model.session of
                 Just id_token ->
-                    let
-                        response =
-                            Users.New.update
-                                id_token
-                                model.user_new
-                                new_msg
-                    in
-                    ( { model
-                        | user_new = response.state
-                        , requests =
-                            handleRequestChanges
-                                response.requests
-                                model.requests
-                        , notifications =
-                            model.notifications
-                                ++ response.notifications
-                      }
-                    , if response.done then
-                        Cmd.batch
-                            [ response.cmd |> Cmd.map UserNewMsg
-                            , Nav.pushUrl model.navkey "/users"
-                            ]
-
-                      else
-                        response.cmd |> Cmd.map UserNewMsg
-                    )
+                    Users.New.update id_token model.user_new new_msg
+                        |> handleResponse
+                            model
+                            (\m s -> { m | user_new = s })
+                            UserNewMsg
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -505,32 +478,11 @@ update msg model =
         TestNewMsg new_msg ->
             case idToken model.session of
                 Just id_token ->
-                    let
-                        response =
-                            Tests.New.update
-                                id_token
-                                model.test_new
-                                new_msg
-                    in
-                    ( { model
-                        | test_new = response.state
-                        , requests =
-                            handleRequestChanges
-                                response.requests
-                                model.requests
-                        , notifications =
-                            model.notifications
-                                ++ response.notifications
-                      }
-                    , if response.done then
-                        Cmd.batch
-                            [ response.cmd |> Cmd.map TestNewMsg
-                            , Nav.pushUrl model.navkey "/tests"
-                            ]
-
-                      else
-                        response.cmd |> Cmd.map TestNewMsg
-                    )
+                    Tests.New.update id_token model.test_new new_msg
+                        |> handleResponse
+                            model
+                            (\m s -> { m | test_new = s })
+                            TestNewMsg
 
                 Nothing ->
                     ( model, Cmd.none )
@@ -538,48 +490,11 @@ update msg model =
         TestSessionMsg session_msg ->
             case ( model.route, idToken model.session ) of
                 ( TestSession id, Just id_token ) ->
-                    -- TODO Make this prettier
-                    let
-                        response =
-                            TestSessions.TestSession.update
-                                id_token
-                                session_msg
-                                id
-
-                        ( cmd, requests, notifications ) =
-                            if response.reload then
-                                let
-                                    ( load_cmd, load_request, load_notifications ) =
-                                        loadData
-                                            model.session
-                                            model.route
-                                in
-                                ( Cmd.batch
-                                    [ Cmd.map TestSessionMsg response.cmd
-                                    , load_cmd
-                                    ]
-                                , response.requests ++ load_request
-                                , response.notifications
-                                    ++ load_notifications
-                                )
-
-                            else
-                                ( Cmd.map TestSessionMsg response.cmd
-                                , response.requests
-                                , response.notifications
-                                )
-                    in
-                    ( { model
-                        | requests =
-                            handleRequestChanges
-                                requests
-                                model.requests
-                        , notifications =
-                            model.notifications
-                                ++ notifications
-                      }
-                    , cmd
-                    )
+                    TestSessions.TestSession.update id_token session_msg id
+                        |> handleResponse
+                            model
+                            (\m s -> m)
+                            TestSessionMsg
 
                 _ ->
                     ( model, Cmd.none )
@@ -587,49 +502,11 @@ update msg model =
         TestSessionsMsg session_msg ->
             case ( model.route, idToken model.session ) of
                 ( TestSessions id, Just id_token ) ->
-                    -- TODO Make this prettier
-                    let
-                        response =
-                            TestSessions.List.update
-                                id_token
-                                model.test_sessions_state
-                                session_msg
-
-                        ( cmd, requests, notifications ) =
-                            if response.reload then
-                                let
-                                    ( load_cmd, load_request, load_notifications ) =
-                                        loadData
-                                            model.session
-                                            model.route
-                                in
-                                ( Cmd.batch
-                                    [ Cmd.map TestSessionsMsg response.cmd
-                                    , load_cmd
-                                    ]
-                                , response.requests ++ load_request
-                                , response.notifications
-                                    ++ load_notifications
-                                )
-
-                            else
-                                ( Cmd.map TestSessionsMsg response.cmd
-                                , response.requests
-                                , response.notifications
-                                )
-                    in
-                    ( { model
-                        | test_sessions_state = response.state
-                        , requests =
-                            handleRequestChanges
-                                requests
-                                model.requests
-                        , notifications =
-                            model.notifications
-                                ++ notifications
-                      }
-                    , cmd
-                    )
+                    TestSessions.List.update id_token model.test_sessions_state session_msg
+                        |> handleResponse
+                            model
+                            (\m s -> { m | test_sessions_state = s })
+                            TestSessionsMsg
 
                 _ ->
                     ( model, Cmd.none )
@@ -637,40 +514,18 @@ update msg model =
         TestTakeMsg new_msg ->
             case ( model.route, idToken model.session ) of
                 ( TestTake test_session_id, Just id_token ) ->
-                    let
-                        response =
-                            TestSessions.TakeTest.update
-                                id_token
-                                test_session_id
-                                model.test_take
-                                new_msg
-                    in
-                    ( { model
-                        | test_take = response.state
-                        , requests =
-                            handleRequestChanges
-                                response.requests
-                                model.requests
-                        , notifications =
-                            model.notifications
-                                ++ response.notifications
-                      }
-                    , if response.done then
-                        Cmd.batch
-                            [ response.cmd |> Cmd.map TestTakeMsg
-                            , Nav.pushUrl model.navkey "/tests"
-                            ]
-
-                      else
-                        response.cmd |> Cmd.map TestTakeMsg
-                    )
+                    TestSessions.TakeTest.update id_token test_session_id model.test_take new_msg
+                        |> handleResponse
+                            model
+                            (\m s -> { m | test_take = s })
+                            TestTakeMsg
 
                 _ ->
                     ( model, Cmd.none )
 
         Updated _ ->
             let
-                ( cmd, request, notifications ) =
+                ( cmd, request, errors ) =
                     loadData model.session model.route
             in
             ( { model
@@ -678,8 +533,7 @@ update msg model =
                     handleRequestChanges
                         request
                         model.requests
-                , notifications =
-                    model.notifications ++ notifications
+                , notifications = model.notifications ++ List.map Errors.display errors
               }
             , cmd
             )
@@ -708,7 +562,7 @@ update msg model =
 
                 Just route ->
                     let
-                        ( cmd, request, notifications ) =
+                        ( cmd, request, errors ) =
                             loadData model.session route
                     in
                     ( { model
@@ -717,17 +571,22 @@ update msg model =
                             handleRequestChanges
                                 request
                                 model.requests
-                        , notifications =
-                            model.notifications ++ notifications
+                        , notifications = model.notifications ++ List.map Errors.display errors
                       }
                     , cmd
                     )
+
+        BurgerToggle ->
+            ( { model | burger_open = not model.burger_open }, Cmd.none )
+
+        SignOut ->
+            ( model, Cmd.batch [ signOut (), Nav.load "/" ] )
 
 
 loadData :
     Session User.Id
     -> Route
-    -> ( Cmd Msg, List RequestChange, List Notification )
+    -> ( Cmd Msg, List RequestChange, List Errors.Error )
 loadData session route =
     case route of
         Home ->
@@ -741,7 +600,7 @@ loadData session route =
                         , headers = [ header "id_token" id_token ]
                         , url = User.manyUrl
                         , body = emptyBody
-                        , expect = Http.expectJson GotUsers User.listDecoder
+                        , expect = Errors.expectJsonWithError GotUsers User.listDecoder
                         , timeout = Nothing
                         , tracker = User.manyUrl |> Just
                         }
@@ -752,7 +611,7 @@ loadData session route =
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to get users" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         UserDetail user_id ->
@@ -768,7 +627,7 @@ loadData session route =
                         , url = User.singleUrl user_id
                         , body = emptyBody
                         , expect =
-                            Http.expectJson
+                            Errors.expectJsonWithError
                                 (GotUser user_id)
                                 User.decoder
                         , timeout = Nothing
@@ -781,7 +640,7 @@ loadData session route =
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to get users" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         UserNew ->
@@ -795,7 +654,7 @@ loadData session route =
                         , headers = [ header "id_token" id_token ]
                         , url = Tests.List.manyUrl
                         , body = emptyBody
-                        , expect = Http.expectJson GotTests Tests.List.listDecoder
+                        , expect = Errors.expectJsonWithError GotTests Tests.List.listDecoder
                         , timeout = Nothing
                         , tracker = Tests.List.manyUrl |> Just
                         }
@@ -806,7 +665,7 @@ loadData session route =
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to get tests" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         TestNew ->
@@ -818,7 +677,7 @@ loadData session route =
                         , url = questionCategoriesUrl
                         , body = emptyBody
                         , expect =
-                            Http.expectJson GotQuestionCategories
+                            Errors.expectJsonWithError GotQuestionCategories
                                 questionCategoryListDecoder
                         , timeout = Nothing
                         , tracker = Just questionCategoriesUrl
@@ -830,7 +689,7 @@ loadData session route =
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to get question categories" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         TestSessions _ ->
@@ -841,7 +700,7 @@ loadData session route =
                         , headers = [ header "id_token" id_token ]
                         , url = TestSessions.List.url
                         , body = emptyBody
-                        , expect = Http.expectJson GotTestSessions TestSessions.List.decoder
+                        , expect = Errors.expectJsonWithError GotTestSessions TestSessions.List.decoder
                         , timeout = Nothing
                         , tracker = Just TestSessions.List.url
                         }
@@ -852,7 +711,7 @@ loadData session route =
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to get users" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         TestSession session_id ->
@@ -863,7 +722,7 @@ loadData session route =
                         , headers = [ header "id_token" id_token ]
                         , url = TestSessions.TestSession.url session_id
                         , body = emptyBody
-                        , expect = Http.expectJson (GotTestSession session_id) TestSessions.TestSession.decoder
+                        , expect = Errors.expectJsonWithError (GotTestSession session_id) TestSessions.TestSession.decoder
                         , timeout = Nothing
                         , tracker = Just (TestSessions.TestSession.url session_id)
                         }
@@ -874,22 +733,22 @@ loadData session route =
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to get test test_sessions" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         TestTake test_session_id ->
             case idToken session of
                 Just id_token ->
                     let
-                        ( cmd, requests, notifications ) =
+                        ( cmd, requests, errors ) =
                             TestSessions.TakeTest.loadData id_token test_session_id
                     in
-                    ( Cmd.map TestTakeMsg cmd, requests, notifications )
+                    ( Cmd.map TestTakeMsg cmd, requests, errors )
 
                 Nothing ->
                     ( Cmd.none
                     , []
-                    , [ NWarning "You must be logged in to take a test" ]
+                    , [ Errors.NotLoggedIn ]
                     )
 
         NotFound ->
@@ -939,7 +798,8 @@ viewPage model =
         TestSession session_id ->
             case Dict.get session_id model.test_sessions of
                 Just session ->
-                    TestSessions.TestSession.view model.timezone model.users session |> Html.map TestSessionMsg
+                    TestSessions.TestSession.view model.timezone model.users session
+                        |> Html.map TestSessionMsg
 
                 Nothing ->
                     p [] [ text "Test session not found" ]
@@ -952,68 +812,6 @@ viewPage model =
 
         NotFound ->
             h1 [] [ text "Page not found!" ]
-
-
-viewSession : Session User.Id -> Dict User.Id User.User -> Html msg
-viewSession model users =
-    case model of
-        Session.Validated user_id google_user ->
-            case Dict.get user_id users of
-                Just user ->
-                    viewValidated user google_user
-
-                Nothing ->
-                    div [] [ text "User not found!" ]
-
-        Session.SignedIn google_iser ->
-            div [] [ text "Validating..." ]
-
-        Session.NotSignedIn ->
-            div []
-                [ div []
-                    [ div
-                        [ class "g-signin2"
-                        , attribute "data-onsuccess" "onSignIn"
-                        ]
-                        [ text "Waiting for Google..." ]
-                    ]
-                ]
-
-        Session.GoogleError _ ->
-            div [] [ text "Google failed to sign in" ]
-
-        Session.NetworkError error ->
-            div [] [ text "Network error validating" ]
-
-        Session.AccessDenied ->
-            div [] [ text "Access denied!" ]
-
-
-viewValidated : User.User -> Session.GoogleUser -> Html msg
-viewValidated user google_user =
-    span [ class "level" ]
-        ([ div [ class "level-left" ]
-            [ p [ class "has-text-left", class "level-item" ]
-                [ text (user.first_name ++ " " ++ user.last_name) ]
-            ]
-         ]
-            |> (\l ->
-                    case google_user.image_url of
-                        Just image_url ->
-                            List.append l
-                                [ div [ class "level-right" ]
-                                    [ div
-                                        [ class "image is-32x32"
-                                        , class "level-item"
-                                        ]
-                                        [ img [ src image_url ] [] ]
-                                    ]
-                                ]
-
-                        Nothing ->
-                            l
-               )
-        )
 
 
 view : Model -> Browser.Document Msg
@@ -1032,18 +830,25 @@ view model =
                         ]
                     , a
                         [ attribute "role" "button"
+                        , href ""
                         , class "navbar-burger"
                         , class "burger"
                         , attribute "aria-label" "menu"
                         , attribute "aria-expanded" "false"
                         , attribute "data-target" "navbar"
+                        , onClick BurgerToggle
+                        , classList [ ( "is-active", model.burger_open ) ]
                         ]
                         [ span [ attribute "aria-hidden" "true" ] []
                         , span [ attribute "aria-hidden" "true" ] []
                         , span [ attribute "aria-hidden" "true" ] []
                         ]
                     ]
-                , div [ id "navbar", class "navbar-menu" ]
+                , div
+                    [ id "navbar"
+                    , class "navbar-menu"
+                    , classList [ ( "is-active", model.burger_open ) ]
+                    ]
                     [ div [ class "navbar-start" ]
                         [ a [ class "navbar-item", href "/" ]
                             [ text "Home" ]
@@ -1053,8 +858,47 @@ view model =
                             [ text "Tests" ]
                         ]
                     , div [ class "navbar-end" ]
-                        [ div [ class "navbar-item" ]
-                            [ viewSession model.session model.users ]
+                        [ div [ class "navbar-item has-dropdown is-hoverable" ]
+                            [ div [ class "navbar-link" ]
+                                [ case model.session of
+                                    Session.Validated user_id google_user ->
+                                        case Dict.get user_id model.users of
+                                            Just user ->
+                                                case google_user.image_url of
+                                                    Just image_url ->
+                                                        div
+                                                            [ class "image is-32x32"
+                                                            , class "level-item"
+                                                            ]
+                                                            [ img [ src image_url ] [] ]
+
+                                                    Nothing ->
+                                                        p [] [ text (user.first_name ++ " " ++ user.last_name) ]
+
+                                            Nothing ->
+                                                div [] [ text "User not found!" ]
+
+                                    Session.SignedIn google_iser ->
+                                        div [] [ text "Validating..." ]
+
+                                    Session.NotSignedIn ->
+                                        div [] [ text "Sign In" ]
+
+                                    Session.GoogleError _ ->
+                                        div [] [ text "Google failed to sign in" ]
+                                ]
+                            , div [ class "navbar-dropdown is-right", classList [ ( "is-hidden", isValidated model.session ) ] ]
+                                [ div [ class "navbar-item" ]
+                                    [ div
+                                        [ class "g-signin2"
+                                        , attribute "data-onsuccess" "onSignIn"
+                                        ]
+                                        []
+                                    ]
+                                ]
+                            , div [ class "navbar-dropdown is-right", classList [ ( "is-hidden", not (isValidated model.session) ) ] ]
+                                [ a [ href "/", class "navbar-item", onClick SignOut ] [ text "Sign Out" ] ]
+                            ]
                         ]
                     ]
                 ]
@@ -1072,32 +916,13 @@ view model =
     }
 
 
-viewNotification : (Int -> msg) -> Int -> Notification -> Html msg
+viewNotification : (Int -> msg) -> Int -> Errors.Display -> Html msg
 viewNotification onClose index notification =
-    case notification of
-        NError t ->
-            div [ class "notification is-danger" ]
-                [ button [ class "delete", onClick (onClose index) ] []
-                , text t
-                ]
-
-        NWarning t ->
-            div [ class "notification is-warning" ]
-                [ button [ class "delete", onClick (onClose index) ] []
-                , text t
-                ]
-
-        NInfo t ->
-            div [ class "notification is-info" ]
-                [ button [ class "delete", onClick (onClose index) ] []
-                , text t
-                ]
-
-        NDebug t ->
-            div [ class "notification" ]
-                [ button [ class "delete", onClick (onClose index) ] []
-                , text t
-                ]
+    div [ class "notification is-danger" ]
+        [ button [ class "delete", onClick (onClose index) ] []
+        , p [ class "title is-5" ] [ text notification.title ]
+        , p [ class "is-5" ] [ text notification.description ]
+        ]
 
 
 httpErrorToString : Http.Error -> String

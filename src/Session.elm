@@ -3,6 +3,7 @@ port module Session exposing
     , Session(..)
     , googleUserDecoder
     , idToken
+    , isValidated
     )
 
 import Http
@@ -15,8 +16,6 @@ type Session userid
     | SignedIn GoogleUser
     | Validated userid GoogleUser
     | GoogleError D.Error
-    | NetworkError Http.Error
-    | AccessDenied
 
 
 type alias GoogleUser =
@@ -49,11 +48,21 @@ idToken session =
         GoogleError _ ->
             Nothing
 
-        NetworkError _ ->
-            Nothing
 
-        AccessDenied ->
-            Nothing
+isValidated : Session userid -> Bool
+isValidated session =
+    case session of
+        NotSignedIn ->
+            False
+
+        SignedIn _ ->
+            False
+
+        Validated user google_user ->
+            True
+
+        GoogleError _ ->
+            False
 
 
 googleUserDecoder : D.Decoder GoogleUser

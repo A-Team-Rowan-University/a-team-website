@@ -2,6 +2,7 @@ module TestSessions.TestSession exposing (Id, Msg, Registration, RegistrationId,
 
 import Config exposing (..)
 import Dict exposing (Dict)
+import Errors
 import Html exposing (Html, button, div, p, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
@@ -9,7 +10,8 @@ import Http
 import Iso8601
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Network exposing (Notification(..), RequestChange(..))
+import Network exposing (RequestChange(..))
+import Response exposing (Response)
 import Set exposing (Set)
 import Time
 import Url.Builder as B
@@ -68,22 +70,15 @@ type Msg
     = Registrations Bool
     | Opening Bool
     | Submissions Bool
-    | Submitted (Result Http.Error ())
+    | Submitted (Result Errors.Error ())
 
 
-type alias Response =
-    { cmd : Cmd Msg
-    , requests : List RequestChange
-    , reload : Bool
-    , notifications : List Notification
-    }
-
-
-update : String -> Msg -> Id -> Response
+update : String -> Msg -> Id -> Response () Msg
 update id_token msg session_id =
     case msg of
         Registrations enabled ->
-            { cmd =
+            { state = ()
+            , cmd =
                 Http.request
                     { method = "PUT"
                     , headers = [ Http.header "id_token" id_token ]
@@ -96,17 +91,19 @@ update id_token msg session_id =
                                 , submissions_enabled = Nothing
                                 }
                             )
-                    , expect = Http.expectWhatever Submitted
+                    , expect = Errors.expectWhateverWithError Submitted
                     , timeout = Nothing
                     , tracker = Just (url session_id)
                     }
             , requests = [ AddRequest (url session_id) ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         Opening enabled ->
-            { cmd =
+            { state = ()
+            , cmd =
                 Http.request
                     { method = "PUT"
                     , headers = [ Http.header "id_token" id_token ]
@@ -119,17 +116,19 @@ update id_token msg session_id =
                                 , submissions_enabled = Nothing
                                 }
                             )
-                    , expect = Http.expectWhatever Submitted
+                    , expect = Errors.expectWhateverWithError Submitted
                     , timeout = Nothing
                     , tracker = Just (url session_id)
                     }
             , requests = [ AddRequest (url session_id) ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         Submissions enabled ->
-            { cmd =
+            { state = ()
+            , cmd =
                 Http.request
                     { method = "PUT"
                     , headers = [ Http.header "id_token" id_token ]
@@ -142,29 +141,34 @@ update id_token msg session_id =
                                 , submissions_enabled = Just enabled
                                 }
                             )
-                    , expect = Http.expectWhatever Submitted
+                    , expect = Errors.expectWhateverWithError Submitted
                     , timeout = Nothing
                     , tracker = Just (url session_id)
                     }
             , requests = [ AddRequest (url session_id) ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         Submitted result ->
             case result of
                 Ok _ ->
-                    { cmd = Cmd.none
+                    { state = ()
+                    , cmd = Cmd.none
                     , requests = [ RemoveRequest (url session_id) ]
                     , reload = True
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
-                    { cmd = Cmd.none
+                    { state = ()
+                    , cmd = Cmd.none
                     , requests = [ RemoveRequest (url session_id) ]
                     , reload = False
-                    , notifications = [ NError "There was a network error" ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
 
@@ -189,9 +193,13 @@ viewRegistration timezone users registration =
             [ div [ class "column" ]
                 [ text (viewDateTime timezone registration.registered) ]
             , div [ class "column" ]
-                [ text (Maybe.withDefault "--" (Maybe.map (viewDateTime timezone) registration.opened_test)) ]
+                [ text
+                    (Maybe.withDefault "--" (Maybe.map (viewDateTime timezone) registration.opened_test))
+                ]
             , div [ class "column" ]
-                [ text (Maybe.withDefault "--" (Maybe.map (viewDateTime timezone) registration.submitted_test)) ]
+                [ text
+                    (Maybe.withDefault "--" (Maybe.map (viewDateTime timezone) registration.submitted_test))
+                ]
             , div [ class "column" ]
                 [ text
                     (Maybe.withDefault "--"

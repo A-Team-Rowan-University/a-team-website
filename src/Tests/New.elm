@@ -1,12 +1,14 @@
-module Tests.New exposing (Msg, NewTest, Response, State, init, update, view)
+module Tests.New exposing (Msg, NewTest, State, init, update, view)
 
 import Dict exposing (Dict)
+import Errors
 import Html exposing (Html, a, button, div, input, p, span, text)
 import Html.Attributes exposing (class, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Encode
-import Network exposing (Notification(..), RequestChange(..))
+import Network exposing (RequestChange(..))
+import Response exposing (Response)
 import Tests.List exposing (QuestionCategory, QuestionCategoryId)
 
 
@@ -37,16 +39,7 @@ type Msg
     | Submitted (Result Http.Error ())
 
 
-type alias Response =
-    { state : State
-    , cmd : Cmd Msg
-    , requests : List RequestChange
-    , done : Bool
-    , notifications : List Notification
-    }
-
-
-update : String -> State -> Msg -> Response
+update : String -> State -> Msg -> Response State Msg
 update id_token state msg =
     case msg of
         EditName name ->
@@ -54,7 +47,8 @@ update id_token state msg =
             , cmd = Cmd.none
             , requests = []
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         EditQuestion question_category_id maybe_number_of_questions ->
@@ -81,7 +75,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -89,7 +84,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = []
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
         Submit ->
@@ -106,7 +102,8 @@ update id_token state msg =
                     }
             , requests = [ AddRequest Tests.List.manyUrl ]
             , done = False
-            , notifications = []
+            , reload = False
+            , errors = []
             }
 
         Submitted result ->
@@ -116,7 +113,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest Tests.List.manyUrl ]
                     , done = True
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -124,7 +122,8 @@ update id_token state msg =
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest Tests.List.manyUrl ]
                     , done = False
-                    , notifications = []
+                    , reload = False
+                    , errors = []
                     }
 
 

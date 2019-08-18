@@ -30,7 +30,6 @@ import Json.Encode as E
 import Network
     exposing
         ( Network(..)
-        , Notification(..)
         , RequestChange(..)
         , viewNetwork
         )

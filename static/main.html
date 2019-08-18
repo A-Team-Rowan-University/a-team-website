@@ -40,6 +40,12 @@
 
                 app.ports.signIn.send(signed_in_user)
             }
+
+            app.ports.signOut.subscribe(function () {
+                console.log("Signing out");
+                var auth2 = gapi.auth2.getAuthInstance();
+                auth2.disconnect();
+            });
         </script>
     </body>
 </html>

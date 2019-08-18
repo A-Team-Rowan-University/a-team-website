@@ -5,8 +5,11 @@ import Url.Builder as B
 
 apiUrl : String
 apiUrl =
-    --B.crossOrigin "http://localhost" [ "api", "v1" ] []
-    B.absolute [ "api", "v1" ] []
+    B.crossOrigin "http://localhost" [ "api", "v1" ] []
+
+
+
+--B.absolute [ "api", "v1" ] []
 
 
 staticUrl : String

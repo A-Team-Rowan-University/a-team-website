@@ -1,12 +1,14 @@
-module Users.Detail exposing (Msg, Response, State, init, update, view)
+module Users.Detail exposing (Msg, State, init, update, view)
 
+import Errors
 import Html exposing (Html, button, div, p, span, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as Decode
 import Json.Encode as Encode
-import Network exposing (Notification(..), RequestChange(..))
+import Network exposing (RequestChange(..))
+import Response exposing (Response)
 import Users.Users as Users
 
 
@@ -49,21 +51,12 @@ type Msg
     | ResetBannerId
     | EditPermission (Maybe Int)
     | AddPermission
-    | AddedPermission Int (Result Http.Error ())
+    | AddedPermission Int (Result Errors.Error ())
     | RemovePermission Users.Permission
-    | FinishRemovePermission Int (Result Http.Error (Maybe Int))
-    | RemovedPermission Int (Result Http.Error ())
+    | FinishRemovePermission Int (Result Errors.Error (Maybe Int))
+    | RemovedPermission Int (Result Errors.Error ())
     | Submit
-    | Submitted (Result Http.Error ())
-
-
-type alias Response =
-    { state : State
-    , cmd : Cmd Msg
-    , requests : List RequestChange
-    , reload : Bool
-    , notifications : List Notification
-    }
+    | Submitted (Result Errors.Error ())
 
 
 update :
@@ -71,7 +64,7 @@ update :
     -> State -- User detail state
     -> Msg -- User detail msg
     -> Users.Id -- id of the user being edited
-    -> Response -- The response
+    -> Response State Msg -- The response
 update id_token state msg user_id =
     case msg of
         EditFirstName first_name ->
@@ -79,7 +72,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         ResetFirstName ->
@@ -87,7 +81,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         EditLastName last_name ->
@@ -95,7 +90,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         ResetLastName ->
@@ -103,7 +99,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         EditBannerId banner_id ->
@@ -113,7 +110,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = []
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -121,7 +119,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = []
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
         ResetBannerId ->
@@ -129,7 +128,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         EditEmail email ->
@@ -137,7 +137,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         ResetEmail ->
@@ -145,7 +146,8 @@ update id_token state msg user_id =
             , cmd = Cmd.none
             , requests = []
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         Submit ->
@@ -156,13 +158,14 @@ update id_token state msg user_id =
                     , headers = [ Http.header "id_token" id_token ]
                     , url = Users.singleUrl user_id
                     , body = Http.jsonBody (partialEncoder state)
-                    , expect = Http.expectWhatever Submitted
+                    , expect = Errors.expectWhateverWithError Submitted
                     , timeout = Nothing
                     , tracker = Users.singleUrl user_id |> Just
                     }
             , requests = [ Users.singleUrl user_id |> AddRequest ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         Submitted result ->
@@ -175,7 +178,8 @@ update id_token state msg user_id =
                             |> RemoveRequest
                         ]
                     , reload = True
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -186,10 +190,8 @@ update id_token state msg user_id =
                             |> RemoveRequest
                         ]
                     , reload = False
-                    , notifications =
-                        [ NError
-                            "There was a network error submitting edits"
-                        ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
         RemovePermission permission ->
@@ -201,7 +203,7 @@ update id_token state msg user_id =
                     , url = Users.permissionSearchUrl permission.id user_id
                     , body = Http.emptyBody
                     , expect =
-                        Http.expectJson
+                        Errors.expectJsonWithError
                             (FinishRemovePermission permission.id)
                             (Decode.map List.head Users.userPermissionListDecoder)
                     , timeout = Nothing
@@ -213,7 +215,8 @@ update id_token state msg user_id =
                     |> AddRequest
                 ]
             , reload = False
-            , notifications = []
+            , done = False
+            , errors = []
             }
 
         FinishRemovePermission permission_id user_permission_result ->
@@ -229,7 +232,7 @@ update id_token state msg user_id =
                             , url = Users.permissionUrl permission_id
                             , body = Http.emptyBody
                             , expect =
-                                Http.expectWhatever
+                                Errors.expectWhateverWithError
                                     (RemovedPermission permission_id)
                             , timeout = Nothing
                             , tracker = Users.permissionUrl permission_id |> Just
@@ -241,7 +244,8 @@ update id_token state msg user_id =
                             |> AddRequest
                         ]
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Ok Nothing ->
@@ -252,14 +256,8 @@ update id_token state msg user_id =
                             |> RemoveRequest
                         ]
                     , reload = True
-                    , notifications =
-                        [ NWarning
-                            """
-                            The user permission dissapeared while I was
-                            trying to remove it! Strange, but probably
-                            fine
-                            """
-                        ]
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -270,13 +268,8 @@ update id_token state msg user_id =
                             |> RemoveRequest
                         ]
                     , reload = False
-                    , notifications =
-                        [ NError
-                            """
-                            There was a network error finding the permission
-                            to remove
-                            """
-                        ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
         RemovedPermission permission_id result ->
@@ -289,7 +282,8 @@ update id_token state msg user_id =
                             |> RemoveRequest
                         ]
                     , reload = True
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -300,10 +294,8 @@ update id_token state msg user_id =
                             |> RemoveRequest
                         ]
                     , reload = False
-                    , notifications =
-                        [ NError
-                            "There was a network error removing the permission"
-                        ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
         EditPermission permission_id ->
@@ -313,7 +305,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = []
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -321,7 +314,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = []
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
         AddPermission ->
@@ -344,14 +338,15 @@ update id_token state msg user_id =
                                         ]
                                     )
                             , expect =
-                                Http.expectWhatever
+                                Errors.expectWhateverWithError
                                     (AddedPermission new_permission)
                             , timeout = Nothing
                             , tracker = Users.permissionAddUrl |> Just
                             }
                     , requests = [ Users.permissionAddUrl |> AddRequest ]
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Nothing ->
@@ -359,7 +354,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = []
                     , reload = False
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
         AddedPermission new_permission result ->
@@ -369,7 +365,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = [ Users.permissionAddUrl |> RemoveRequest ]
                     , reload = True
-                    , notifications = []
+                    , done = False
+                    , errors = []
                     }
 
                 Err e ->
@@ -377,10 +374,8 @@ update id_token state msg user_id =
                     , cmd = Cmd.none
                     , requests = [ Users.permissionAddUrl |> RemoveRequest ]
                     , reload = False
-                    , notifications =
-                        [ NError
-                            "There was a network error submitting edits"
-                        ]
+                    , done = False
+                    , errors = [ e ]
                     }
 
 
