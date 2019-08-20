@@ -39,17 +39,15 @@ pub struct PermissionList {
 }
 
 pub enum PermissionRequest {
-    GetPermission(u64), //id of permission name searched
-    CreatePermission(NewPermission), //new permission type of some name to be created
+    GetPermission(u64),                       //id of permission name searched
+    CreatePermission(NewPermission),          //new permission type of some name to be created
     UpdatePermission(u64, PartialPermission), //Contains id to be changed to new permission_name
     DeletePermission(u64),                    //if of permission to be deleted
     FirstPermission(String),
 }
 
 impl PermissionRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<PermissionRequest, Error> {
+    pub fn from_rouille(request: &rouille::Request) -> Result<PermissionRequest, Error> {
         router!(request,
             (GET) (/{id: u64}) => {
                 Ok(PermissionRequest::GetPermission(id))
@@ -97,9 +95,7 @@ pub enum PermissionResponse {
 impl PermissionResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            PermissionResponse::OnePermission(permission) => {
-                rouille::Response::json(&permission)
-            }
+            PermissionResponse::OnePermission(permission) => rouille::Response::json(&permission),
             PermissionResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
@@ -133,20 +129,17 @@ pub struct SearchUserPermission {
 
 pub enum UserPermissionRequest {
     SearchPermission(SearchUserPermission), //list of users with permission id or (?) name
-    GetCurrentUserPermission, // Get the permission for the logged in user
-    GetPermission(u64),       //get individual permission entry from its id
+    GetCurrentUserPermission,               // Get the permission for the logged in user
+    GetPermission(u64),                     //get individual permission entry from its id
     CheckPermission(u64, String), //entry allowing user of user_id to perform action of action_id
     CreatePermission(NewUserPermission), //entry to add to database
     UpdatePermission(u64, PartialUserPermission), //entry to update with new information
-    DeletePermission(u64), //entry to delete from database
+    DeletePermission(u64),        //entry to delete from database
 }
 
 impl UserPermissionRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<UserPermissionRequest, Error> {
-        let url_queries =
-            form_urlencoded::parse(request.raw_query_string().as_bytes());
+    pub fn from_rouille(request: &rouille::Request) -> Result<UserPermissionRequest, Error> {
+        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
@@ -233,9 +226,7 @@ impl UserPermissionResponse {
             UserPermissionResponse::OneUserPermission(user_permission) => {
                 rouille::Response::json(&user_permission)
             }
-            UserPermissionResponse::NoResponse => {
-                rouille::Response::empty_204()
-            }
+            UserPermissionResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }

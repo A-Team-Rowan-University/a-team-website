@@ -11,9 +11,8 @@ use crate::errors::ErrorKind;
 use crate::permissions::requests::check_to_run;
 
 use crate::tests::question_categories::models::{
-    JoinedQuestionCategory, NewQuestionCategory, NewRawQuestionCategory,
-    QuestionCategory, QuestionCategoryList, QuestionCategoryRequest,
-    QuestionCategoryResponse, RawQuestionCategory,
+    JoinedQuestionCategory, NewQuestionCategory, NewRawQuestionCategory, QuestionCategory,
+    QuestionCategoryList, QuestionCategoryRequest, QuestionCategoryResponse, RawQuestionCategory,
 };
 
 use crate::tests::questions::models::NewRawQuestion;
@@ -29,20 +28,12 @@ pub fn handle_question_category(
 ) -> Result<QuestionCategoryResponse, Error> {
     match request {
         QuestionCategoryRequest::GetQuestionCategories => {
-            check_to_run(
-                requested_user,
-                "GetQuestionCategories",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "GetQuestionCategories", database_connection)?;
             get_question_categories(database_connection)
                 .map(|u| QuestionCategoryResponse::ManyQuestionCategories(u))
         }
         QuestionCategoryRequest::GetQuestionCategory(id) => {
-            check_to_run(
-                requested_user,
-                "GetQuestionCategories",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "GetQuestionCategories", database_connection)?;
             get_question_category(id, database_connection)
                 .map(|u| QuestionCategoryResponse::OneQuestionCategory(u))
         }
@@ -173,14 +164,11 @@ pub(crate) fn create_question_category(
         .values(new_raw_question_category)
         .execute(database_connection)?;
 
-    let mut raw_inserted_question_categories =
-        question_categories_schema::table
-            .filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
-            .load::<RawQuestionCategory>(database_connection)?;
+    let mut raw_inserted_question_categories = question_categories_schema::table
+        .filter(diesel::dsl::sql("id = LAST_INSERT_ID()"))
+        .load::<RawQuestionCategory>(database_connection)?;
 
-    if let Some(raw_inserted_question_category) =
-        raw_inserted_question_categories.pop()
-    {
+    if let Some(raw_inserted_question_category) = raw_inserted_question_categories.pop() {
         let new_raw_questions: Vec<_> = question_category
             .questions
             .into_iter()
@@ -199,10 +187,7 @@ pub(crate) fn create_question_category(
             .execute(database_connection)?;
 
         let inserted_questions = questions_schema::table
-            .filter(
-                questions_schema::category_id
-                    .eq(raw_inserted_question_category.id),
-            )
+            .filter(questions_schema::category_id.eq(raw_inserted_question_category.id))
             .load::<Question>(database_connection)?
             .into_iter()
             .map(|raw_question| Question {
@@ -232,11 +217,8 @@ pub(crate) fn delete_question_category(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::delete(
-        question_categories_schema::table
-            .filter(question_categories_schema::id.eq(id)),
-    )
-    .execute(database_connection)?;
+    diesel::delete(question_categories_schema::table.filter(question_categories_schema::id.eq(id)))
+        .execute(database_connection)?;
 
     Ok(())
 }

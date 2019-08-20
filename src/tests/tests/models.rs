@@ -77,9 +77,7 @@ pub enum TestRequest {
 }
 
 impl TestRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<TestRequest, Error> {
+    pub fn from_rouille(request: &rouille::Request) -> Result<TestRequest, Error> {
         router!(request,
             (GET) (/) => {
                 Ok(TestRequest::GetTests)

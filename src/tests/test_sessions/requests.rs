@@ -20,10 +20,10 @@ use crate::errors::ErrorKind;
 use crate::permissions::requests::check_to_run;
 
 use crate::tests::test_sessions::models::{
-    JoinedTestSession, NewRawTestSession, NewRawTestSessionRegistration,
-    NewTestSession, PartialRawTestSessionRegistration, PartialTestSession,
-    RawTestSession, RawTestSessionRegistration, TestSession, TestSessionList,
-    TestSessionRegistration, TestSessionRequest, TestSessionResponse,
+    JoinedTestSession, NewRawTestSession, NewRawTestSessionRegistration, NewTestSession,
+    PartialRawTestSessionRegistration, PartialTestSession, RawTestSession,
+    RawTestSessionRegistration, TestSession, TestSessionList, TestSessionRegistration,
+    TestSessionRequest, TestSessionResponse,
 };
 
 use crate::tests::questions::models::AnonymousQuestion;
@@ -54,62 +54,46 @@ pub fn handle_test_session(
             open(test_session_id, requested_user, database_connection)
                 .map(|u| TestSessionResponse::AnonymousQuestions(u))
         }
-        TestSessionRequest::Submit(test_session_id, respose_questions) => {
-            submit(
-                test_session_id,
-                respose_questions,
-                requested_user,
-                database_connection,
-            )
-            .map(|_| TestSessionResponse::NoResponse)
-        }
+        TestSessionRequest::Submit(test_session_id, respose_questions) => submit(
+            test_session_id,
+            respose_questions,
+            requested_user,
+            database_connection,
+        )
+        .map(|_| TestSessionResponse::NoResponse),
         TestSessionRequest::GetTestSessions(test_id) => {
-            check_to_run(
-                requested_user,
-                "GetTestSessions",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "GetTestSessions", database_connection)?;
             get_test_sessions(test_id, database_connection)
                 .map(|u| TestSessionResponse::ManyTestSessions(u))
         }
         TestSessionRequest::GetTestSession(id) => {
-            check_to_run(
-                requested_user,
-                "GetTestSessions",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "GetTestSessions", database_connection)?;
             get_test_session(id, database_connection)
                 .map(|u| TestSessionResponse::OneTestSession(u))
         }
         TestSessionRequest::CreateTestSession(test_session) => {
-            check_to_run(
-                requested_user,
-                "CreateTestSessions",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "CreateTestSessions", database_connection)?;
             create_test_session(test_session, database_connection)
                 .map(|u| TestSessionResponse::OneTestSession(u))
         }
         TestSessionRequest::UpdateTestSession(id, test_session) => {
-            check_to_run(
-                requested_user,
-                "UpdateTestSessions",
-                database_connection,
-            )?;
+            check_to_run(requested_user, "UpdateTestSessions", database_connection)?;
             update_test_session(id, test_session, database_connection)
                 .map(|_| TestSessionResponse::NoResponse)
         }
         TestSessionRequest::DeleteTestSession(id) => {
-            check_to_run(
-                requested_user,
-                "DeleteTestSessions",
-                database_connection,
-            )?;
-            delete_test_session(id, database_connection)
-                .map(|_| TestSessionResponse::NoResponse)
+            check_to_run(requested_user, "DeleteTestSessions", database_connection)?;
+            delete_test_session(id, database_connection).map(|_| TestSessionResponse::NoResponse)
         }
     }
 }
+
+// Registration Requirements
+//
+// Registrations are open for this session
+// Sumbitted all other registrations for any session for this test
+// Not already registered, opened, or taken for this session
+//
 
 pub(crate) fn register(
     test_session_id: u64,
@@ -120,44 +104,62 @@ pub(crate) fn register(
 
     if test_session.registrations_enabled {
         if let Some(user_id) = requested_user {
-            let existing_open_registrations =
-                test_session_registrations_schema::table
-                    .filter(
-                        test_session_registrations_schema::id.eq(test_session_id).and(
-                        test_session_registrations_schema::taker_id
-                            .eq(user_id)
-                            .and(
-                                test_session_registrations_schema::opened_test.is_not_null()
-                                .or(test_session_registrations_schema::submitted_test.is_not_null()),
-                            ))
-                    )
-                    .load::<RawTestSessionRegistration>(database_connection)?;
 
-            trace!(
-                "open sessions for user {}: {:#?}",
-                user_id,
-                existing_open_registrations
-            );
+            let TestSessionList { test_sessions } = get_test_sessions(None, &database_connection)?;
 
-            if existing_open_registrations.len() == 0 {
-                let new_raw_test_session_registration =
-                    NewRawTestSessionRegistration {
-                        test_session_id: test_session_id,
-                        taker_id: user_id,
-                        registered: Local::now().naive_local(),
-                        opened_test: None,
-                        submitted_test: None,
-                        score: None,
-                    };
+            let test_session = match test_sessions.iter().cloned().find(|s| s.id == test_session_id) {
+                Some(test_session) => test_session,
+                None => return Err(Error::new(ErrorKind::NotFound)),
+            };
 
-                diesel::insert_into(test_session_registrations_schema::table)
-                    .values(new_raw_test_session_registration)
-                    .execute(database_connection)?;
+            // Only care about sessions with the currect test id
+            let test_sessions: Vec<_> = test_sessions.into_iter().filter(|s| s.test_id == test_session.test_id).collect();
 
-                Ok(())
-            } else {
-                Err(Error::new(ErrorKind::RegisteredTwiceForTest))
+            trace!("test sessions: {:#?}", test_sessions);
+
+            // Fail if registrations not enabled
+            if !test_session.registrations_enabled {
+                trace!("Registration failed because registration is not renabled for test session: {:#?}", test_session);
+                return Err(Error::new(ErrorKind::RegistrationClosedForTest));
             }
+
+            // Fail if any registrations on this test session are for this user
+            if let Some(registration) = test_session
+                .registrations
+                .iter()
+                .find(|r| r.taker_id == user_id)
+            {
+                trace!("Registration failed because the user ({:#}) is already registered for this test session with registration: {:#?}", user_id, registration);
+                return Err(Error::new(ErrorKind::RegisteredTwiceForTest));
+            }
+
+            // Fail if registered for another test session but did not submit
+            if let Some(registration) = test_sessions.iter().flat_map(|s| s.registrations.iter()).find(|r| {
+                    r.taker_id == user_id && r.opened_test.is_none() && r.submitted_test.is_none()
+            }) {
+                trace!(
+                    "Registration failed because the user ({:#?}) is registered for other sessions for this test with reigstration: {:#?}",
+                    user_id,
+                    registration,
+                );
+                return Err(Error::new(ErrorKind::RegisteredTwiceForTest));
+            }
+
+            // We are good now, so add the registration
+            let new_raw_test_session_registration = NewRawTestSessionRegistration {
+                test_session_id: test_session_id,
+                taker_id: user_id,
+                registered: Local::now().naive_local(),
+                opened_test: None,
+                submitted_test: None,
+                score: None,
+            };
+
+            diesel::insert_into(test_session_registrations_schema::table)
+                .values(new_raw_test_session_registration)
+                .execute(database_connection)?;
+
+            Ok(())
         } else {
             Err(Error::new(ErrorKind::PermissionDenied))
         }
@@ -172,21 +174,19 @@ pub(crate) fn open(
     database_connection: &MysqlConnection,
 ) -> Result<AnonymousQuestionList, Error> {
     if let Some(user_id) = requested_user {
-        let test_session =
-            get_test_session(test_session_id, database_connection)?;
+        let test_session = get_test_session(test_session_id, database_connection)?;
         if test_session.opening_enabled {
-            let existing_open_registrations =
-                test_session_registrations_schema::table
-                    .filter(
-                        test_session_registrations_schema::test_session_id.eq(test_session_id).and(
-                        test_session_registrations_schema::taker_id
-                            .eq(user_id)
-                            .and(
-                                test_session_registrations_schema::submitted_test
-                                    .is_null(),
-                            ))
-                    )
-                    .load::<RawTestSessionRegistration>(database_connection)?;
+            let existing_open_registrations = test_session_registrations_schema::table
+                .filter(
+                    test_session_registrations_schema::test_session_id
+                        .eq(test_session_id)
+                        .and(
+                            test_session_registrations_schema::taker_id
+                                .eq(user_id)
+                                .and(test_session_registrations_schema::submitted_test.is_null()),
+                        ),
+                )
+                .load::<RawTestSessionRegistration>(database_connection)?;
 
             trace!(
                 "Open test registrations for user {}: {:#?}",
@@ -195,8 +195,7 @@ pub(crate) fn open(
             );
 
             if existing_open_registrations.len() == 1 {
-                let test_session =
-                    get_test_session(test_session_id, database_connection)?;
+                let test_session = get_test_session(test_session_id, database_connection)?;
 
                 let test = get_test(test_session.test_id, database_connection)?;
 
@@ -209,10 +208,7 @@ pub(crate) fn open(
                     )?;
 
                     let questions = questions_schema::table
-                        .filter(
-                            questions_schema::category_id
-                                .eq(question_category.id),
-                        )
+                        .filter(questions_schema::category_id.eq(question_category.id))
                         .load::<Question>(database_connection)?;
 
                     let mut chosen_questions: Vec<_> = questions
@@ -245,14 +241,13 @@ pub(crate) fn open(
                     all_questions.append(&mut chosen_questions);
                 }
 
-                let partial_raw_test_session_registration =
-                    PartialRawTestSessionRegistration {
-                        taker_id: None,
-                        registered: None,
-                        opened_test: Some(Some(Local::now().naive_local())),
-                        submitted_test: None,
-                        score: None,
-                    };
+                let partial_raw_test_session_registration = PartialRawTestSessionRegistration {
+                    taker_id: None,
+                    registered: None,
+                    opened_test: Some(Some(Local::now().naive_local())),
+                    submitted_test: None,
+                    score: None,
+                };
 
                 diesel::update(test_session_registrations_schema::table)
                     .set(&partial_raw_test_session_registration)
@@ -263,10 +258,7 @@ pub(crate) fn open(
                                 test_session_registrations_schema::test_session_id
                                     .eq(test_session_id),
                             )
-                            .and(
-                                test_session_registrations_schema::opened_test
-                                    .is_null(),
-                            ),
+                            .and(test_session_registrations_schema::opened_test.is_null()),
                     )
                     .execute(database_connection)?;
 
@@ -291,25 +283,20 @@ pub(crate) fn submit(
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
     if let Some(user_id) = requested_user {
-        let test_session =
-            get_test_session(test_session_id, database_connection)?;
+        let test_session = get_test_session(test_session_id, database_connection)?;
         if test_session.submissions_enabled {
-            let existing_open_registrations =
-                test_session_registrations_schema::table
-                    .filter(
-                        test_session_registrations_schema::test_session_id.eq(test_session_id).and(
-                        test_session_registrations_schema::taker_id
-                            .eq(user_id)
-                            .and(
-                                test_session_registrations_schema::opened_test
-                                    .is_not_null(),
-                            )
-                            .and(
-                                test_session_registrations_schema::submitted_test
-                                    .is_null(),
-                            ))
-                    )
-                    .load::<RawTestSessionRegistration>(database_connection)?;
+            let existing_open_registrations = test_session_registrations_schema::table
+                .filter(
+                    test_session_registrations_schema::test_session_id
+                        .eq(test_session_id)
+                        .and(
+                            test_session_registrations_schema::taker_id
+                                .eq(user_id)
+                                .and(test_session_registrations_schema::opened_test.is_not_null())
+                                .and(test_session_registrations_schema::submitted_test.is_null()),
+                        ),
+                )
+                .load::<RawTestSessionRegistration>(database_connection)?;
 
             if existing_open_registrations.len() == 1 {
                 let n_questions = response_questions.questions.len();
@@ -338,14 +325,13 @@ pub(crate) fn submit(
 
                 trace!("Score: {}", score);
 
-                let partial_raw_test_session_registration =
-                    PartialRawTestSessionRegistration {
-                        taker_id: None,
-                        registered: None,
-                        opened_test: None,
-                        submitted_test: Some(Some(Local::now().naive_local())),
-                        score: Some(Some(score)),
-                    };
+                let partial_raw_test_session_registration = PartialRawTestSessionRegistration {
+                    taker_id: None,
+                    registered: None,
+                    opened_test: None,
+                    submitted_test: Some(Some(Local::now().naive_local())),
+                    score: Some(Some(score)),
+                };
 
                 diesel::update(test_session_registrations_schema::table)
                     .filter(
@@ -355,13 +341,8 @@ pub(crate) fn submit(
                                 test_session_registrations_schema::test_session_id
                                     .eq(test_session_id),
                             )
-                            .and(
-                                test_session_registrations_schema::opened_test
-                                    .is_not_null(),
-                            )
-                            .and(
-                                test_session_registrations_schema::score.is_null(),
-                            ),
+                            .and(test_session_registrations_schema::opened_test.is_not_null())
+                            .and(test_session_registrations_schema::score.is_null()),
                     )
                     .set(&partial_raw_test_session_registration)
                     .execute(database_connection)?;
@@ -378,9 +359,7 @@ pub(crate) fn submit(
     }
 }
 
-pub(crate) fn condense_join(
-    joined: Vec<JoinedTestSession>,
-) -> Result<Vec<TestSession>, Error> {
+pub(crate) fn condense_join(joined: Vec<JoinedTestSession>) -> Result<Vec<TestSession>, Error> {
     let mut condensed: Vec<TestSession> = Vec::new();
 
     for join in joined {
@@ -394,46 +373,39 @@ pub(crate) fn condense_join(
             score,
         }) = join.test_session_registration
         {
-            let registered =
-                match Local.from_local_datetime(&registered).earliest() {
-                    Some(registered) => registered,
-                    None => {
-                        error!(
+            let registered = match Local.from_local_datetime(&registered).earliest() {
+                Some(registered) => registered,
+                None => {
+                    error!(
                         "Could not create a datetime from the database! {:?}",
                         registered
                     );
 
-                        return Err(Error::new(ErrorKind::Database));
-                    }
-                };
+                    return Err(Error::new(ErrorKind::Database));
+                }
+            };
 
-            let opened_test = opened_test.map(|t| {
-                match Local.from_local_datetime(&t).earliest() {
+            let opened_test = opened_test
+                .map(|t| match Local.from_local_datetime(&t).earliest() {
                     Some(opened) => Ok(opened),
                     None => {
-                        error!(
-                            "Could not create a datatime from the database! {:?}",
-                            t
-                        );
+                        error!("Could not create a datatime from the database! {:?}", t);
 
                         Err(Error::new(ErrorKind::Database))
                     }
-                }
-            }).transpose()?;
+                })
+                .transpose()?;
 
-            let submitted_test = submitted_test.map(|t| {
-                match Local.from_local_datetime(&t).earliest() {
+            let submitted_test = submitted_test
+                .map(|t| match Local.from_local_datetime(&t).earliest() {
                     Some(submitted_test) => Ok(submitted_test),
                     None => {
-                        error!(
-                            "Could not create a datatime from the database! {:?}",
-                            t
-                        );
+                        error!("Could not create a datatime from the database! {:?}", t);
 
                         Err(Error::new(ErrorKind::Database))
                     }
-                }
-            }).transpose()?;
+                })
+                .transpose()?;
 
             vec![TestSessionRegistration {
                 id: test_session_registration_id,
@@ -447,9 +419,7 @@ pub(crate) fn condense_join(
             Vec::new()
         };
 
-        if let Some(test_session) =
-            condensed.iter_mut().find(|t| t.id == join.test_session.id)
-        {
+        if let Some(test_session) = condensed.iter_mut().find(|t| t.id == join.test_session.id) {
             test_session.registrations.append(&mut registration);
         } else {
             let test_session = TestSession {
@@ -500,8 +470,7 @@ pub(crate) fn get_test_sessions(
         query = query.filter(test_sessions_schema::test_id.eq(test_id));
     };
 
-    let joined_test_sessions =
-        query.load::<JoinedTestSession>(database_connection)?;
+    let joined_test_sessions = query.load::<JoinedTestSession>(database_connection)?;
 
     trace!("Joined Test Sessions: {:#?}", joined_test_sessions);
 
@@ -603,10 +572,8 @@ pub(crate) fn delete_test_session(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::delete(
-        test_sessions_schema::table.filter(test_sessions_schema::id.eq(id)),
-    )
-    .execute(database_connection)?;
+    diesel::delete(test_sessions_schema::table.filter(test_sessions_schema::id.eq(id)))
+        .execute(database_connection)?;
 
     Ok(())
 }

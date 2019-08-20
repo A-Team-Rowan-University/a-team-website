@@ -58,9 +58,7 @@ pub enum QuestionCategoryRequest {
 }
 
 impl QuestionCategoryRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<QuestionCategoryRequest, Error> {
+    pub fn from_rouille(request: &rouille::Request) -> Result<QuestionCategoryRequest, Error> {
         router!(request,
             (GET) (/) => {
                 Ok(QuestionCategoryRequest::GetQuestionCategories)
@@ -98,15 +96,13 @@ pub enum QuestionCategoryResponse {
 impl QuestionCategoryResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            QuestionCategoryResponse::OneQuestionCategory(
-                question_category,
-            ) => rouille::Response::json(&question_category),
-            QuestionCategoryResponse::ManyQuestionCategories(
-                question_categories,
-            ) => rouille::Response::json(&question_categories),
-            QuestionCategoryResponse::NoResponse => {
-                rouille::Response::empty_204()
+            QuestionCategoryResponse::OneQuestionCategory(question_category) => {
+                rouille::Response::json(&question_category)
             }
+            QuestionCategoryResponse::ManyQuestionCategories(question_categories) => {
+                rouille::Response::json(&question_categories)
+            }
+            QuestionCategoryResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }

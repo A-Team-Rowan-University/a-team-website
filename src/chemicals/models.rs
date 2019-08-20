@@ -67,11 +67,8 @@ pub enum ChemicalRequest {
 }
 
 impl ChemicalRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<ChemicalRequest, Error> {
-        let url_queries =
-            form_urlencoded::parse(request.raw_query_string().as_bytes());
+    pub fn from_rouille(request: &rouille::Request) -> Result<ChemicalRequest, Error> {
+        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
@@ -140,12 +137,8 @@ pub enum ChemicalResponse {
 impl ChemicalResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            ChemicalResponse::OneChemical(chemical) => {
-                rouille::Response::json(&chemical)
-            }
-            ChemicalResponse::ManyChemical(chemicals) => {
-                rouille::Response::json(&chemicals)
-            }
+            ChemicalResponse::OneChemical(chemical) => rouille::Response::json(&chemical),
+            ChemicalResponse::ManyChemical(chemicals) => rouille::Response::json(&chemicals),
             ChemicalResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
@@ -203,11 +196,8 @@ pub enum ChemicalInventoryRequest {
 }
 
 impl ChemicalInventoryRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<ChemicalInventoryRequest, Error> {
-        let url_queries =
-            form_urlencoded::parse(request.raw_query_string().as_bytes());
+    pub fn from_rouille(request: &rouille::Request) -> Result<ChemicalInventoryRequest, Error> {
+        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
@@ -286,15 +276,11 @@ pub enum ChemicalInventoryResponse {
 impl ChemicalInventoryResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            ChemicalInventoryResponse::OneInventoryEntry(entry) => {
-                rouille::Response::json(&entry)
-            }
+            ChemicalInventoryResponse::OneInventoryEntry(entry) => rouille::Response::json(&entry),
             ChemicalInventoryResponse::ManyInventoryEntries(entries) => {
                 rouille::Response::json(&entries)
             }
-            ChemicalInventoryResponse::NoResponse => {
-                rouille::Response::empty_204()
-            }
+            ChemicalInventoryResponse::NoResponse => rouille::Response::empty_204(),
         }
     }
 }

@@ -7,12 +7,8 @@ pub enum SearchParseError {
 impl std::fmt::Display for SearchParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            SearchParseError::Kind(s) => {
-                write!(f, "Invalid search kind: {}", s)
-            }
-            SearchParseError::Term(s) => {
-                write!(f, "Invalid search term: {}", s)
-            }
+            SearchParseError::Kind(s) => write!(f, "Invalid search kind: {}", s),
+            SearchParseError::Term(s) => write!(f, "Invalid search term: {}", s),
         }
     }
 }
@@ -52,9 +48,7 @@ impl<T: std::str::FromStr> Search<T> {
                 .parse()
                 .map(|p| Search::Exact(p))
                 .map_err(|_| SearchParseError::Term(s.to_owned())),
-            (Some("partial"), None) => {
-                Err(SearchParseError::Term("".to_owned()))
-            }
+            (Some("partial"), None) => Err(SearchParseError::Term("".to_owned())),
             (Some("exact"), None) => Err(SearchParseError::Term("".to_owned())),
             (Some(k), Some(_)) => Err(SearchParseError::Kind(k.to_owned())),
             (Some(k), None) => Err(SearchParseError::Kind(k.to_owned())),
@@ -149,9 +143,7 @@ pub enum NullableSearch<T> {
 }
 
 impl<T: std::str::FromStr> NullableSearch<T> {
-    pub fn from_query(
-        query: &str,
-    ) -> Result<NullableSearch<T>, SearchParseError> {
+    pub fn from_query(query: &str) -> Result<NullableSearch<T>, SearchParseError> {
         let mut query_iter = query.split(',');
 
         let kind = query_iter.next().map(|s| s.trim());
@@ -172,17 +164,11 @@ impl<T: std::str::FromStr> NullableSearch<T> {
             (Some("some"), None) => Ok(NullableSearch::Some),
             (Some("none"), None) => Ok(NullableSearch::None),
 
-            (Some("partial"), None) => {
-                Err(SearchParseError::Term("".to_owned()))
-            }
+            (Some("partial"), None) => Err(SearchParseError::Term("".to_owned())),
             (Some("exact"), None) => Err(SearchParseError::Term("".to_owned())),
 
-            (Some("some"), Some(s)) => {
-                Err(SearchParseError::Term(s.to_owned()))
-            }
-            (Some("none"), Some(s)) => {
-                Err(SearchParseError::Term(s.to_owned()))
-            }
+            (Some("some"), Some(s)) => Err(SearchParseError::Term(s.to_owned())),
+            (Some("none"), Some(s)) => Err(SearchParseError::Term(s.to_owned())),
 
             (Some(k), Some(_)) => Err(SearchParseError::Kind(k.to_owned())),
             (Some(k), None) => Err(SearchParseError::Kind(k.to_owned())),
@@ -207,64 +193,55 @@ fn parse_nullable_search_exact_search_works() {
 
 #[test]
 fn parse_nullable_search_some_works() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(" some ");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(" some ");
     assert_eq!(s, Ok(NullableSearch::Some));
 }
 
 #[test]
 fn parse_nullable_search_none_works() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(" none ");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(" none ");
     assert_eq!(s, Ok(NullableSearch::None));
 }
 
 #[test]
 fn parse_nullable_search_some_with_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(" some, hello");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(" some, hello");
     assert_eq!(s, Err(SearchParseError::Term("hello".to_owned())));
 }
 
 #[test]
 fn parse_nullable_search_none_with_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(" none, hello");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(" none, hello");
     assert_eq!(s, Err(SearchParseError::Term("hello".to_owned())));
 }
 
 #[test]
 fn parse_nullable_search_invalid_kind_with_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query("hello, bye");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query("hello, bye");
     assert_eq!(s, Err(SearchParseError::Kind("hello".to_owned())));
 }
 
 #[test]
 fn parse_nullable_search_no_kind_with_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(", bye");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(", bye");
     assert_eq!(s, Err(SearchParseError::Kind("".to_owned())));
 }
 
 #[test]
 fn parse_nullable_search_partial_with_no_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(" partial");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(" partial");
     assert_eq!(s, Err(SearchParseError::Term("".to_owned())));
 }
 
 #[test]
 fn parse_nullable_search_exact_with_no_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query(" exact");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query(" exact");
     assert_eq!(s, Err(SearchParseError::Term("".to_owned())));
 }
 
 #[test]
 fn parse_nullable_search_invalid_with_no_term_fails() {
-    let s: Result<NullableSearch<String>, _> =
-        NullableSearch::from_query("hello");
+    let s: Result<NullableSearch<String>, _> = NullableSearch::from_query("hello");
     assert_eq!(s, Err(SearchParseError::Kind("hello".to_owned())));
 }
 

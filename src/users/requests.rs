@@ -19,8 +19,8 @@ use crate::permissions::requests::check_to_run;
 use crate::permissions::models::NewUserPermission;
 
 use crate::users::models::{
-    JoinedUser, NewRawUser, NewUser, PartialUser, RawUser, SearchUser, User,
-    UserList, UserRequest, UserResponse,
+    JoinedUser, NewRawUser, NewUser, PartialUser, RawUser, SearchUser, User, UserList, UserRequest,
+    UserResponse,
 };
 
 use crate::permissions::schema::permissions as permissions_schema;
@@ -34,55 +34,42 @@ pub fn handle_user(
 ) -> Result<UserResponse, Error> {
     match request {
         UserRequest::SearchUsers(user) => {
-            match check_to_run(requested_user, "GetUsers", database_connection)
-            {
-                Ok(()) => search_users(user, database_connection)
-                    .map(|u| UserResponse::ManyUsers(u)),
+            match check_to_run(requested_user, "GetUsers", database_connection) {
+                Ok(()) => {
+                    search_users(user, database_connection).map(|u| UserResponse::ManyUsers(u))
+                }
                 Err(e) => Err(e),
             }
         }
 
         UserRequest::Current => match requested_user {
-            Some(id) => get_user(id, database_connection)
-                .map(|u| UserResponse::OneUser(u)),
+            Some(id) => get_user(id, database_connection).map(|u| UserResponse::OneUser(u)),
             None => Ok(UserResponse::NoResponse),
         },
 
         UserRequest::GetUser(id) => {
-            match check_to_run(requested_user, "GetUsers", database_connection)
-            {
-                Ok(()) => get_user(id, database_connection)
-                    .map(|u| UserResponse::OneUser(u)),
+            match check_to_run(requested_user, "GetUsers", database_connection) {
+                Ok(()) => get_user(id, database_connection).map(|u| UserResponse::OneUser(u)),
                 Err(e) => Err(e),
             }
         }
         UserRequest::CreateUser(user) => {
-            match check_to_run(
-                requested_user,
-                "CreateUsers",
-                database_connection,
-            ) {
-                Ok(()) => create_user(user, database_connection)
-                    .map(|u| UserResponse::OneUser(u)),
+            match check_to_run(requested_user, "CreateUsers", database_connection) {
+                Ok(()) => create_user(user, database_connection).map(|u| UserResponse::OneUser(u)),
                 Err(e) => Err(e),
             }
         }
         UserRequest::UpdateUser(id, user) => {
-            match check_to_run(
-                requested_user,
-                "DeleteUsers",
-                database_connection,
-            ) {
-                Ok(()) => update_user(id, user, database_connection)
-                    .map(|_| UserResponse::NoResponse),
+            match check_to_run(requested_user, "DeleteUsers", database_connection) {
+                Ok(()) => {
+                    update_user(id, user, database_connection).map(|_| UserResponse::NoResponse)
+                }
                 Err(e) => Err(e),
             }
         }
         UserRequest::DeleteUser(id) => {
-            match check_to_run(requested_user, "GetUsers", database_connection)
-            {
-                Ok(()) => delete_user(id, database_connection)
-                    .map(|_| UserResponse::NoResponse),
+            match check_to_run(requested_user, "GetUsers", database_connection) {
+                Ok(()) => delete_user(id, database_connection).map(|_| UserResponse::NoResponse),
                 Err(e) => Err(e),
             }
         }
@@ -99,8 +86,7 @@ fn condense_join(joined: Vec<JoinedUser>) -> Vec<User> {
             Vec::new()
         };
 
-        if let Some(user) = condensed.iter_mut().find(|u| u.id == join.user.id)
-        {
+        if let Some(user) = condensed.iter_mut().find(|u| u.id == join.user.id) {
             user.permissions.append(&mut permission);
         } else {
             let user = User {
@@ -123,9 +109,7 @@ pub(crate) fn search_users(
     database_connection: &MysqlConnection,
 ) -> Result<UserList, Error> {
     let mut users_query = users_schema::table
-        .left_join(
-            user_permissions_schema::table.left_join(permissions_schema::table),
-        )
+        .left_join(user_permissions_schema::table.left_join(permissions_schema::table))
         .select((
             (
                 users_schema::id,
@@ -134,33 +118,26 @@ pub(crate) fn search_users(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (permissions_schema::id, permissions_schema::permission_name)
-                .nullable(),
+            (permissions_schema::id, permissions_schema::permission_name).nullable(),
         ))
         .into_boxed();
 
     match user.first_name {
         Search::Partial(s) => {
-            users_query = users_query
-                .filter(users_schema::first_name.like(format!("%{}%", s)))
+            users_query = users_query.filter(users_schema::first_name.like(format!("%{}%", s)))
         }
 
-        Search::Exact(s) => {
-            users_query = users_query.filter(users_schema::first_name.eq(s))
-        }
+        Search::Exact(s) => users_query = users_query.filter(users_schema::first_name.eq(s)),
 
         Search::NoSearch => {}
     }
 
     match user.last_name {
         Search::Partial(s) => {
-            users_query = users_query
-                .filter(users_schema::last_name.like(format!("%{}%", s)))
+            users_query = users_query.filter(users_schema::last_name.like(format!("%{}%", s)))
         }
 
-        Search::Exact(s) => {
-            users_query = users_query.filter(users_schema::last_name.eq(s))
-        }
+        Search::Exact(s) => users_query = users_query.filter(users_schema::last_name.eq(s)),
 
         Search::NoSearch => {}
     }
@@ -172,22 +149,17 @@ pub(crate) fn search_users(
             users_query = users_query.filter(users_schema::banner_id.eq(s))
         }
 
-        Search::Exact(s) => {
-            users_query = users_query.filter(users_schema::banner_id.eq(s))
-        }
+        Search::Exact(s) => users_query = users_query.filter(users_schema::banner_id.eq(s)),
 
         Search::NoSearch => {}
     }
 
     match user.email {
         Search::Partial(s) => {
-            users_query =
-                users_query.filter(users_schema::email.like(format!("%{}%", s)))
+            users_query = users_query.filter(users_schema::email.like(format!("%{}%", s)))
         }
 
-        Search::Exact(s) => {
-            users_query = users_query.filter(users_schema::email.eq(s))
-        }
+        Search::Exact(s) => users_query = users_query.filter(users_schema::email.eq(s)),
 
         Search::NoSearch => {}
     }
@@ -201,14 +173,9 @@ pub(crate) fn search_users(
     Ok(user_list)
 }
 
-pub(crate) fn get_user(
-    id: u64,
-    database_connection: &MysqlConnection,
-) -> Result<User, Error> {
+pub(crate) fn get_user(id: u64, database_connection: &MysqlConnection) -> Result<User, Error> {
     let joined_users = users_schema::table
-        .left_join(
-            user_permissions_schema::table.left_join(permissions_schema::table),
-        )
+        .left_join(user_permissions_schema::table.left_join(permissions_schema::table))
         .select((
             (
                 users_schema::id,
@@ -217,8 +184,7 @@ pub(crate) fn get_user(
                 users_schema::banner_id,
                 users_schema::email,
             ),
-            (permissions_schema::id, permissions_schema::permission_name)
-                .nullable(),
+            (permissions_schema::id, permissions_schema::permission_name).nullable(),
         ))
         .filter(users_schema::id.eq(id))
         .load::<JoinedUser>(database_connection)?;
@@ -284,10 +250,7 @@ pub(crate) fn update_user(
     Ok(())
 }
 
-pub(crate) fn delete_user(
-    id: u64,
-    database_connection: &MysqlConnection,
-) -> Result<(), Error> {
+pub(crate) fn delete_user(id: u64, database_connection: &MysqlConnection) -> Result<(), Error> {
     diesel::delete(users_schema::table.filter(users_schema::id.eq(id)))
         .execute(database_connection)?;
 

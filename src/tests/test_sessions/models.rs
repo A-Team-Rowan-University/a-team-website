@@ -79,7 +79,7 @@ pub struct JoinedTestSession {
     pub test_session_registration: Option<RawTestSessionRegistration>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TestSession {
     pub id: u64,
     pub test_id: u64,
@@ -109,7 +109,7 @@ pub struct TestSessionList {
     pub test_sessions: Vec<TestSession>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct TestSessionRegistration {
     pub id: u64,
     pub taker_id: u64,
@@ -131,11 +131,8 @@ pub enum TestSessionRequest {
 }
 
 impl TestSessionRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<TestSessionRequest, Error> {
-        let mut url_queries =
-            form_urlencoded::parse(request.raw_query_string().as_bytes());
+    pub fn from_rouille(request: &rouille::Request) -> Result<TestSessionRequest, Error> {
+        let mut url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
         router!(request,
             (GET) (/) => {
 
