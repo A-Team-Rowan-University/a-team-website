@@ -702,16 +702,27 @@ loadData session route =
         TestSessions _ ->
             case idToken session of
                 Just id_token ->
-                    ( Http.request
-                        { method = "GET"
-                        , headers = [ header "id_token" id_token ]
-                        , url = TestSessions.List.url
-                        , body = emptyBody
-                        , expect = Errors.expectJsonWithError GotTestSessions TestSessions.List.decoder
-                        , timeout = Nothing
-                        , tracker = Just TestSessions.List.url
-                        }
-                    , [ AddRequest TestSessions.List.url ]
+                    ( Cmd.batch
+                        [ Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = TestSessions.List.url
+                            , body = emptyBody
+                            , expect = Errors.expectJsonWithError GotTestSessions TestSessions.List.decoder
+                            , timeout = Nothing
+                            , tracker = Just TestSessions.List.url
+                            }
+                        , Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = Tests.List.manyUrl
+                            , body = emptyBody
+                            , expect = Errors.expectJsonWithError GotTests Tests.List.listDecoder
+                            , timeout = Nothing
+                            , tracker = Tests.List.manyUrl |> Just
+                            }
+                        ]
+                    , [ AddRequest TestSessions.List.url, AddRequest Tests.List.manyUrl ]
                     , []
                     )
 
@@ -724,16 +735,27 @@ loadData session route =
         TestSession session_id ->
             case idToken session of
                 Just id_token ->
-                    ( Http.request
-                        { method = "GET"
-                        , headers = [ header "id_token" id_token ]
-                        , url = TestSessions.TestSession.url session_id
-                        , body = emptyBody
-                        , expect = Errors.expectJsonWithError (GotTestSession session_id) TestSessions.TestSession.decoder
-                        , timeout = Nothing
-                        , tracker = Just (TestSessions.TestSession.url session_id)
-                        }
-                    , [ AddRequest (TestSessions.TestSession.url session_id) ]
+                    ( Cmd.batch
+                        [ Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = TestSessions.TestSession.url session_id
+                            , body = emptyBody
+                            , expect = Errors.expectJsonWithError (GotTestSession session_id) TestSessions.TestSession.decoder
+                            , timeout = Nothing
+                            , tracker = Just (TestSessions.TestSession.url session_id)
+                            }
+                        , Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = User.manyUrl
+                            , body = emptyBody
+                            , expect = Errors.expectJsonWithError GotUsers User.listDecoder
+                            , timeout = Nothing
+                            , tracker = User.manyUrl |> Just
+                            }
+                        ]
+                    , [ AddRequest (TestSessions.TestSession.url session_id), User.manyUrl |> AddRequest ]
                     , []
                     )
 
