@@ -33,10 +33,7 @@ use super::schema::permissions as permissions_schema;
 use super::schema::user_permissions as user_permissions_schema;
 use crate::users::schema::users as users_schema;
 
-pub fn validate_token(
-    id_token: &str,
-    database_connection: &MysqlConnection,
-) -> Result<u64, Error> {
+pub fn validate_token(id_token: &str, database_connection: &MysqlConnection) -> Result<u64, Error> {
     let mut client = google_signin::Client::new();
     client.audiences.push(String::from(
         "918184954544-jm1aufr31fi6sdjs1140p7p3rouaka14.apps.googleusercontent.com",
@@ -79,11 +76,8 @@ pub fn check_to_run(
     );
     match requesting_user_id {
         Some(user_id) => {
-            match check_user_permission(
-                user_id,
-                String::from(permission_name),
-                database_connection,
-            ) {
+            match check_user_permission(user_id, String::from(permission_name), database_connection)
+            {
                 Ok(permission) => {
                     if permission {
                         debug!("Permission granted!");
@@ -110,46 +104,28 @@ pub fn handle_permission(
                 .map(|_| PermissionResponse::NoResponse)
         }
         PermissionRequest::GetPermission(id) => {
-            match check_to_run(
-                requesting_user,
-                "GetPermission",
-                database_connection,
-            ) {
+            match check_to_run(requesting_user, "GetPermission", database_connection) {
                 Ok(()) => get_permission(id, database_connection)
                     .map(|a| PermissionResponse::OnePermission(a)),
                 Err(e) => Err(e),
             }
         }
         PermissionRequest::CreatePermission(permission) => {
-            match check_to_run(
-                requesting_user,
-                "CreatePermission",
-                database_connection,
-            ) {
+            match check_to_run(requesting_user, "CreatePermission", database_connection) {
                 Ok(()) => create_permission(permission, database_connection)
                     .map(|a| PermissionResponse::OnePermission(a)),
                 Err(e) => Err(e),
             }
         }
         PermissionRequest::UpdatePermission(id, permission) => {
-            match check_to_run(
-                requesting_user,
-                "UpdatePermission",
-                database_connection,
-            ) {
-                Ok(()) => {
-                    update_permission(id, permission, database_connection)
-                        .map(|_| PermissionResponse::NoResponse)
-                }
+            match check_to_run(requesting_user, "UpdatePermission", database_connection) {
+                Ok(()) => update_permission(id, permission, database_connection)
+                    .map(|_| PermissionResponse::NoResponse),
                 Err(e) => Err(e),
             }
         }
         PermissionRequest::DeletePermission(id) => {
-            match check_to_run(
-                requesting_user,
-                "DeletePermission",
-                database_connection,
-            ) {
+            match check_to_run(requesting_user, "DeletePermission", database_connection) {
                 Ok(()) => delete_permission(id, database_connection)
                     .map(|_| PermissionResponse::NoResponse),
                 Err(e) => Err(e),
@@ -178,12 +154,11 @@ pub(crate) fn first_permission(
         user_id: Search::NoSearch,
     };
 
-    let non_root_permissions =
-        search_user_permission(search, &database_connection)?
-            .entries
-            .into_iter()
-            .filter(|permission| permission.permission_id != 1)
-            .count();
+    let non_root_permissions = search_user_permission(search, &database_connection)?
+        .entries
+        .into_iter()
+        .filter(|permission| permission.permission_id != 1)
+        .count();
 
     trace!("Found {} non-root permissions", non_root_permissions);
 
@@ -193,8 +168,8 @@ pub(crate) fn first_permission(
         } else {
             let mut client = google_signin::Client::new();
             client.audiences.push(String::from(
-                    "918184954544-jm1aufr31fi6sdjs1140p7p3rouaka14.apps.googleusercontent.com",
-                    ));
+                "918184954544-jm1aufr31fi6sdjs1140p7p3rouaka14.apps.googleusercontent.com",
+            ));
 
             let info = client.verify(id_token)?;
 
@@ -299,10 +274,8 @@ pub(crate) fn delete_permission(
     id: u64,
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
-    diesel::delete(
-        permissions_schema::table.filter(permissions_schema::id.eq(id)),
-    )
-    .execute(database_connection)?;
+    diesel::delete(permissions_schema::table.filter(permissions_schema::id.eq(id)))
+        .execute(database_connection)?;
 
     Ok(())
 }
@@ -314,15 +287,9 @@ pub fn handle_user_permission(
 ) -> Result<UserPermissionResponse, Error> {
     match request {
         UserPermissionRequest::SearchPermission(user_permission) => {
-            match check_to_run(
-                requesting_user,
-                "GetUserPermission",
-                database_connection,
-            ) {
-                Ok(()) => {
-                    search_user_permission(user_permission, database_connection)
-                        .map(|u| UserPermissionResponse::ManyUserPermission(u))
-                }
+            match check_to_run(requesting_user, "GetUserPermission", database_connection) {
+                Ok(()) => search_user_permission(user_permission, database_connection)
+                    .map(|u| UserPermissionResponse::ManyUserPermission(u)),
                 Err(e) => Err(e),
             }
         }
@@ -331,15 +298,9 @@ pub fn handle_user_permission(
                 .map(|u| UserPermissionResponse::ManyPermission(u))
         }
         UserPermissionRequest::GetPermission(permission_id) => {
-            match check_to_run(
-                requesting_user,
-                "GetUserPermission",
-                database_connection,
-            ) {
-                Ok(()) => {
-                    get_user_permission(permission_id, database_connection)
-                        .map(|a| UserPermissionResponse::OneUserPermission(a))
-                }
+            match check_to_run(requesting_user, "GetUserPermission", database_connection) {
+                Ok(()) => get_user_permission(permission_id, database_connection)
+                    .map(|a| UserPermissionResponse::OneUserPermission(a)),
                 Err(e) => Err(e),
             }
         }
@@ -348,39 +309,21 @@ pub fn handle_user_permission(
                 .map(|s| UserPermissionResponse::PermissionState(s))
         }
         UserPermissionRequest::CreatePermission(user_permission) => {
-            match check_to_run(
-                requesting_user,
-                "CreateUserPermission",
-                database_connection,
-            ) {
-                Ok(()) => {
-                    create_user_permission(user_permission, database_connection)
-                        .map(|a| UserPermissionResponse::OneUserPermission(a))
-                }
+            match check_to_run(requesting_user, "CreateUserPermission", database_connection) {
+                Ok(()) => create_user_permission(user_permission, database_connection)
+                    .map(|a| UserPermissionResponse::OneUserPermission(a)),
                 Err(e) => Err(e),
             }
         }
         UserPermissionRequest::UpdatePermission(id, user_permission) => {
-            match check_to_run(
-                requesting_user,
-                "UpdateUserPermission",
-                database_connection,
-            ) {
-                Ok(()) => update_user_permission(
-                    id,
-                    user_permission,
-                    database_connection,
-                )
-                .map(|_| UserPermissionResponse::NoResponse),
+            match check_to_run(requesting_user, "UpdateUserPermission", database_connection) {
+                Ok(()) => update_user_permission(id, user_permission, database_connection)
+                    .map(|_| UserPermissionResponse::NoResponse),
                 Err(e) => Err(e),
             }
         }
         UserPermissionRequest::DeletePermission(id) => {
-            match check_to_run(
-                requesting_user,
-                "DeleteUserPermission",
-                database_connection,
-            ) {
+            match check_to_run(requesting_user, "DeleteUserPermission", database_connection) {
                 Ok(()) => delete_user_permission(id, database_connection)
                     .map(|_| UserPermissionResponse::NoResponse),
                 Err(e) => Err(e),
@@ -408,13 +351,13 @@ pub(crate) fn search_user_permission(
 
     match user_permission_search.permission_id {
         Search::Partial(s) => {
-            user_permission_query = user_permission_query
-                .filter(user_permissions_schema::permission_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::permission_id.eq(s))
         }
 
         Search::Exact(s) => {
-            user_permission_query = user_permission_query
-                .filter(user_permissions_schema::permission_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::permission_id.eq(s))
         }
 
         Search::NoSearch => {}
@@ -422,20 +365,20 @@ pub(crate) fn search_user_permission(
 
     match user_permission_search.user_id {
         Search::Partial(s) => {
-            user_permission_query = user_permission_query
-                .filter(user_permissions_schema::user_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::user_id.eq(s))
         }
 
         Search::Exact(s) => {
-            user_permission_query = user_permission_query
-                .filter(user_permissions_schema::user_id.eq(s))
+            user_permission_query =
+                user_permission_query.filter(user_permissions_schema::user_id.eq(s))
         }
 
         Search::NoSearch => {}
     }
 
-    let found_permission_entries = user_permission_query
-        .load::<JoinedUserPermission>(database_connection)?;
+    let found_permission_entries =
+        user_permission_query.load::<JoinedUserPermission>(database_connection)?;
     let joined_list = JoinedUserPermissionList {
         entries: found_permission_entries,
     };
@@ -450,10 +393,7 @@ pub(crate) fn get_current_user_permission(
     if let Some(user_id) = requesting_user {
         let permissions = permissions_schema::table
             .inner_join(user_permissions_schema::table)
-            .select((
-                permissions_schema::id,
-                permissions_schema::permission_name,
-            ))
+            .select((permissions_schema::id, permissions_schema::permission_name))
             .filter(user_permissions_schema::user_id.eq(user_id))
             .load::<Permission>(database_connection)?;
 
@@ -506,10 +446,7 @@ pub(crate) fn create_user_permission(
     //find if permission currently exists, should not duplicate (user_id, permission_id) pairs
     let found_user_permissions = user_permissions_schema::table
         .filter(user_permissions_schema::user_id.eq(user_permission.user_id))
-        .filter(
-            user_permissions_schema::permission_id
-                .eq(user_permission.permission_id),
-        )
+        .filter(user_permissions_schema::permission_id.eq(user_permission.permission_id))
         .execute(database_connection)?;
 
     if found_user_permissions != 0 {
@@ -554,8 +491,7 @@ pub(crate) fn delete_user_permission(
     database_connection: &MysqlConnection,
 ) -> Result<(), Error> {
     diesel::delete(
-        user_permissions_schema::table
-            .filter(user_permissions_schema::permission_id.eq(id)),
+        user_permissions_schema::table.filter(user_permissions_schema::permission_id.eq(id)),
     )
     .execute(database_connection)?;
 

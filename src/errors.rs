@@ -38,30 +38,20 @@ impl std::fmt::Display for Error {
             ErrorKind::Body => write!(f, "Body parse error!"),
             ErrorKind::NotFound => write!(f, "Not found!"),
             ErrorKind::PermissionDenied => write!(f, "Permission denied!"),
-            ErrorKind::GoogleSignIn => {
-                write!(f, "Failed to validate Id Token with Google")
-            }
-            ErrorKind::GoogleUserNoEmail => {
-                write!(f, "Google did not provide an email")
-            }
+            ErrorKind::GoogleSignIn => write!(f, "Failed to validate Id Token with Google"),
+            ErrorKind::GoogleUserNoEmail => write!(f, "Google did not provide an email"),
             ErrorKind::GoogleUserNotFound => write!(
                 f,
                 "The email provided by Google did not match any users' emails"
             ),
             ErrorKind::Unimplemented => write!(f, "Method not implemented"),
-            ErrorKind::RegisteredTwiceForTest => {
-                write!(f, "Registered twice for a test")
-            }
+            ErrorKind::RegisteredTwiceForTest => write!(f, "Registered twice for a test"),
             ErrorKind::RegistrationClosedForTest => {
                 write!(f, "The test session is closed for registration")
             }
-            ErrorKind::OpenedTestNotRegistered => {
-                write!(f, "Opened a test not registerd for")
-            }
+            ErrorKind::OpenedTestNotRegistered => write!(f, "Opened a test not registerd for"),
             ErrorKind::OpenedTestTwice => write!(f, "Opened a test twice"),
-            ErrorKind::OpeningClosedForTest => {
-                write!(f, "The test session is closed")
-            }
+            ErrorKind::OpeningClosedForTest => write!(f, "The test session is closed"),
             ErrorKind::SubmissionsClosedForTest => {
                 write!(f, "The test session is closed for submissions")
             }
@@ -156,23 +146,15 @@ impl From<Error> for rouille::Response {
         error!("{:?} -> {:?}", e.kind(), e.source());
 
         match e.kind() {
-            ErrorKind::Database => {
-                rouille::Response::text(e.to_string()).with_status_code(500)
-            }
+            ErrorKind::Database => rouille::Response::text(e.to_string()).with_status_code(500),
             ErrorKind::Url => {
-                rouille::Response::text(e.to_string_with_source())
-                    .with_status_code(400)
+                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
             }
             ErrorKind::Body => {
-                rouille::Response::text(e.to_string_with_source())
-                    .with_status_code(400)
+                rouille::Response::text(e.to_string_with_source()).with_status_code(400)
             }
-            ErrorKind::NotFound => {
-                rouille::Response::text(e.to_string()).with_status_code(404)
-            }
-            ErrorKind::GoogleSignIn => {
-                rouille::Response::text(e.to_string()).with_status_code(401)
-            }
+            ErrorKind::NotFound => rouille::Response::text(e.to_string()).with_status_code(404),
+            ErrorKind::GoogleSignIn => rouille::Response::text(e.to_string()).with_status_code(401),
             ErrorKind::GoogleUserNoEmail => {
                 rouille::Response::text(e.to_string()).with_status_code(401)
             }

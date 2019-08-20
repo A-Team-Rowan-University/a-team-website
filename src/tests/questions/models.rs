@@ -80,9 +80,7 @@ pub enum QuestionRequest {
 }
 
 impl QuestionRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<QuestionRequest, Error> {
+    pub fn from_rouille(request: &rouille::Request) -> Result<QuestionRequest, Error> {
         router!(request,
             (GET) (/) => {
                 Ok(QuestionRequest::GetQuestions)
@@ -117,12 +115,8 @@ pub enum QuestionResponse {
 impl QuestionResponse {
     pub fn to_rouille(self) -> rouille::Response {
         match self {
-            QuestionResponse::OneQuestion(question) => {
-                rouille::Response::json(&question)
-            }
-            QuestionResponse::ManyQuestions(questions) => {
-                rouille::Response::json(&questions)
-            }
+            QuestionResponse::OneQuestion(question) => rouille::Response::json(&question),
+            QuestionResponse::ManyQuestions(questions) => rouille::Response::json(&questions),
             QuestionResponse::NoResponse => rouille::Response::empty_204(),
         }
     }

@@ -10,8 +10,8 @@ use crate::errors::ErrorKind;
 use crate::permissions::requests::check_to_run;
 
 use crate::tests::tests::models::{
-    JoinedTest, NewRawTest, NewTest, RawTest, RawTestQuestionCategory, Test,
-    TestList, TestQuestionCategory, TestRequest, TestResponse,
+    JoinedTest, NewRawTest, NewTest, RawTest, RawTestQuestionCategory, Test, TestList,
+    TestQuestionCategory, TestRequest, TestResponse,
 };
 use crate::tests::tests::schema::test_question_categories as test_question_categories_schema;
 use crate::tests::tests::schema::tests as tests_schema;
@@ -32,20 +32,16 @@ pub fn handle_test(
         }
         TestRequest::CreateTest(test) => {
             check_to_run(requested_user, "CreateTests", database_connection)?;
-            create_test(test, requested_user, database_connection)
-                .map(|u| TestResponse::OneTest(u))
+            create_test(test, requested_user, database_connection).map(|u| TestResponse::OneTest(u))
         }
         TestRequest::DeleteTest(id) => {
             check_to_run(requested_user, "DeleteTests", database_connection)?;
-            delete_test(id, database_connection)
-                .map(|_| TestResponse::NoResponse)
+            delete_test(id, database_connection).map(|_| TestResponse::NoResponse)
         }
     }
 }
 
-pub(crate) fn get_tests(
-    database_connection: &MysqlConnection,
-) -> Result<TestList, Error> {
+pub(crate) fn get_tests(database_connection: &MysqlConnection) -> Result<TestList, Error> {
     let joined_tests = tests_schema::table
         .inner_join(test_question_categories_schema::table)
         .select((
@@ -114,8 +110,7 @@ pub(crate) fn create_test(
             .map(|test_question_category| RawTestQuestionCategory {
                 test_id: raw_inserted_test.id,
                 number_of_questions: test_question_category.number_of_questions,
-                question_category_id: test_question_category
-                    .question_category_id,
+                question_category_id: test_question_category.question_category_id,
             })
             .collect();
 
@@ -123,21 +118,15 @@ pub(crate) fn create_test(
             .values(test_question_categories)
             .execute(database_connection)?;
 
-        let inserted_test_question_categories =
-            test_question_categories_schema::table
-                .filter(
-                    test_question_categories_schema::test_id
-                        .eq(raw_inserted_test.id),
-                )
-                .load::<RawTestQuestionCategory>(database_connection)?
-                .iter()
-                .map(|raw_test_question_category| TestQuestionCategory {
-                    number_of_questions: raw_test_question_category
-                        .number_of_questions,
-                    question_category_id: raw_test_question_category
-                        .question_category_id,
-                })
-                .collect();
+        let inserted_test_question_categories = test_question_categories_schema::table
+            .filter(test_question_categories_schema::test_id.eq(raw_inserted_test.id))
+            .load::<RawTestQuestionCategory>(database_connection)?
+            .iter()
+            .map(|raw_test_question_category| TestQuestionCategory {
+                number_of_questions: raw_test_question_category.number_of_questions,
+                question_category_id: raw_test_question_category.question_category_id,
+            })
+            .collect();
 
         let inserted_test = Test {
             id: raw_inserted_test.id,
@@ -152,10 +141,7 @@ pub(crate) fn create_test(
     }
 }
 
-pub(crate) fn get_test(
-    id: u64,
-    database_connection: &MysqlConnection,
-) -> Result<Test, Error> {
+pub(crate) fn get_test(id: u64, database_connection: &MysqlConnection) -> Result<Test, Error> {
     let mut joined_tests = tests_schema::table
         .inner_join(test_question_categories_schema::table)
         .filter(tests_schema::id.eq(id))
@@ -193,10 +179,7 @@ pub(crate) fn get_test(
     }
 }
 
-pub(crate) fn delete_test(
-    id: u64,
-    database_connection: &MysqlConnection,
-) -> Result<(), Error> {
+pub(crate) fn delete_test(id: u64, database_connection: &MysqlConnection) -> Result<(), Error> {
     diesel::delete(tests_schema::table.filter(tests_schema::id.eq(id)))
         .execute(database_connection)?;
 

@@ -22,7 +22,4 @@ table! {
 }
 
 joinable!(test_session_registrations -> test_sessions (test_session_id));
-allow_tables_to_appear_in_same_query!(
-    test_sessions,
-    test_session_registrations
-);
+allow_tables_to_appear_in_same_query!(test_sessions, test_session_registrations);

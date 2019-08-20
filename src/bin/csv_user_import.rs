@@ -30,11 +30,8 @@ fn main() {
     //Diesel things
     dotenv().ok();
 
-    simplelog::TermLogger::init(
-        simplelog::LevelFilter::Trace,
-        simplelog::Config::default(),
-    )
-    .unwrap();
+    simplelog::TermLogger::init(simplelog::LevelFilter::Trace, simplelog::Config::default())
+        .unwrap();
 
     info!("Connecting to database");
 

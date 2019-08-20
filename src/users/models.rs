@@ -91,11 +91,8 @@ pub enum UserRequest {
 }
 
 impl UserRequest {
-    pub fn from_rouille(
-        request: &rouille::Request,
-    ) -> Result<UserRequest, Error> {
-        let url_queries =
-            form_urlencoded::parse(request.raw_query_string().as_bytes());
+    pub fn from_rouille(request: &rouille::Request) -> Result<UserRequest, Error> {
+        let url_queries = form_urlencoded::parse(request.raw_query_string().as_bytes());
 
         router!(request,
             (GET) (/) => {
