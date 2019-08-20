@@ -15,10 +15,10 @@ BEGIN {
 {
 # Banner Id
 banner_id=$2
-# First Name
-first_name=$3
 # Last Name
-last_name=$4
+last_name=$3
+# First Name
+first_name=$4
 # Email
 email=$5
 
