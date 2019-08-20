@@ -27,7 +27,7 @@ urlRegister id =
 
 
 type alias State =
-    { new_test_session : Maybe String }
+    { new_test_session : Maybe ( String, Int ) }
 
 
 init : State
@@ -36,8 +36,8 @@ init =
 
 
 type Msg
-    = EditNewTestSession String
-    | SubmitNewTestSession Id String
+    = EditNewTestSession String Int
+    | SubmitNewTestSession Id String Int
     | SubmittedNewTestSession (Result Errors.Error ())
     | Register Id
     | Registered Id (Result Errors.Error ())
@@ -46,8 +46,8 @@ type Msg
 update : String -> State -> Msg -> Response State Msg
 update id_token state msg =
     case msg of
-        EditNewTestSession name ->
-            { state = { state | new_test_session = Just name }
+        EditNewTestSession name max_registrations ->
+            { state = { state | new_test_session = Just ( name, max_registrations ) }
             , cmd = Cmd.none
             , requests = []
             , reload = False
@@ -55,7 +55,7 @@ update id_token state msg =
             , errors = []
             }
 
-        SubmitNewTestSession test_id name ->
+        SubmitNewTestSession test_id name max_registrations ->
             --curl --data '{
             --    "test_id": 1,
             --    "name": "ECE Safety Test Session 1"
@@ -69,7 +69,7 @@ update id_token state msg =
                     , body =
                         Http.jsonBody
                             (TestSessions.TestSession.newEncoder
-                                { test_id = test_id, name = name }
+                                { test_id = test_id, name = name, max_registrations = max_registrations }
                             )
                     , expect = Errors.expectWhateverWithError SubmittedNewTestSession
                     , timeout = Nothing
@@ -206,6 +206,8 @@ viewTestSession userid testsession =
             [ p [ class "column" ]
                 [ text
                     (String.fromInt (List.length testsession.registrations)
+                        ++ " / "
+                        ++ Maybe.withDefault "inf" (Maybe.map String.fromInt testsession.max_registrations)
                         ++ " registrations"
                     )
                 ]
@@ -249,27 +251,35 @@ view userid testsessions test_filter state =
                 , case test_filter of
                     Just test ->
                         case state.new_test_session of
-                            Just name ->
+                            Just ( name, max_registrations ) ->
                                 div [ class "field has-addons" ]
                                     [ div [ class "control" ]
                                         [ input
                                             [ class "input"
                                             , value name
-                                            , onInput EditNewTestSession
+                                            , onInput (\s -> EditNewTestSession s max_registrations)
+                                            ]
+                                            []
+
+                                        -- TODO Allow creating test session with no limit
+                                        , input
+                                            [ class "input"
+                                            , value (String.fromInt max_registrations)
+                                            , onInput (\s -> EditNewTestSession name (Maybe.withDefault 0 (String.toInt s)))
                                             ]
                                             []
                                         ]
                                     , div [ class "control" ]
                                         [ button
                                             [ class "button is-primary"
-                                            , onClick (SubmitNewTestSession test.id name)
+                                            , onClick (SubmitNewTestSession test.id name max_registrations)
                                             ]
                                             [ text "Submit" ]
                                         ]
                                     ]
 
                             Nothing ->
-                                button [ class "button is-primary", onClick (EditNewTestSession "") ]
+                                button [ class "button is-primary", onClick (EditNewTestSession "" 0) ]
                                     [ text "New Test Session" ]
 
                     Nothing ->

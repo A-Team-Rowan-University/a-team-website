@@ -45,6 +45,7 @@ type alias Session =
     { id : Id
     , test_id : Id
     , name : String
+    , max_registrations : Maybe Int
     , registrations : List Registration
     , registrations_enabled : Bool
     , opening_enabled : Bool
@@ -55,6 +56,7 @@ type alias Session =
 type alias NewSession =
     { test_id : Id
     , name : String
+    , max_registrations : Int
     }
 
 
@@ -378,10 +380,11 @@ registrationDecoder =
 
 decoder : Decode.Decoder Session
 decoder =
-    Decode.map7 Session
+    Decode.map8 Session
         (Decode.field "id" Decode.int)
         (Decode.field "test_id" Decode.int)
         (Decode.field "name" Decode.string)
+        (Decode.field "max_registrations" (Decode.nullable Decode.int))
         (Decode.field "registrations" (Decode.list registrationDecoder))
         (Decode.field "registrations_enabled" Decode.bool)
         (Decode.field "opening_enabled" Decode.bool)
@@ -393,6 +396,7 @@ newEncoder session =
     Encode.object
         [ ( "test_id", Encode.int session.test_id )
         , ( "name", Encode.string session.name )
+        , ( "max_registrations", Encode.int session.max_registrations )
         ]
 
 
