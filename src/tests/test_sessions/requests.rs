@@ -93,6 +93,7 @@ pub fn handle_test_session(
 // Registrations are open for this session
 // Sumbitted all other registrations for any session for this test
 // Not already registered, opened, or taken for this session
+// Test session is not full
 //
 
 pub(crate) fn register(
@@ -143,6 +144,18 @@ pub(crate) fn register(
                     registration,
                 );
                 return Err(Error::new(ErrorKind::RegisteredTwiceForTest));
+            }
+
+            // Fail if the number of registrations is more than the allowed limit
+            if  test_session.max_registrations.map(|max_r| max_r <= test_session.registrations.len() as u32).unwrap_or(false) {
+                trace!(
+                    "Registration failed because the test session is already full. {}/{:?} registrations",
+                    test_session.registrations.len(),
+                    test_session.max_registrations,
+                );
+
+                // TODO Make a new error type for too many registrations
+                return Err(Error::new(ErrorKind::RegistrationClosedForTest));
             }
 
             // We are good now, so add the registration
@@ -426,6 +439,7 @@ pub(crate) fn condense_join(joined: Vec<JoinedTestSession>) -> Result<Vec<TestSe
                 id: join.test_session.id,
                 test_id: join.test_session.test_id,
                 name: join.test_session.name,
+                max_registrations: join.test_session.max_registrations,
                 registrations: registration,
                 registrations_enabled: join.test_session.registrations_enabled,
                 opening_enabled: join.test_session.opening_enabled,
@@ -449,6 +463,7 @@ pub(crate) fn get_test_sessions(
                 test_sessions_schema::id,
                 test_sessions_schema::test_id,
                 test_sessions_schema::name,
+                test_sessions_schema::max_registrations,
                 test_sessions_schema::registrations_enabled,
                 test_sessions_schema::opening_enabled,
                 test_sessions_schema::submissions_enabled,
@@ -492,6 +507,7 @@ pub(crate) fn get_test_session(
                 test_sessions_schema::id,
                 test_sessions_schema::test_id,
                 test_sessions_schema::name,
+                test_sessions_schema::max_registrations,
                 test_sessions_schema::registrations_enabled,
                 test_sessions_schema::opening_enabled,
                 test_sessions_schema::submissions_enabled,
@@ -528,6 +544,7 @@ pub(crate) fn create_test_session(
     let new_raw_test_session = NewRawTestSession {
         test_id: test_session.test_id,
         name: test_session.name,
+        max_registrations: test_session.max_registrations,
         registrations_enabled: false,
         opening_enabled: false,
         submissions_enabled: false,
@@ -546,6 +563,7 @@ pub(crate) fn create_test_session(
             id: inserted_test_session.id,
             test_id: inserted_test_session.test_id,
             name: inserted_test_session.name,
+            max_registrations: inserted_test_session.max_registrations,
             registrations: Vec::new(),
             registrations_enabled: inserted_test_session.registrations_enabled,
             opening_enabled: inserted_test_session.opening_enabled,
