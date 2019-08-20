@@ -26,6 +26,7 @@ pub struct RawTestSession {
     pub id: u64,
     pub test_id: u64,
     pub name: String,
+    pub max_registrations: Option<u32>,
     pub registrations_enabled: bool,
     pub opening_enabled: bool,
     pub submissions_enabled: bool,
@@ -36,6 +37,7 @@ pub struct RawTestSession {
 pub struct NewRawTestSession {
     pub test_id: u64,
     pub name: String,
+    pub max_registrations: Option<u32>,
     pub registrations_enabled: bool,
     pub opening_enabled: bool,
     pub submissions_enabled: bool,
@@ -84,6 +86,7 @@ pub struct TestSession {
     pub id: u64,
     pub test_id: u64,
     pub name: String,
+    pub max_registrations: Option<u32>,
     pub registrations: Vec<TestSessionRegistration>,
     pub registrations_enabled: bool,
     pub opening_enabled: bool,
@@ -94,6 +97,7 @@ pub struct TestSession {
 pub struct NewTestSession {
     pub test_id: u64,
     pub name: String,
+    pub max_registrations: Option<u32>,
 }
 
 #[derive(AsChangeset, Serialize, Deserialize, Debug)]
