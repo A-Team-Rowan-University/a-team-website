@@ -1,0 +1,21 @@
+## Data Structures
+### Permission
+ + id: 93 (number, required)
+ + permission_name: updatePemission (string,required)
+
+### User_Permission
+ + user_permission_id: 63 (number, required)
+ + permission_id: 93 (number, required)
+ + user_id: 42 (number, required)
+
+# Group Permissions
+The Permissions
+
+## Permissions [/api/v1/permission]
+###get Permissions [GET]
+this sends a list of all available permissions
+ + Response 200 (application/json)
+   + Attributes
+     + permissions (array[Permission])
+
+## User Permissions [/api/v1/user_permission]

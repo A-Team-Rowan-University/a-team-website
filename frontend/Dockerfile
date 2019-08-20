@@ -22,4 +22,3 @@ RUN elm make src/Main.elm --output=static/main.js
 RUN cp -r static /srv/static
 
 COPY Caddyfile /etc/Caddyfile
-
