@@ -22,7 +22,7 @@ last_name=$4
 # Email
 email=$5
 
-print "{\"first_name\": \"" first_name "\", \"last_name\": " last_name "\", \"banner_id\": " banner_id "\", \"email\": " email "\", \"permissions\": [] }"
+print "{\"first_name\": \"" first_name "\", \"last_name\": \"" last_name "\", \"banner_id\": " banner_id ", \"email\": \"" email "\", \"permissions\": [] }"
 }
 
 END {
