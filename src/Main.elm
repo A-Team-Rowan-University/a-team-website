@@ -22,6 +22,7 @@ import Json.Encode as E
 import Network exposing (..)
 import Platform.Cmd
 import Platform.Sub
+import Questions
 import Response exposing (Response)
 import Session exposing (Session, googleUserDecoder, idToken, isValidated)
 import Set exposing (Set)
@@ -86,6 +87,8 @@ type Route
     | TestSessions (Maybe Tests.List.Id)
     | TestSession TestSessions.TestSession.Id
     | TestTake TestSessions.TestSession.Id
+    | QuestionCategory QuestionCategoryId
+    | QuestionCategories
     | NotFound
 
 
@@ -102,6 +105,8 @@ routeParser =
         , P.map (\id -> TestSessions (Just id)) (P.s "tests" </> P.int)
         , P.map TestSession (P.s "tests" </> P.s "sessions" </> P.int)
         , P.map TestTake (P.s "tests" </> P.s "sessions" </> P.int </> P.s "take")
+        , P.map QuestionCategories (P.s "question_categories")
+        , P.map QuestionCategory (P.s "question_categories" </> P.int)
         ]
 
 
@@ -114,6 +119,8 @@ type alias Model =
     , user_detail : Users.Detail.State
     , user_new : Users.New.State
     , question_categories : Dict QuestionCategoryId QuestionCategory
+    , questions : Dict Questions.QuestionId Questions.Question
+    , questions_state : Questions.State
     , tests : Dict Tests.List.Id Tests.List.Test
     , test_new : Tests.New.State
     , registrations : Dict TestSessions.TestSession.RegistrationId TestSessions.TestSession.Registration
@@ -196,6 +203,8 @@ init _ url key =
       , user_new = Users.New.init
       , test_new = Tests.New.init
       , question_categories = Dict.empty
+      , questions = Dict.empty
+      , questions_state = Questions.init
       , tests = Dict.empty
       , registrations = Dict.empty
       , test_sessions = Dict.empty
@@ -224,6 +233,7 @@ type Msg
     | GotUser User.Id (Result Errors.Error User.User)
     | GotTests (Result Errors.Error (List Tests.List.Test))
     | GotQuestionCategories (Result Errors.Error (List QuestionCategory))
+    | GotQuestions (Result Errors.Error (List Questions.Question))
     | GotTestSession TestSessions.TestSession.Id (Result Errors.Error TestSessions.TestSession.Session)
     | GotTestSessions (Result Errors.Error (List TestSessions.TestSession.Session))
     | UserDetailMsg Users.Detail.Msg
@@ -232,6 +242,7 @@ type Msg
     | TestSessionMsg TestSessions.TestSession.Msg
     | TestSessionsMsg TestSessions.List.Msg
     | TestTakeMsg TestSessions.TakeTest.Msg
+    | QuestionsMsg Questions.Msg
     | Updated (Result Errors.Error ())
     | CloseNotification Int
     | BurgerToggle
@@ -409,6 +420,34 @@ update msg model =
             , Cmd.none
             )
 
+        GotQuestions questions_result ->
+            ( case questions_result of
+                Ok questions ->
+                    { model
+                        | questions =
+                            Dict.fromList
+                                (List.map (\u -> ( u.id, u )) questions)
+                        , requests =
+                            handleRequestChanges
+                                [ Questions.questionsUrl |> RemoveRequest ]
+                                model.requests
+                    }
+
+                Err e ->
+                    let
+                        notifications =
+                            model.notifications
+                    in
+                    { model
+                        | requests =
+                            handleRequestChanges
+                                [ Questions.questionsUrl |> RemoveRequest ]
+                                model.requests
+                        , notifications = model.notifications ++ [ Errors.display e ]
+                    }
+            , Cmd.none
+            )
+
         GotTestSessions test_sessions_result ->
             ( case test_sessions_result of
                 Ok test_sessions ->
@@ -528,6 +567,18 @@ update msg model =
                             TestTakeMsg
 
                 _ ->
+                    ( model, Cmd.none )
+
+        QuestionsMsg questions_msg ->
+            case idToken model.session of
+                Just id_token ->
+                    Questions.update id_token model.questions_state questions_msg
+                        |> handleResponse
+                            model
+                            (\m s -> { m | questions_state = s })
+                            QuestionsMsg
+
+                Nothing ->
                     ( model, Cmd.none )
 
         Updated _ ->
@@ -699,6 +750,80 @@ loadData session route =
                     , [ Errors.NotLoggedIn ]
                     )
 
+        QuestionCategories ->
+            case idToken session of
+                Just id_token ->
+                    ( Cmd.batch
+                        [ Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = questionCategoriesUrl
+                            , body = emptyBody
+                            , expect =
+                                Errors.expectJsonWithError GotQuestionCategories
+                                    questionCategoryListDecoder
+                            , timeout = Nothing
+                            , tracker = Just questionCategoriesUrl
+                            }
+                        , Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = Questions.questionsUrl
+                            , body = emptyBody
+                            , expect =
+                                Errors.expectJsonWithError GotQuestions
+                                    Questions.questionListDecoder
+                            , timeout = Nothing
+                            , tracker = Just Questions.questionsUrl
+                            }
+                        ]
+                    , [ AddRequest Questions.questionsUrl, AddRequest questionCategoriesUrl ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ Errors.NotLoggedIn ]
+                    )
+
+        QuestionCategory _ ->
+            case idToken session of
+                Just id_token ->
+                    ( Cmd.batch
+                        [ Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = questionCategoriesUrl
+                            , body = emptyBody
+                            , expect =
+                                Errors.expectJsonWithError GotQuestionCategories
+                                    questionCategoryListDecoder
+                            , timeout = Nothing
+                            , tracker = Just questionCategoriesUrl
+                            }
+                        , Http.request
+                            { method = "GET"
+                            , headers = [ header "id_token" id_token ]
+                            , url = Questions.questionsUrl
+                            , body = emptyBody
+                            , expect =
+                                Errors.expectJsonWithError GotQuestions
+                                    Questions.questionListDecoder
+                            , timeout = Nothing
+                            , tracker = Just Questions.questionsUrl
+                            }
+                        ]
+                    , [ AddRequest Questions.questionsUrl, AddRequest questionCategoriesUrl ]
+                    , []
+                    )
+
+                Nothing ->
+                    ( Cmd.none
+                    , []
+                    , [ Errors.NotLoggedIn ]
+                    )
+
         TestSessions _ ->
             case idToken session of
                 Just id_token ->
@@ -836,6 +961,21 @@ viewPage model =
         TestTake session_id ->
             TestSessions.TakeTest.view model.test_take |> Html.map TestTakeMsg
 
+        QuestionCategories ->
+            Questions.viewCategories model.questions model.question_categories
+
+        QuestionCategory category_id ->
+            case Dict.get category_id model.question_categories of
+                Just category ->
+                    Questions.viewCategoryDetail
+                        model.questions
+                        model.questions_state
+                        category
+                        |> Html.map QuestionsMsg
+
+                Nothing ->
+                    p [] [ text "Category not found" ]
+
         Home ->
             h1 [] [ text "Welcome to the A-Team!" ]
 
@@ -885,6 +1025,8 @@ view model =
                             [ text "Users" ]
                         , a [ class "navbar-item", href "/tests" ]
                             [ text "Tests" ]
+                        , a [ class "navbar-item", href "/question_categories" ]
+                            [ text "Questions" ]
                         ]
                     , div [ class "navbar-end" ]
                         [ div [ class "navbar-item has-dropdown is-hoverable" ]
