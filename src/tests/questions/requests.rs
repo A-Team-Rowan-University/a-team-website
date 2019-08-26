@@ -10,7 +10,7 @@ use crate::errors::ErrorKind;
 use crate::permissions::requests::check_to_run;
 
 use crate::tests::questions::models::{
-    NewRawQuestion, Question, QuestionList, QuestionRequest, QuestionResponse,
+    NewRawQuestion, Question, QuestionList, QuestionRequest, QuestionResponse, PartialQuestion
 };
 use crate::tests::questions::schema::questions as questions_schema;
 
@@ -31,6 +31,11 @@ pub fn handle_question(
         QuestionRequest::DeleteQuestion(id) => {
             check_to_run(requested_user, "DeleteQuestions", database_connection)?;
             delete_question(id, database_connection).map(|_| QuestionResponse::NoResponse)
+        }
+        QuestionRequest::UpdateQuestion(id, question) => {
+            check_to_run(requested_user, "UpdateQuestions", database_connection)?;
+            update_question(id, question, database_connection)
+                .map(|_| QuestionResponse::NoResponse)
         }
     }
 }
@@ -60,6 +65,18 @@ pub(crate) fn create_question(
     } else {
         Err(Error::new(ErrorKind::Database))
     }
+}
+
+pub(crate) fn update_question(
+    id: u64,
+    question: PartialQuestion,
+    database_connection: &MysqlConnection
+) -> Result<(), Error> {
+    diesel::update(questions_schema::table)
+        .filter(questions_schema::id.eq(id))
+        .set(&question)
+        .execute(database_connection)?;
+    Ok(())
 }
 
 pub(crate) fn delete_question(id: u64, database_connection: &MysqlConnection) -> Result<(), Error> {
