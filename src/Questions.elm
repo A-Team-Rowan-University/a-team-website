@@ -24,6 +24,7 @@ import Network exposing (RequestChange(..))
 import Response exposing (Response)
 import Tests.List exposing (QuestionCategory, QuestionCategoryId)
 import Url.Builder as B
+import Users.Users as Users
 
 
 questionsUrl : String
@@ -61,18 +62,17 @@ type alias NewQuestion =
     }
 
 
-type alias QuestionState =
-    { question_id : QuestionId
-    , edited_title : Maybe String
-    , edited_correct_answer : Maybe String
-    , edited_incorrect_answer_1 : Maybe String
-    , edited_incorrect_answer_2 : Maybe String
-    , edited_incorrect_answer_3 : Maybe String
+type alias PartialQuestion =
+    { title : Maybe String
+    , correct_answer : Maybe String
+    , incorrect_answer_1 : Maybe String
+    , incorrect_answer_2 : Maybe String
+    , incorrect_answer_3 : Maybe String
     }
 
 
 type alias State =
-    { questions : Dict QuestionId QuestionState
+    { questions : Dict QuestionId PartialQuestion
     , new_question : Maybe NewQuestion
     }
 
@@ -96,6 +96,13 @@ type Msg
     | CancelNewQuestion
     | RemoveQuestion QuestionId
     | RemovedQuestion QuestionId (Result Errors.Error ())
+    | EditTitle QuestionId (Maybe String)
+    | EditCorrectAnswer QuestionId (Maybe String)
+    | EditIncorrectAnswer1 QuestionId (Maybe String)
+    | EditIncorrectAnswer2 QuestionId (Maybe String)
+    | EditIncorrectAnswer3 QuestionId (Maybe String)
+    | SubmitEdits QuestionId
+    | SubmittedEdits QuestionId (Result Errors.Error ())
 
 
 update : String -> State -> Msg -> Response State Msg
@@ -213,24 +220,197 @@ update id_token state msg =
                     , errors = [ e ]
                     }
 
+        EditTitle id s ->
+            Response.state
+                { state
+                    | questions =
+                        Dict.update id
+                            (\q ->
+                                case q of
+                                    Just question ->
+                                        Just { question | title = s }
 
-viewQuestion : Question -> Html Msg
-viewQuestion question =
+                                    Nothing ->
+                                        Just
+                                            { title = s
+                                            , correct_answer = Nothing
+                                            , incorrect_answer_1 = Nothing
+                                            , incorrect_answer_2 = Nothing
+                                            , incorrect_answer_3 = Nothing
+                                            }
+                            )
+                            state.questions
+                }
+
+        EditCorrectAnswer id s ->
+            Response.state
+                { state
+                    | questions =
+                        Dict.update id
+                            (\q ->
+                                case q of
+                                    Just question ->
+                                        Just { question | correct_answer = s }
+
+                                    Nothing ->
+                                        Just
+                                            { title = Nothing
+                                            , correct_answer = s
+                                            , incorrect_answer_1 = Nothing
+                                            , incorrect_answer_2 = Nothing
+                                            , incorrect_answer_3 = Nothing
+                                            }
+                            )
+                            state.questions
+                }
+
+        EditIncorrectAnswer1 id s ->
+            Response.state
+                { state
+                    | questions =
+                        Dict.update id
+                            (\q ->
+                                case q of
+                                    Just question ->
+                                        Just { question | incorrect_answer_1 = s }
+
+                                    Nothing ->
+                                        Just
+                                            { title = Nothing
+                                            , correct_answer = Nothing
+                                            , incorrect_answer_1 = s
+                                            , incorrect_answer_2 = Nothing
+                                            , incorrect_answer_3 = Nothing
+                                            }
+                            )
+                            state.questions
+                }
+
+        EditIncorrectAnswer2 id s ->
+            Response.state
+                { state
+                    | questions =
+                        Dict.update id
+                            (\q ->
+                                case q of
+                                    Just question ->
+                                        Just { question | incorrect_answer_2 = s }
+
+                                    Nothing ->
+                                        Just
+                                            { title = Nothing
+                                            , correct_answer = Nothing
+                                            , incorrect_answer_1 = Nothing
+                                            , incorrect_answer_2 = s
+                                            , incorrect_answer_3 = Nothing
+                                            }
+                            )
+                            state.questions
+                }
+
+        EditIncorrectAnswer3 id s ->
+            Response.state
+                { state
+                    | questions =
+                        Dict.update id
+                            (\q ->
+                                case q of
+                                    Just question ->
+                                        Just { question | incorrect_answer_3 = s }
+
+                                    Nothing ->
+                                        Just
+                                            { title = Nothing
+                                            , correct_answer = Nothing
+                                            , incorrect_answer_1 = Nothing
+                                            , incorrect_answer_2 = s
+                                            , incorrect_answer_3 = Nothing
+                                            }
+                            )
+                            state.questions
+                }
+
+        SubmitEdits id ->
+            case Dict.get id state.questions of
+                Just question ->
+                    Response.http
+                        { state | questions = Dict.remove id state.questions }
+                        id_token
+                        "PUT"
+                        (questionUrl id)
+                        (Http.jsonBody (partialQuestionEncoder question))
+                        (Errors.expectWhateverWithError (SubmittedEdits id))
+
+                Nothing ->
+                    Response.state state
+
+        SubmittedEdits id result ->
+            case result of
+                Ok _ ->
+                    { state = { state | new_question = Nothing }
+                    , cmd = Cmd.none
+                    , requests = [ RemoveRequest (questionUrl id) ]
+                    , done = False
+                    , reload = True
+                    , errors = []
+                    }
+
+                Err e ->
+                    { state = state
+                    , cmd = Cmd.none
+                    , requests = [ RemoveRequest questionsUrl ]
+                    , done = False
+                    , reload = False
+                    , errors = [ e ]
+                    }
+
+
+viewQuestion : Question -> PartialQuestion -> Html Msg
+viewQuestion question edit_question =
     div [ class "box" ]
         [ div [ class "columns" ]
-            [ p [ class "column subtitle is-5" ] [ text question.title ]
-            , div [ class "column" ]
-                [ button
-                    [ class "button is-pulled-right is-danger"
-                    , onClick (RemoveQuestion question.id)
+            [ p [ class "column subtitle is-5" ]
+                [ Users.viewEditableText
+                    question.title
+                    edit_question.title
+                    (\s -> EditTitle question.id (Just s))
+                    (EditTitle question.id Nothing)
+                ]
+            , div [ class "column buttons" ]
+                [ div [ class "buttons is-pulled-right" ]
+                    [ button
+                        [ class "button is-primary"
+                        , onClick (SubmitEdits question.id)
+                        ]
+                        [ text "Submit" ]
+                    , button
+                        [ class "button is-pulled-right is-danger"
+                        , onClick (RemoveQuestion question.id)
+                        ]
+                        [ text "Remove" ]
                     ]
-                    [ text "Remove" ]
                 ]
             ]
-        , p [] [ text question.correct_answer ]
-        , p [] [ text question.incorrect_answer_1 ]
-        , p [] [ text question.incorrect_answer_2 ]
-        , p [] [ text question.incorrect_answer_3 ]
+        , Users.viewEditableText
+            question.correct_answer
+            edit_question.correct_answer
+            (\s -> EditCorrectAnswer question.id (Just s))
+            (EditCorrectAnswer question.id Nothing)
+        , Users.viewEditableText
+            question.incorrect_answer_1
+            edit_question.incorrect_answer_1
+            (\s -> EditIncorrectAnswer1 question.id (Just s))
+            (EditIncorrectAnswer1 question.id Nothing)
+        , Users.viewEditableText
+            question.incorrect_answer_2
+            edit_question.incorrect_answer_2
+            (\s -> EditIncorrectAnswer2 question.id (Just s))
+            (EditIncorrectAnswer2 question.id Nothing)
+        , Users.viewEditableText
+            question.incorrect_answer_3
+            edit_question.incorrect_answer_3
+            (\s -> EditIncorrectAnswer3 question.id (Just s))
+            (EditIncorrectAnswer3 question.id Nothing)
         ]
 
 
@@ -241,7 +421,20 @@ viewCategoryDetail questions state category =
         , div []
             ((Dict.toList questions
                 |> List.filter (\( id, q ) -> q.category_id == category.id)
-                |> List.map (\( id, q ) -> viewQuestion q)
+                |> List.map
+                    (\( id, q ) ->
+                        viewQuestion
+                            q
+                            (Maybe.withDefault
+                                { title = Nothing
+                                , correct_answer = Nothing
+                                , incorrect_answer_1 = Nothing
+                                , incorrect_answer_2 = Nothing
+                                , incorrect_answer_3 = Nothing
+                                }
+                                (Dict.get id state.questions)
+                            )
+                    )
              )
                 ++ [ case state.new_question of
                         Just new_question ->
@@ -370,3 +563,50 @@ newQuestionEncoder question =
         , ( "incorrect_answer_2", Encode.string question.incorrect_answer_2 )
         , ( "incorrect_answer_3", Encode.string question.incorrect_answer_3 )
         ]
+
+
+partialQuestionEncoder : PartialQuestion -> Encode.Value
+partialQuestionEncoder question =
+    Encode.object
+        ([]
+            |> (\l ->
+                    case question.title of
+                        Just title ->
+                            ( "title", Encode.string title ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case question.correct_answer of
+                        Just correct_answer ->
+                            ( "correct_answer", Encode.string correct_answer ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case question.incorrect_answer_1 of
+                        Just incorrect_answer_1 ->
+                            ( "incorrect_answer_1", Encode.string incorrect_answer_1 ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case question.incorrect_answer_2 of
+                        Just incorrect_answer_2 ->
+                            ( "incorrect_answer_2", Encode.string incorrect_answer_2 ) :: l
+
+                        Nothing ->
+                            l
+               )
+            |> (\l ->
+                    case question.incorrect_answer_3 of
+                        Just incorrect_answer_3 ->
+                            ( "incorrect_answer_3", Encode.string incorrect_answer_3 ) :: l
+
+                        Nothing ->
+                            l
+               )
+        )
