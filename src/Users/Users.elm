@@ -22,7 +22,7 @@ import Config exposing (..)
 import Debug
 import Dict exposing (Dict)
 import Html exposing (Html, a, button, div, input, p, span, text)
-import Html.Attributes exposing (class, href, type_, value)
+import Html.Attributes exposing (class, href, readonly, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
@@ -146,15 +146,29 @@ viewEditableText : String -> Maybe String -> (String -> msg) -> msg -> Html msg
 viewEditableText defaultText editedText onEdit onReset =
     case editedText of
         Nothing ->
-            p
-                [ onClick (onEdit defaultText) ]
-                [ text defaultText ]
+            div [ class "field has-addons" ]
+                [ div [ class "control is-expanded" ]
+                    [ input
+                        [ class "input"
+                        , value defaultText
+                        , readonly True
+                        ]
+                        []
+                    ]
+                , div [ class "control" ]
+                    [ button
+                        [ class "button"
+                        , onClick (onEdit defaultText)
+                        ]
+                        [ text "Edit" ]
+                    ]
+                ]
 
         Just edited ->
             div [ class "field has-addons" ]
-                [ div [ class "control" ]
+                [ div [ class "control is-expanded" ]
                     [ input
-                        [ class "input"
+                        [ class "input is-focused"
                         , value edited
                         , onInput onEdit
                         ]
@@ -174,18 +188,31 @@ viewEditableInt : Int -> Maybe Int -> (Maybe Int -> msg) -> msg -> Html msg
 viewEditableInt default edited onEdit onReset =
     case edited of
         Nothing ->
-            p
-                [ onClick (onEdit (Just default)) ]
-                [ text (String.fromInt default) ]
+            div [ class "field has-addons" ]
+                [ div [ class "control is-expanded" ]
+                    [ input
+                        [ class "input"
+                        , value (String.fromInt default)
+                        , readonly True
+                        ]
+                        []
+                    ]
+                , div [ class "control" ]
+                    [ button
+                        [ class "button"
+                        , onClick (onEdit (Just default))
+                        ]
+                        [ text "Edit" ]
+                    ]
+                ]
 
         Just edit ->
             div [ class "field has-addons" ]
-                [ div [ class "control" ]
+                [ div [ class "control is-expanded" ]
                     [ input
-                        [ class "input"
+                        [ class "input is-focused"
                         , value (String.fromInt edit)
                         , onInput (\s -> onEdit (String.toInt s))
-                        , type_ "number"
                         ]
                         []
                     ]
