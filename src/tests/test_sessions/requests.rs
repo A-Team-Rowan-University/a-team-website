@@ -79,7 +79,7 @@ pub fn handle_test_session(
             requested_user,
             database_connection,
         )
-        .map(|_| TestSessionResponse::NoResponse),
+        .map(|u| TestSessionResponse::TestSessionRegistration(u)),
         TestSessionRequest::GetTestSessions(test_id) => {
             check_to_run(requested_user, "GetTestSessions", database_connection)?;
             get_test_sessions(test_id, database_connection)
@@ -390,7 +390,7 @@ pub(crate) fn submit(
     response_questions: ResponseQuestionList,
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<(), Error> {
+) -> Result<TestSessionRegistration, Error> {
     if let Some(user_id) = requested_user {
         let test_session = get_test_session(test_session_id, database_connection)?;
         if test_session.submissions_enabled {
@@ -432,8 +432,6 @@ pub(crate) fn submit(
 
                 let score = n_correct as f32 / n_questions as f32;
 
-                trace!("Score: {}", score);
-
                 let partial_raw_test_session_registration = PartialRawTestSessionRegistration {
                     taker_id: None,
                     registered: None,
@@ -456,7 +454,55 @@ pub(crate) fn submit(
                     .set(&partial_raw_test_session_registration)
                     .execute(database_connection)?;
 
-                Ok(())
+                let mut registrations = test_session_registrations_schema::table
+                    .filter(test_session_registrations_schema::id.eq(existing_open_registrations[0].id))
+                    .load::<RawTestSessionRegistration>(database_connection)?;
+
+                if let Some(inserted_test_session_registration) = registrations.pop() {
+                    let registered = match Local.from_local_datetime(&inserted_test_session_registration.registered).earliest() {
+                        Some(registered) => registered,
+                        None => {
+                            error!(
+                                "Could not create a datetime from the database! {:?}",
+                                inserted_test_session_registration.registered
+                            );
+
+                            return Err(Error::new(ErrorKind::Database));
+                        }
+                    };
+
+                    let opened_test = inserted_test_session_registration.opened_test
+                        .map(|t| match Local.from_local_datetime(&t).earliest() {
+                            Some(opened) => Ok(opened),
+                            None => {
+                                error!("Could not create a datatime from the database! {:?}", t);
+
+                                Err(Error::new(ErrorKind::Database))
+                            }
+                        })
+                    .transpose()?;
+
+                    let submitted_test = inserted_test_session_registration.submitted_test
+                        .map(|t| match Local.from_local_datetime(&t).earliest() {
+                            Some(submitted_test) => Ok(submitted_test),
+                            None => {
+                                error!("Could not create a datatime from the database! {:?}", t);
+
+                                Err(Error::new(ErrorKind::Database))
+                            }
+                        })
+                    .transpose()?;
+                    Ok(TestSessionRegistration {
+                        id: inserted_test_session_registration.id,
+                        taker_id: inserted_test_session_registration.taker_id,
+                        registered: registered,
+                        opened_test: opened_test,
+                        submitted_test: submitted_test,
+                        score: inserted_test_session_registration.score,
+                    })
+                } else {
+                    Err(Error::new(ErrorKind::Database))
+                }
             } else {
                 Err(Error::new(ErrorKind::OpenedTestTwice))
             }

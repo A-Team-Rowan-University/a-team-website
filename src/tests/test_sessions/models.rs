@@ -208,6 +208,7 @@ pub enum TestSessionResponse {
     OneTestSession(TestSession),
     ManyTestSessions(TestSessionList),
     AnonymousQuestions(AnonymousQuestionList),
+    TestSessionRegistration(TestSessionRegistration),
     Image(Vec<u8>),
     NoResponse,
 }
@@ -220,6 +221,9 @@ impl TestSessionResponse {
             }
             TestSessionResponse::ManyTestSessions(test_sessions) => {
                 rouille::Response::json(&test_sessions)
+            }
+            TestSessionResponse::TestSessionRegistration(registration) => {
+                rouille::Response::json(&registration)
             }
             TestSessionResponse::AnonymousQuestions(questions) => {
                 rouille::Response::json(&questions)
