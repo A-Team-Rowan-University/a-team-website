@@ -1,3 +1,6 @@
+use std::io::Read;
+use std::io::Cursor;
+
 use crate::diesel::NullableExpressionMethods;
 use diesel;
 use diesel::mysql::MysqlConnection;
@@ -8,6 +11,18 @@ use diesel::RunQueryDsl;
 
 use chrono::offset::Local;
 use chrono::offset::TimeZone;
+
+use reqwest;
+use image::png::PNGDecoder;
+use image::ImageDecoder;
+use image::ImageBuffer;
+use image::GenericImage;
+use image::ImageFormat;
+use image::ImageOutputFormat;
+use image::Rgba;
+
+use rusttype::Font;
+use rusttype::Scale;
 
 use rand::seq::SliceRandom;
 
@@ -35,10 +50,14 @@ use crate::tests::question_categories::requests::get_question_category;
 
 use crate::tests::tests::requests::get_test;
 
+use crate::users::requests::get_user;
+
 use crate::tests::test_sessions::schema::test_session_registrations as test_session_registrations_schema;
 use crate::tests::test_sessions::schema::test_sessions as test_sessions_schema;
 
 use crate::tests::questions::schema::questions as questions_schema;
+
+static FONT_DATA: &[u8] = include_bytes!("../../FiraSans-Regular.ttf");
 
 pub fn handle_test_session(
     request: TestSessionRequest,
@@ -71,6 +90,11 @@ pub fn handle_test_session(
             get_test_session(id, database_connection)
                 .map(|u| TestSessionResponse::OneTestSession(u))
         }
+        TestSessionRequest::Certificate(id) => {
+            //check_to_run(requested_user, "GetTestSessions", database_connection)?;
+            generate_certificate(id, database_connection)
+                .map(|u| TestSessionResponse::Image(u))
+        }
         TestSessionRequest::CreateTestSession(test_session) => {
             check_to_run(requested_user, "CreateTestSessions", database_connection)?;
             create_test_session(test_session, database_connection)
@@ -85,6 +109,78 @@ pub fn handle_test_session(
             check_to_run(requested_user, "DeleteTestSessions", database_connection)?;
             delete_test_session(id, database_connection).map(|_| TestSessionResponse::NoResponse)
         }
+    }
+}
+
+
+pub(crate) fn generate_certificate(
+    registration_id : u64,
+    database_connection: &MysqlConnection,
+) -> Result<Vec<u8>, Error> {
+    let mut registrations = test_session_registrations_schema::table
+        .filter(test_session_registrations_schema::id.eq(registration_id))
+        .load::<RawTestSessionRegistration>(database_connection)?;
+
+    let registration = match registrations.pop() {
+        Some(registration) => registration,
+        None => return Err(Error::new(ErrorKind::Database)),
+    };
+
+    if let (Some(completion_date), Some(score)) = (registration.submitted_test, registration.score) {
+        let user  = get_user(registration.taker_id, database_connection)?;
+
+        trace!("Fetching certificate template");
+        let mut certificate_response = reqwest::get("http://frontend/static/safety_certificate_template.png")?;
+
+        trace!("Reading image");
+        let mut bytes = Vec::new();
+        certificate_response.read_to_end(&mut bytes)?;
+        let mut image = image::load_from_memory(&bytes)?;
+
+        let font = Font::from_bytes(FONT_DATA as &[u8])?;
+        let scale = Scale::uniform(177.0);
+
+        let glyphs: Vec<_> = font.layout(
+            &format!("{} {}", user.first_name, user.last_name),
+            scale,
+            rusttype::point(3015.0, 3480.0)
+        ).chain(font.layout(
+            &format!("{:09}", user.banner_id),
+            scale,
+            rusttype::point(3015.0, 3834.0)
+        )).chain(font.layout(
+            &format!("{}", user.email),
+            scale,
+            rusttype::point(3015.0, 4188.0)
+        )).chain(font.layout(
+            &format!("{}", completion_date.format("%m/%d/%Y  %I:%M%P")),
+            scale,
+            rusttype::point(3015.0, 4543.0)
+        )).chain(font.layout(
+            &format!("{:.2}%", score * 100.0),
+            scale,
+            rusttype::point(3015.0, 5606.0)
+        )).collect();
+
+        for glyph in glyphs {
+            if let Some(bounding_box) = glyph.pixel_bounding_box() {
+                glyph.draw(|x, y, v| {
+                    let v = 255 - ((v * 255.0) as u8);
+                    image.put_pixel(
+                        x + bounding_box.min.x as u32,
+                        y + bounding_box.min.y as u32,
+                        Rgba([v, v, v, 255])
+                    )
+                });
+            }
+        }
+
+        trace!("Writing image");
+        let mut outbuf = Cursor::new(Vec::new());
+        image.write_to(&mut outbuf, ImageOutputFormat::PNG)?;
+        Ok(outbuf.into_inner())
+    } else {
+        Err(Error::new(ErrorKind::TestNotSubmitted))
     }
 }
 

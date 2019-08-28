@@ -132,6 +132,7 @@ pub enum TestSessionRequest {
     Register(u64),
     Open(u64),
     Submit(u64, ResponseQuestionList),
+    Certificate(u64),
 }
 
 impl TestSessionRequest {
@@ -153,6 +154,10 @@ impl TestSessionRequest {
 
             (GET) (/{id: u64}) => {
                 Ok(TestSessionRequest::GetTestSession(id))
+            },
+
+            (GET) (/certificates/{id: u64}) => {
+                Ok(TestSessionRequest::Certificate(id))
             },
 
             (POST) (/{id: u64}/register) => {
@@ -203,6 +208,7 @@ pub enum TestSessionResponse {
     OneTestSession(TestSession),
     ManyTestSessions(TestSessionList),
     AnonymousQuestions(AnonymousQuestionList),
+    Image(Vec<u8>),
     NoResponse,
 }
 
@@ -217,6 +223,9 @@ impl TestSessionResponse {
             }
             TestSessionResponse::AnonymousQuestions(questions) => {
                 rouille::Response::json(&questions)
+            }
+            TestSessionResponse::Image(bytes) => {
+                rouille::Response::from_data("image/png", bytes)
             }
             TestSessionResponse::NoResponse => rouille::Response::empty_204(),
         }

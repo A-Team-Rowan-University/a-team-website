@@ -21,6 +21,11 @@ pub enum ErrorKind {
     OpenedTestTwice,
     OpeningClosedForTest,
     SubmissionsClosedForTest,
+    TestNotSubmitted,
+    Network,
+    Image,
+    Font,
+    Io,
     Unimplemented,
 }
 
@@ -52,6 +57,11 @@ impl std::fmt::Display for Error {
             ErrorKind::OpenedTestNotRegistered => write!(f, "Opened a test not registerd for"),
             ErrorKind::OpenedTestTwice => write!(f, "Opened a test twice"),
             ErrorKind::OpeningClosedForTest => write!(f, "The test session is closed"),
+            ErrorKind::TestNotSubmitted => write!(f, "The test was not submitted"),
+            ErrorKind::Network => write!(f, "There was a network problem"),
+            ErrorKind::Image => write!(f, "There was an image problem"),
+            ErrorKind::Io => write!(f, "There was an io problem"),
+            ErrorKind::Font => write!(f, "There was a font problem"),
             ErrorKind::SubmissionsClosedForTest => {
                 write!(f, "The test session is closed for submissions")
             }
@@ -129,9 +139,33 @@ impl From<url::ParseError> for Error {
     }
 }
 
+impl From<image::ImageError> for Error {
+    fn from(e: image::ImageError) -> Error {
+        Error::with_source(ErrorKind::Image, Box::new(e))
+    }
+}
+
+impl From<rusttype::Error> for Error {
+    fn from(e: rusttype::Error) -> Error {
+        Error::with_source(ErrorKind::Font, Box::new(e))
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Error {
+        Error::with_source(ErrorKind::Io, Box::new(e))
+    }
+}
+
 impl From<google_signin::Error> for Error {
     fn from(e: google_signin::Error) -> Error {
         Error::with_source(ErrorKind::PermissionDenied, Box::new(e))
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Error {
+        Error::with_source(ErrorKind::Network, Box::new(e))
     }
 }
 
@@ -181,6 +215,21 @@ impl From<Error> for rouille::Response {
             }
             ErrorKind::SubmissionsClosedForTest => {
                 rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::TestNotSubmitted => {
+                rouille::Response::text(e.to_string()).with_status_code(409)
+            }
+            ErrorKind::Network => {
+                rouille::Response::text(e.to_string()).with_status_code(501)
+            }
+            ErrorKind::Image => {
+                rouille::Response::text(e.to_string()).with_status_code(501)
+            }
+            ErrorKind::Font => {
+                rouille::Response::text(e.to_string()).with_status_code(501)
+            }
+            ErrorKind::Io => {
+                rouille::Response::text(e.to_string()).with_status_code(501)
             }
             ErrorKind::Unimplemented => {
                 rouille::Response::text(e.to_string()).with_status_code(501)
