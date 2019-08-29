@@ -3,8 +3,8 @@ module TestSessions.TakeTest exposing (AnonymousQuestion, Msg, QuestionId, State
 import Config exposing (..)
 import Dict exposing (Dict)
 import Errors
-import Html exposing (Html, button, div, p, text)
-import Html.Attributes exposing (class)
+import Html exposing (Html, a, button, div, p, text)
+import Html.Attributes exposing (class, download, href)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Decode
@@ -12,7 +12,7 @@ import Json.Encode as Encode
 import Network exposing (RequestChange(..))
 import Response exposing (Response)
 import Session exposing (Session)
-import TestSessions.TestSession exposing (Id)
+import TestSessions.TestSession exposing (Id, Registration, registrationDecoder)
 import Url.Builder as B
 
 
@@ -75,8 +75,10 @@ responseQuestionListEncoder questions =
     Encode.object [ ( "questions", Encode.list responseQuestionEncoder questions ) ]
 
 
-type alias State =
-    { questions : Dict QuestionId ( AnonymousQuestion, Maybe String ) }
+type State
+    = Taking (Dict QuestionId ( AnonymousQuestion, Maybe String ))
+    | Submitting
+    | Done Registration
 
 
 loadData : String -> TestSessions.TestSession.Id -> ( Cmd Msg, List RequestChange, List Errors.Error )
@@ -99,7 +101,7 @@ type Msg
     = Loaded (Result Errors.Error (List AnonymousQuestion))
     | ResponseClicked QuestionId String
     | Submit
-    | Submitted (Result Errors.Error ())
+    | Submitted (Result Errors.Error Registration)
 
 
 foldQuestions :
@@ -123,10 +125,9 @@ update id_token test_session_id state msg =
                 Ok questions ->
                     { state =
                         Just
-                            { questions =
-                                Dict.fromList
-                                    (List.map (\q -> ( q.id, ( q, Nothing ) )) questions)
-                            }
+                            (Taking
+                                (Dict.fromList (List.map (\q -> ( q.id, ( q, Nothing ) )) questions))
+                            )
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest (openUrl test_session_id) ]
                     , reload = False
@@ -145,55 +146,44 @@ update id_token test_session_id state msg =
 
         ResponseClicked questionid response ->
             case state of
-                Just s ->
-                    { state =
-                        Just
-                            { s
-                                | questions =
-                                    Dict.update questionid
-                                        (\m ->
-                                            case m of
-                                                Just ( q, r ) ->
-                                                    Just ( q, Just response )
+                Just (Taking questions) ->
+                    Response.state
+                        (Just
+                            (Taking
+                                (Dict.update questionid
+                                    (\m ->
+                                        case m of
+                                            Just ( q, r ) ->
+                                                Just ( q, Just response )
 
-                                                Nothing ->
-                                                    Nothing
-                                        )
-                                        s.questions
-                            }
-                    , cmd = Cmd.none
-                    , requests = []
-                    , reload = False
-                    , done = False
-                    , errors = []
-                    }
+                                            Nothing ->
+                                                Nothing
+                                    )
+                                    questions
+                                )
+                            )
+                        )
 
-                Nothing ->
-                    { state = Nothing
-                    , cmd = Cmd.none
-                    , requests = []
-                    , reload = False
-                    , done = False
-                    , errors = []
-                    }
+                _ ->
+                    Response.state state
 
         Submit ->
             case state of
-                Just s ->
+                Just (Taking questions) ->
                     let
                         submission =
-                            List.foldl foldQuestions (Just []) (Dict.values s.questions)
+                            List.foldl foldQuestions (Just []) (Dict.values questions)
                     in
                     case submission of
                         Just responses ->
-                            { state = Just s
+                            { state = state
                             , cmd =
                                 Http.request
                                     { method = "POST"
                                     , headers = [ Http.header "id_token" id_token ]
                                     , url = submitUrl test_session_id
                                     , body = Http.jsonBody (responseQuestionListEncoder responses)
-                                    , expect = Errors.expectWhateverWithError Submitted
+                                    , expect = Errors.expectJsonWithError Submitted registrationDecoder
                                     , timeout = Nothing
                                     , tracker = Just (submitUrl test_session_id)
                                     }
@@ -204,7 +194,7 @@ update id_token test_session_id state msg =
                             }
 
                         Nothing ->
-                            { state = Just s
+                            { state = state
                             , cmd = Cmd.none
                             , requests = []
                             , reload = False
@@ -212,23 +202,17 @@ update id_token test_session_id state msg =
                             , errors = [ Errors.TestNotComplete ]
                             }
 
-                Nothing ->
-                    { state = Nothing
-                    , cmd = Cmd.none
-                    , requests = []
-                    , reload = False
-                    , done = False
-                    , errors = []
-                    }
+                _ ->
+                    Response.state state
 
         Submitted result ->
             case result of
-                Ok _ ->
-                    { state = Nothing
+                Ok registration ->
+                    { state = Just (Done registration)
                     , cmd = Cmd.none
                     , requests = [ RemoveRequest (submitUrl test_session_id) ]
                     , reload = False
-                    , done = True
+                    , done = False
                     , errors = []
                     }
 
@@ -266,14 +250,52 @@ viewQuestion ( question, response ) =
         ]
 
 
+viewSubmitted : Registration -> Html msg
+viewSubmitted registration =
+    case registration.score of
+        Just score ->
+            div []
+                [ p [] [ text ("You got a score of " ++ String.fromFloat (score * 100.0) ++ "%") ]
+                , if score >= 0.8 then
+                    a
+                        [ class "button"
+                        , href
+                            (B.relative
+                                [ apiUrl
+                                , "test_sessions"
+                                , "certificates"
+                                , String.fromInt registration.id
+                                ]
+                                []
+                            )
+                        , download "certificate.png"
+                        ]
+                        [ text "Download certificate" ]
+
+                  else
+                    div [] []
+                ]
+
+        Nothing ->
+            p [] [ text "You test has not been graded yet" ]
+
+
 view : Maybe State -> Html Msg
 view state =
     case state of
         Just s ->
-            div []
-                [ div [] (List.map viewQuestion (Dict.values s.questions))
-                , button [ class "button is-primary", onClick Submit ] [ text "Submit" ]
-                ]
+            case s of
+                Taking questions ->
+                    div []
+                        [ div [] (List.map viewQuestion (Dict.values questions))
+                        , button [ class "button is-primary", onClick Submit ] [ text "Submit" ]
+                        ]
+
+                Submitting ->
+                    p [] [ text "Submitting questions" ]
+
+                Done registration ->
+                    viewSubmitted registration
 
         Nothing ->
             p [] [ text "Loading questions" ]

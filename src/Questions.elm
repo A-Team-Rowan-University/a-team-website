@@ -369,7 +369,7 @@ viewQuestion : Question -> PartialQuestion -> Html Msg
 viewQuestion question edit_question =
     div [ class "box" ]
         [ div [ class "columns" ]
-            [ p [ class "column subtitle is-5" ]
+            [ p [ class "column" ]
                 [ Users.viewEditableText
                     question.title
                     edit_question.title
