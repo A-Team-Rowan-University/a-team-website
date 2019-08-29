@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: mysql://root:apple1@db/web_dev
+      DATABASE_URL: mysql://root:apple1@db/web_dev?serverTimezone=America/New_York
 
   db:
     image: mysql
