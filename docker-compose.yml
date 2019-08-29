@@ -17,7 +17,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: apple1
       MYSQL_DATABASE: web_dev
-      TZ: "US/Eastern"
+      TZ: "America/New_York"
 
   frontend:
     build: ./frontend

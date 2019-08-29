@@ -40,5 +40,9 @@ FROM rust:1.34
 # copy the build artifact from the build stage
 COPY --from=build /webdev_server/target/release/webdev_server /
 
+# set timezone
+ENV TZ=America/New_York
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 # set the startup command to run your binary
 CMD ["/webdev_server"]
