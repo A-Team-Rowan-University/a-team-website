@@ -1,0 +1,5 @@
+POST http://localhost:8000/users/2
+
+{"banner_id": 1234}
+
+###
