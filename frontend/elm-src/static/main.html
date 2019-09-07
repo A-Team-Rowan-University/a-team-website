@@ -1,0 +1,51 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>A-Team</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.5/css/bulma.css" integrity="sha256-ujE/ZUB6CMZmyJSgQjXGCF4sRRneOimQplBVLu8OU5w=" crossorigin="anonymous" />
+        <script src="https://apis.google.com/js/platform.js" async defer></script>
+        <meta name="google-signin-client_id" content="918184954544-jm1aufr31fi6sdjs1140p7p3rouaka14.apps.googleusercontent.com">
+        <script src="/static/main.js"></script>
+    </head>
+
+    <body>
+        <div id="elm"></div>
+        <script>
+            var app = Elm.Main.init({
+                node: document.getElementById('elm'),
+                flags: {},
+            });
+            console.log(app);
+
+            function onSignIn(googleUser) {
+                let profile = googleUser.getBasicProfile();
+                let auth = googleUser.getAuthResponse();
+                console.log('Name: ' + profile.getName());
+                console.log('Email: ' + profile.getEmail());
+                console.log('Token:\n' + auth.id_token);
+
+                let signed_in_user = {
+                    given_name: profile.getGivenName(),
+                    family_name: profile.getFamilyName(),
+                    email: profile.getEmail(),
+                    image_url: profile.getImageUrl(),
+                    id_token: auth.id_token,
+                    expires_in: auth.expires_in,
+                    first_issued_at: auth.first_issued_at,
+                    expires_at: auth.expires_at,
+                };
+
+                console.log(signed_in_user);
+
+                app.ports.signIn.send(signed_in_user)
+            }
+
+            app.ports.signOut.subscribe(function () {
+                console.log("Signing out");
+                var auth2 = gapi.auth2.getAuthInstance();
+                auth2.disconnect();
+            });
+        </script>
+    </body>
+</html>

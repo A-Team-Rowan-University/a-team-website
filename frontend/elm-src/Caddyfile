@@ -1,0 +1,4 @@
+localhost:3000/ {
+    rewrite not /static/.* /static/main.html
+    log stdout
+}
