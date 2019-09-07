@@ -1,6 +1,3 @@
-[submodule "resource-website-backend"]
-	path = backend/webdev_lib
-	url = https://github.com/A-Team-Rowan-University/resource-website-backend
 [submodule "frontend/elm-src"]
 	path = frontend/elm-src
 	url = https://github.com/A-Team-Rowan-University/resource-website-frontend
