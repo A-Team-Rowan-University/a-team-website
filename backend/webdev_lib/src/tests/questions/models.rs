@@ -42,6 +42,17 @@ pub struct NewQuestion {
     pub incorrect_answer_3: String,
 }
 
+#[derive(AsChangeset, Serialize, Deserialize, Debug)]
+#[table_name = "questions"]
+pub struct PartialQuestion {
+    pub title: Option<String>,
+    pub category_id: Option<u64>,
+    pub correct_answer: Option<String>,
+    pub incorrect_answer_1: Option<String>,
+    pub incorrect_answer_2: Option<String>,
+    pub incorrect_answer_3: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct QuestionList {
     pub questions: Vec<Question>,
@@ -75,6 +86,7 @@ pub struct ResponseQuestionList {
 
 pub enum QuestionRequest {
     GetQuestions,
+    UpdateQuestion(u64, PartialQuestion),
     CreateQuestion(NewRawQuestion),
     DeleteQuestion(u64),
 }
@@ -92,6 +104,14 @@ impl QuestionRequest {
                 let new_question: NewRawQuestion =
                     serde_json::from_reader(request_body)?;
                 Ok(QuestionRequest::CreateQuestion(new_question))
+            },
+
+            (PUT) (/{id: u64}) => {
+                let request_body = request.data()
+                    .ok_or(Error::new(ErrorKind::Body))?;
+                let partial_question: PartialQuestion =
+                    serde_json::from_reader(request_body)?;
+                Ok(QuestionRequest::UpdateQuestion(id, partial_question))
             },
 
             (DELETE) (/{id: u64}) => {
