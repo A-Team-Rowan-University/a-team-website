@@ -1,0 +1,36 @@
+matrix:
+  include:
+    - language: node_js
+      node_js:
+        - "11"
+      npm:
+        - "6"
+
+      install:
+        - echo 'do nothing'
+
+      before_script:
+        - npm install -g elm
+
+      script:
+        - cd frontend/elm-src
+        - elm make --docs=./elm.json src/Main.elm
+
+    - language: rust
+      script:
+        - cd backend/webdev_lib
+        - elm make --docs=./elm.json src/Main.elm
+        - cargo build --verbose --all
+        - cargo test --verbose --all
+        - cargo doc
+        - echo '<html><head><meta http-equiv="refresh" content="0; URL=./webdev_lib"><meta name="keywords" content="automatic redirection"></head></html>' > target/doc/index.html
+
+      deploy:
+        provider: pages
+        skip_cleanup: true
+        github_token: $GITHUB_TOKEN
+        keep-history: false
+        on:
+          branch: master
+
+        local_dir: target/doc
