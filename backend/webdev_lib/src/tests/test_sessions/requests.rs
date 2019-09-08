@@ -1,3 +1,6 @@
+use std::io::Read;
+use std::io::Cursor;
+
 use crate::diesel::NullableExpressionMethods;
 use diesel;
 use diesel::mysql::MysqlConnection;
@@ -8,6 +11,18 @@ use diesel::RunQueryDsl;
 
 use chrono::offset::Local;
 use chrono::offset::TimeZone;
+
+use reqwest;
+use image::png::PNGDecoder;
+use image::ImageDecoder;
+use image::ImageBuffer;
+use image::GenericImage;
+use image::ImageFormat;
+use image::ImageOutputFormat;
+use image::Rgba;
+
+use rusttype::Font;
+use rusttype::Scale;
 
 use rand::seq::SliceRandom;
 
@@ -35,10 +50,14 @@ use crate::tests::question_categories::requests::get_question_category;
 
 use crate::tests::tests::requests::get_test;
 
+use crate::users::requests::get_user;
+
 use crate::tests::test_sessions::schema::test_session_registrations as test_session_registrations_schema;
 use crate::tests::test_sessions::schema::test_sessions as test_sessions_schema;
 
 use crate::tests::questions::schema::questions as questions_schema;
+
+static FONT_DATA: &[u8] = include_bytes!("../../FiraSans-Regular.ttf");
 
 pub fn handle_test_session(
     request: TestSessionRequest,
@@ -60,7 +79,7 @@ pub fn handle_test_session(
             requested_user,
             database_connection,
         )
-        .map(|_| TestSessionResponse::NoResponse),
+        .map(|u| TestSessionResponse::TestSessionRegistration(u)),
         TestSessionRequest::GetTestSessions(test_id) => {
             check_to_run(requested_user, "GetTestSessions", database_connection)?;
             get_test_sessions(test_id, database_connection)
@@ -70,6 +89,11 @@ pub fn handle_test_session(
             check_to_run(requested_user, "GetTestSessions", database_connection)?;
             get_test_session(id, database_connection)
                 .map(|u| TestSessionResponse::OneTestSession(u))
+        }
+        TestSessionRequest::Certificate(id) => {
+            //check_to_run(requested_user, "GetTestSessions", database_connection)?;
+            generate_certificate(id, database_connection)
+                .map(|u| TestSessionResponse::Image(u))
         }
         TestSessionRequest::CreateTestSession(test_session) => {
             check_to_run(requested_user, "CreateTestSessions", database_connection)?;
@@ -85,6 +109,78 @@ pub fn handle_test_session(
             check_to_run(requested_user, "DeleteTestSessions", database_connection)?;
             delete_test_session(id, database_connection).map(|_| TestSessionResponse::NoResponse)
         }
+    }
+}
+
+
+pub(crate) fn generate_certificate(
+    registration_id : u64,
+    database_connection: &MysqlConnection,
+) -> Result<Vec<u8>, Error> {
+    let mut registrations = test_session_registrations_schema::table
+        .filter(test_session_registrations_schema::id.eq(registration_id))
+        .load::<RawTestSessionRegistration>(database_connection)?;
+
+    let registration = match registrations.pop() {
+        Some(registration) => registration,
+        None => return Err(Error::new(ErrorKind::Database)),
+    };
+
+    if let (Some(completion_date), Some(score)) = (registration.submitted_test, registration.score) {
+        let user  = get_user(registration.taker_id, database_connection)?;
+
+        trace!("Fetching certificate template");
+        let mut certificate_response = reqwest::get("http://frontend/static/safety_certificate_template.png")?;
+
+        trace!("Reading image");
+        let mut bytes = Vec::new();
+        certificate_response.read_to_end(&mut bytes)?;
+        let mut image = image::load_from_memory(&bytes)?;
+
+        let font = Font::from_bytes(FONT_DATA as &[u8])?;
+        let scale = Scale::uniform(177.0);
+
+        let glyphs: Vec<_> = font.layout(
+            &format!("{} {}", user.first_name, user.last_name),
+            scale,
+            rusttype::point(3015.0, 3480.0)
+        ).chain(font.layout(
+            &format!("{:09}", user.banner_id),
+            scale,
+            rusttype::point(3015.0, 3834.0)
+        )).chain(font.layout(
+            &format!("{}", user.email),
+            scale,
+            rusttype::point(3015.0, 4188.0)
+        )).chain(font.layout(
+            &format!("{}", completion_date.format("%m/%d/%Y  %I:%M%P")),
+            scale,
+            rusttype::point(3015.0, 4543.0)
+        )).chain(font.layout(
+            &format!("{:.2}%", score * 100.0),
+            scale,
+            rusttype::point(3015.0, 5606.0)
+        )).collect();
+
+        for glyph in glyphs {
+            if let Some(bounding_box) = glyph.pixel_bounding_box() {
+                glyph.draw(|x, y, v| {
+                    let v = 255 - ((v * 255.0) as u8);
+                    image.put_pixel(
+                        x + bounding_box.min.x as u32,
+                        y + bounding_box.min.y as u32,
+                        Rgba([v, v, v, 255])
+                    )
+                });
+            }
+        }
+
+        trace!("Writing image");
+        let mut outbuf = Cursor::new(Vec::new());
+        image.write_to(&mut outbuf, ImageOutputFormat::PNG)?;
+        Ok(outbuf.into_inner())
+    } else {
+        Err(Error::new(ErrorKind::TestNotSubmitted))
     }
 }
 
@@ -294,7 +390,7 @@ pub(crate) fn submit(
     response_questions: ResponseQuestionList,
     requested_user: Option<u64>,
     database_connection: &MysqlConnection,
-) -> Result<(), Error> {
+) -> Result<TestSessionRegistration, Error> {
     if let Some(user_id) = requested_user {
         let test_session = get_test_session(test_session_id, database_connection)?;
         if test_session.submissions_enabled {
@@ -336,8 +432,6 @@ pub(crate) fn submit(
 
                 let score = n_correct as f32 / n_questions as f32;
 
-                trace!("Score: {}", score);
-
                 let partial_raw_test_session_registration = PartialRawTestSessionRegistration {
                     taker_id: None,
                     registered: None,
@@ -360,7 +454,55 @@ pub(crate) fn submit(
                     .set(&partial_raw_test_session_registration)
                     .execute(database_connection)?;
 
-                Ok(())
+                let mut registrations = test_session_registrations_schema::table
+                    .filter(test_session_registrations_schema::id.eq(existing_open_registrations[0].id))
+                    .load::<RawTestSessionRegistration>(database_connection)?;
+
+                if let Some(inserted_test_session_registration) = registrations.pop() {
+                    let registered = match Local.from_local_datetime(&inserted_test_session_registration.registered).earliest() {
+                        Some(registered) => registered,
+                        None => {
+                            error!(
+                                "Could not create a datetime from the database! {:?}",
+                                inserted_test_session_registration.registered
+                            );
+
+                            return Err(Error::new(ErrorKind::Database));
+                        }
+                    };
+
+                    let opened_test = inserted_test_session_registration.opened_test
+                        .map(|t| match Local.from_local_datetime(&t).earliest() {
+                            Some(opened) => Ok(opened),
+                            None => {
+                                error!("Could not create a datatime from the database! {:?}", t);
+
+                                Err(Error::new(ErrorKind::Database))
+                            }
+                        })
+                    .transpose()?;
+
+                    let submitted_test = inserted_test_session_registration.submitted_test
+                        .map(|t| match Local.from_local_datetime(&t).earliest() {
+                            Some(submitted_test) => Ok(submitted_test),
+                            None => {
+                                error!("Could not create a datatime from the database! {:?}", t);
+
+                                Err(Error::new(ErrorKind::Database))
+                            }
+                        })
+                    .transpose()?;
+                    Ok(TestSessionRegistration {
+                        id: inserted_test_session_registration.id,
+                        taker_id: inserted_test_session_registration.taker_id,
+                        registered: registered,
+                        opened_test: opened_test,
+                        submitted_test: submitted_test,
+                        score: inserted_test_session_registration.score,
+                    })
+                } else {
+                    Err(Error::new(ErrorKind::Database))
+                }
             } else {
                 Err(Error::new(ErrorKind::OpenedTestTwice))
             }
