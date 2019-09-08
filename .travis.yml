@@ -19,7 +19,6 @@ matrix:
     - language: rust
       script:
         - cd backend/webdev_lib
-        - elm make --docs=./elm.json src/Main.elm
         - cargo build --verbose --all
         - cargo test --verbose --all
         - cargo doc
