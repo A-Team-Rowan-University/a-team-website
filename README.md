@@ -1,4 +1,4 @@
-# resource-website [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/resource-website.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/resource-website)
+# resource-website [![Build Status](https://api.travis-ci.org/A-Team-Rowan-University/a-team-website.svg?branch=master)](https://travis-ci.org/A-Team-Rowan-University/a-team-website)
 
 The central server used for managing the databases of the ECE Apprengineering Team at Rowan University.
 
