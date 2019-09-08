@@ -1,6 +1,6 @@
 0.0.0.0:80
 
-rewrite not /(static|api)/.* /static/main.html
+rewrite not /(static|api)/.* /static/main.html /static/safety_certificates /static/safety_certificates/signature.pdf_tex /static/safety_certificates/rowan_logo.png /static/safety_certificates/safety_certificate.tex /static/safety_certificates/output /static/safety_certificates/output/safety_certificate.pdf /static/safety_certificates/signature.pdf
 log stdout
 
 proxy /api/v1 http://api:8000 {

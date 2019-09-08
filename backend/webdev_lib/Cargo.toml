@@ -22,6 +22,7 @@ r2d2 = "0.8.4"
 reqwest = "0.9.20"
 image = "0.22.1"
 rusttype = "0.7.7"
+tectonic = "0.1.11"
 
 [[bin]]
 name = "csv_user_import"
