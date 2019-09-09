@@ -83,7 +83,7 @@ pub fn handle_test_session(
         TestSessionRequest::Certificate(id) => {
             //check_to_run(requested_user, "GetTestSessions", database_connection)?;
             generate_certificate(id, database_connection)
-                .map(|u| TestSessionResponse::Image(u))
+                .map(|u| TestSessionResponse::Pdf(u))
         }
         TestSessionRequest::CreateTestSession(test_session) => {
             check_to_run(requested_user, "CreateTestSessions", database_connection)?;
@@ -132,7 +132,7 @@ pub(crate) fn generate_certificate(
         let mut signature_pdf_tex = reqwest::get("http://frontend/static/safety_certificates/signature.pdf_tex")?.text()?;
 
         trace!("Writing pdf");
-        let pdf_data: Vec<u8> = tectonic::latex_to_pdf(certificate_template_response).expect("processing failed");
+        let pdf_data: Vec<u8> = tectonic::latex_to_pdf(certificate_template_response)?;
         Ok(pdf_data)
     } else {
         Err(Error::new(ErrorKind::TestNotSubmitted))
