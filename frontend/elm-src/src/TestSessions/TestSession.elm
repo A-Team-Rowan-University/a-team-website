@@ -23,6 +23,11 @@ url id =
     B.relative [ apiUrl, "test_sessions", String.fromInt id ] []
 
 
+urlUnregister : Id -> User.Id -> String
+urlUnregister id user =
+    B.relative [ apiUrl, "test_sessions", String.fromInt id, "unregister", String.fromInt user ] []
+
+
 type alias Id =
     Int
 
@@ -73,6 +78,8 @@ type Msg
     | Opening Bool
     | Submissions Bool
     | Submitted (Result Errors.Error ())
+    | Unregister User.Id
+    | Unregistered User.Id (Result Errors.Error ())
 
 
 update : String -> Msg -> Id -> Response () Msg
@@ -173,8 +180,48 @@ update id_token msg session_id =
                     , errors = [ e ]
                     }
 
+        Unregister user_id ->
+            { state = ()
+            , cmd =
+                Http.request
+                    { method = "POST"
+                    , headers = [ Http.header "id_token" id_token ]
+                    , url = urlUnregister session_id user_id
+                    , body = Http.emptyBody
+                    , expect = Errors.expectWhateverWithError (Unregistered user_id)
+                    , timeout = Nothing
+                    , tracker = Just (urlUnregister session_id user_id)
+                    }
+            , requests = [ AddRequest (urlUnregister session_id user_id) ]
+            , reload = False
+            , done = False
+            , errors = []
+            }
 
-viewRegistration : Maybe Time.Zone -> Dict User.Id User.User -> Registration -> Html msg
+        Unregistered user_id result ->
+            case result of
+                Ok _ ->
+                    { state = ()
+                    , cmd = Cmd.none
+                    , requests =
+                        [ RemoveRequest (urlUnregister session_id user_id) ]
+                    , reload = True
+                    , done = False
+                    , errors = []
+                    }
+
+                Err e ->
+                    { state = ()
+                    , cmd = Cmd.none
+                    , requests =
+                        [ RemoveRequest (urlUnregister session_id user_id) ]
+                    , reload = False
+                    , done = False
+                    , errors = [ e ]
+                    }
+
+
+viewRegistration : Maybe Time.Zone -> Dict User.Id User.User -> Registration -> Html Msg
 viewRegistration timezone users registration =
     div [ class "box" ]
         [ div [ class "columns" ]
@@ -189,7 +236,7 @@ viewRegistration timezone users registration =
                     )
                 ]
             , div [ class "column" ]
-                [ button [ class "button is-danger is-pulled-right" ] [ text "Remove" ] ]
+                [ button [ class "button is-danger is-pulled-right", onClick (Unregister registration.taker_id) ] [ text "Remove" ] ]
             ]
         , div [ class "columns" ]
             [ div [ class "column" ]
@@ -236,7 +283,7 @@ viewRegistrations :
     Maybe Time.Zone
     -> Dict User.Id User.User
     -> List Registration
-    -> Html msg
+    -> Html Msg
 viewRegistrations timezone users registrations =
     div []
         [ p [ class "subtitle has-text-centered" ] [ text "Registrations" ]
