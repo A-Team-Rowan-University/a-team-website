@@ -5,12 +5,12 @@ The central server used for managing the databases of the ECE Apprengineering Te
 ## Usage
 First, clone this repo:
 ```
-git clone https://github.com/A-Team-Rowan-University/a-team-website`
+git clone https://github.com/A-Team-Rowan-University/a-team-website
 ```
 
 Then, cd to it
 ```
-cd resource-website
+cd a-team-website
 ```
 
 Build the images with
