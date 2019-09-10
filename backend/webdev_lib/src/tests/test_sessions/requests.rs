@@ -69,10 +69,6 @@ pub fn handle_test_session(
             register(test_session_id, requested_user, database_connection)
                 .map(|_| TestSessionResponse::NoResponse)
         }
-        TestSessionRequest::Unregister(test_session_id, option_user_id) => {
-            unregister(test_session_id, option_user_id.or(requested_user), database_connection)
-                .map(|_| TestSessionResponse::NoResponse)
-        }
         TestSessionRequest::Open(test_session_id) => {
             open(test_session_id, requested_user, database_connection)
                 .map(|u| TestSessionResponse::AnonymousQuestions(u))
@@ -278,31 +274,6 @@ pub(crate) fn register(
         }
     } else {
         Err(Error::new(ErrorKind::RegistrationClosedForTest))
-    }
-}
-
-// UnRegistration Requirements
-//
-// Are registered
-// Have not submitted test
-//
-
-pub(crate) fn unregister(
-    test_session_id: u64,
-    requested_user: Option<u64>,
-    database_connection: &MysqlConnection,
-) -> Result<(), Error> {
-    if let Some(user_id) = requested_user {
-        diesel::delete(test_session_registrations_schema::table
-            .filter(
-                test_session_registrations_schema::test_session_id.eq(test_session_id)
-                .and(test_session_registrations_schema::taker_id.eq(user_id))
-                .and(test_session_registrations_schema::submitted_test.is_null())
-            ))
-            .execute(database_connection)?;
-        Ok(())
-    } else {
-        Err(Error::new(ErrorKind::PermissionDenied))
     }
 }
 

@@ -26,11 +26,6 @@ urlRegister id =
     B.relative [ apiUrl, "test_sessions", String.fromInt id, "register" ] []
 
 
-urlUnregister : Id -> User.Id -> String
-urlUnregister id user =
-    B.relative [ apiUrl, "test_sessions", String.fromInt id, "unregister", String.fromInt user ] []
-
-
 type alias State =
     { new_test_session : Maybe ( String, Int ) }
 
@@ -46,8 +41,6 @@ type Msg
     | SubmittedNewTestSession (Result Errors.Error ())
     | Register Id
     | Registered Id (Result Errors.Error ())
-    | Unregister Id User.Id
-    | Unregistered Id User.Id (Result Errors.Error ())
 
 
 update : String -> State -> Msg -> Response State Msg
@@ -150,46 +143,6 @@ update id_token state msg =
                     , errors = [ e ]
                     }
 
-        Unregister session_id user_id ->
-            { state = state
-            , cmd =
-                Http.request
-                    { method = "POST"
-                    , headers = [ Http.header "id_token" id_token ]
-                    , url = urlUnregister session_id user_id
-                    , body = Http.emptyBody
-                    , expect = Errors.expectWhateverWithError (Unregistered session_id user_id)
-                    , timeout = Nothing
-                    , tracker = Just (urlUnregister session_id user_id)
-                    }
-            , requests = [ AddRequest (urlUnregister session_id user_id) ]
-            , reload = False
-            , done = False
-            , errors = []
-            }
-
-        Unregistered session_id user_id result ->
-            case result of
-                Ok _ ->
-                    { state = state
-                    , cmd = Cmd.none
-                    , requests =
-                        [ RemoveRequest (urlUnregister session_id user_id) ]
-                    , reload = True
-                    , done = False
-                    , errors = []
-                    }
-
-                Err e ->
-                    { state = state
-                    , cmd = Cmd.none
-                    , requests =
-                        [ RemoveRequest (urlUnregister session_id user_id) ]
-                    , reload = False
-                    , done = False
-                    , errors = [ e ]
-                    }
-
 
 viewTestSession : User.Id -> Session -> Html Msg
 viewTestSession userid testsession =
@@ -208,16 +161,12 @@ viewTestSession userid testsession =
                     [ text "Closed" ]
 
                 ( True, _, Nothing ) ->
-                    if Maybe.map (\r -> List.length testsession.registrations < r) testsession.max_registrations |> Maybe.withDefault False then
-                        [ button
-                            [ class "button is-primary"
-                            , onClick (Register testsession.id)
-                            ]
-                            [ text "Register" ]
+                    [ button
+                        [ class "button is-primary"
+                        , onClick (Register testsession.id)
                         ]
-
-                    else
-                        [ text "Full" ]
+                        [ text "Register" ]
+                    ]
 
                 ( _, False, Just Nothing ) ->
                     [ text "Registered" ]
@@ -236,14 +185,6 @@ viewTestSession userid testsession =
                             String.fromFloat (score * 100)
                     in
                     [ text ("Taken (" ++ (String.split "." s |> List.head |> Maybe.withDefault s) ++ "%)") ]
-
-        unreigster =
-            case registered of
-                Just Nothing ->
-                    [ button [ class "button is-danger", onClick (Unregister testsession.id userid) ] [ text "Unregister" ] ]
-
-                _ ->
-                    []
     in
     div
         [ class "box" ]
@@ -270,7 +211,7 @@ viewTestSession userid testsession =
                         ++ " registrations"
                     )
                 ]
-            , span [ class "column" ] [ span [ class "is-pulled-right" ] (action ++ unreigster) ]
+            , span [ class "column" ] [ span [ class "is-pulled-right" ] action ]
             ]
         ]
 

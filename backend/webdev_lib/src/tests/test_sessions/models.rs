@@ -130,7 +130,6 @@ pub enum TestSessionRequest {
     UpdateTestSession(u64, PartialTestSession),
     DeleteTestSession(u64),
     Register(u64),
-    Unregister(u64, Option<u64>),
     Open(u64),
     Submit(u64, ResponseQuestionList),
     Certificate(u64),
@@ -163,14 +162,6 @@ impl TestSessionRequest {
 
             (POST) (/{id: u64}/register) => {
                 Ok(TestSessionRequest::Register(id))
-            },
-
-            (POST) (/{test_session_id: u64}/unregister) => {
-                Ok(TestSessionRequest::Unregister(test_session_id, None))
-            },
-
-            (POST) (/{test_session_id: u64}/unregister/{user_id: u64}) => {
-                Ok(TestSessionRequest::Unregister(test_session_id, Some(user_id)))
             },
 
             (GET) (/{id: u64}/open) => {
