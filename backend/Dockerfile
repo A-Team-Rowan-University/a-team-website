@@ -1,5 +1,5 @@
 # select build image
-FROM rust:1.34 as build
+FROM rust:1.37 as build
 
 # create a new empty shell project
 RUN USER=root cargo new --bin webdev_server
@@ -35,7 +35,7 @@ RUN rm ./target/release/deps/webdev_server*
 RUN cargo build --release
 
 # our final base
-FROM rust:1.34
+FROM rust:1.37
 
 # copy the build artifact from the build stage
 COPY --from=build /webdev_server/target/release/webdev_server /
