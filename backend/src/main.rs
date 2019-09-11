@@ -119,7 +119,7 @@ fn main() {
             "Handling request {} {} from {}",
             request.method(),
             request.raw_url(),
-            request.remote_addr()
+            request.remote_addr(),
         );
 
         if request.method() == "OPTIONS" {

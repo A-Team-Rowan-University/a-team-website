@@ -216,8 +216,6 @@ pub(crate) fn register(
             // Only care about sessions with the currect test id
             let test_sessions: Vec<_> = test_sessions.into_iter().filter(|s| s.test_id == test_session.test_id).collect();
 
-            trace!("test sessions: {:#?}", test_sessions);
-
             // Fail if registrations not enabled
             if !test_session.registrations_enabled {
                 trace!("Registration failed because registration is not renabled for test session: {:#?}", test_session);
@@ -325,12 +323,6 @@ pub(crate) fn open(
                         ),
                 )
                 .load::<RawTestSessionRegistration>(database_connection)?;
-
-            trace!(
-                "Open test registrations for user {}: {:#?}",
-                user_id,
-                existing_open_registrations
-            );
 
             if existing_open_registrations.len() == 1 {
                 let test_session = get_test_session(test_session_id, database_connection)?;
@@ -658,8 +650,6 @@ pub(crate) fn get_test_sessions(
 
     let joined_test_sessions = query.load::<JoinedTestSession>(database_connection)?;
 
-    trace!("Joined Test Sessions: {:#?}", joined_test_sessions);
-
     let test_sessions = condense_join(joined_test_sessions)?;
 
     Ok(TestSessionList {
@@ -696,8 +686,6 @@ pub(crate) fn get_test_session(
         ))
         .filter(test_sessions_schema::id.eq(id))
         .load::<JoinedTestSession>(database_connection)?;
-
-    trace!("Joined Test Sessions: {:#?}", joined_test_sessions);
 
     let mut test_sessions = condense_join(joined_test_sessions)?;
 
