@@ -231,12 +231,12 @@ viewAnswer id answer response =
     let
         btnclass =
             if Just answer == response then
-                class "button is-fullwidth is-primary"
+                class "box is-fullwidth has-background-primary"
 
             else
-                class "button is-fullwidth"
+                class "box is-fullwidth"
     in
-    button [ btnclass, onClick (ResponseClicked id answer) ] [ text answer ]
+    div [ btnclass, onClick (ResponseClicked id answer) ] [ text answer ]
 
 
 viewQuestion : ( AnonymousQuestion, Maybe String ) -> Html Msg
