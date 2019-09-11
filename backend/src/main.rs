@@ -76,9 +76,14 @@ pub fn init_database(
 fn main() {
     dotenv().ok();
 
+    let logging_config = simplelog::ConfigBuilder::new()
+        .add_filter_ignore("hyper".to_string())
+        .add_filter_ignore("rustls".to_string())
+        .build();
+
     simplelog::SimpleLogger::init(
         simplelog::LevelFilter::Trace,
-        simplelog::Config::default(),
+        logging_config,
     )
     .unwrap();
 
@@ -114,7 +119,7 @@ fn main() {
             "Handling request {} {} from {}",
             request.method(),
             request.raw_url(),
-            request.remote_addr()
+            request.remote_addr(),
         );
 
         if request.method() == "OPTIONS" {
