@@ -255,7 +255,10 @@ viewSubmitted registration =
     case registration.score of
         Just score ->
             div []
-                [ p [] [ text ("You got a score of " ++ String.fromFloat (score * 100.0) ++ "%") ]
+                [ p []
+                    [ text
+                        ("You got a score of " ++ (String.fromFloat (toFloat (round (score * 10000.0)) / 100.0) ++ "%"))
+                    ]
                 , if score >= 0.8 then
                     a
                         [ class "button"
