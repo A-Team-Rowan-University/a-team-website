@@ -256,27 +256,16 @@ viewSubmitted registration =
         Just score ->
             div []
                 [ p []
-                    [ text
-                        ("You got a score of " ++ (String.fromFloat (toFloat (round (score * 10000.0)) / 100.0) ++ "%"))
-                    ]
-                , if score >= 0.8 then
-                    a
-                        [ class "button"
-                        , href
-                            (B.relative
-                                [ apiUrl
-                                , "test_sessions"
-                                , "certificates"
-                                , String.fromInt registration.id
-                                ]
-                                []
-                            )
-                        , download "certificate.png"
+                    [ p []
+                        [ text
+                            ("You got a score of " ++ (String.fromFloat (toFloat (round (score * 10000.0)) / 100.0) ++ "%"))
                         ]
-                        [ text "Download certificate" ]
+                    , if score >= 0.8 then
+                        p [] [ text "You have passed the test" ]
 
-                  else
-                    div [] []
+                      else
+                        p [] [ text "You have not passed the test" ]
+                    ]
                 ]
 
         Nothing ->
