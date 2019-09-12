@@ -260,12 +260,12 @@ viewSubmitted registration =
                         [ text
                             ("You got a score of " ++ (String.fromFloat (toFloat (round (score * 10000.0)) / 100.0) ++ "%"))
                         ]
-                    ]
-                , if score >= 0.8 then
-                    [ p [] [ text "You have passed the test" ] ]
+                    , if score >= 0.8 then
+                        p [] [ text "You have passed the test" ]
 
-                  else
-                    [ p [] [ text "You have not passed the test" ] ]
+                      else
+                        p [] [ text "You have not passed the test" ]
+                    ]
                 ]
 
         Nothing ->
