@@ -231,12 +231,12 @@ viewAnswer id answer response =
     let
         btnclass =
             if Just answer == response then
-                class "button is-fullwidth is-primary"
+                class "box is-fullwidth has-background-primary"
 
             else
-                class "button is-fullwidth"
+                class "box is-fullwidth"
     in
-    button [ btnclass, onClick (ResponseClicked id answer) ] [ text answer ]
+    div [ btnclass, onClick (ResponseClicked id answer) ] [ text answer ]
 
 
 viewQuestion : ( AnonymousQuestion, Maybe String ) -> Html Msg
@@ -255,7 +255,10 @@ viewSubmitted registration =
     case registration.score of
         Just score ->
             div []
-                [ p [] [ text ("You got a score of " ++ String.fromFloat (score * 100.0) ++ "%") ]
+                [ p []
+                    [ text
+                        ("You got a score of " ++ (String.fromFloat (toFloat (round (score * 10000.0)) / 100.0) ++ "%"))
+                    ]
                 , if score >= 0.8 then
                     a
                         [ class "button"
