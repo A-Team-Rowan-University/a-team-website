@@ -32,4 +32,4 @@ matrix:
         on:
           branch: master
 
-        local_dir: target/doc
+        local_dir: backend/webdev_lib/target/doc
