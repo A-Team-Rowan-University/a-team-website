@@ -977,7 +977,7 @@ viewPage model =
                     p [] [ text "Category not found" ]
 
         Home ->
-            h1 [] [ text "Welcome to the A-Team!" ]
+            h1 [] [ text "Welcome to the A-Team Website! Please sign in!" ]
 
         NotFound ->
             h1 [] [ text "Page not found!" ]
