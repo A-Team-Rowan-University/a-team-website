@@ -26,9 +26,9 @@ urlRegister id =
     B.relative [ apiUrl, "test_sessions", String.fromInt id, "register" ] []
 
 
-urlUnregister : Id -> User.Id -> String
-urlUnregister id user =
-    B.relative [ apiUrl, "test_sessions", String.fromInt id, "unregister", String.fromInt user ] []
+urlUnregister : Id -> String
+urlUnregister id =
+    B.relative [ apiUrl, "test_sessions", String.fromInt id, "unregister" ] []
 
 
 type alias State =
@@ -46,8 +46,8 @@ type Msg
     | SubmittedNewTestSession (Result Errors.Error ())
     | Register Id
     | Registered Id (Result Errors.Error ())
-    | Unregister Id User.Id
-    | Unregistered Id User.Id (Result Errors.Error ())
+    | Unregister Id
+    | Unregistered Id (Result Errors.Error ())
 
 
 update : String -> State -> Msg -> Response State Msg
@@ -150,31 +150,31 @@ update id_token state msg =
                     , errors = [ e ]
                     }
 
-        Unregister session_id user_id ->
+        Unregister session_id ->
             { state = state
             , cmd =
                 Http.request
                     { method = "POST"
                     , headers = [ Http.header "id_token" id_token ]
-                    , url = urlUnregister session_id user_id
+                    , url = urlUnregister session_id
                     , body = Http.emptyBody
-                    , expect = Errors.expectWhateverWithError (Unregistered session_id user_id)
+                    , expect = Errors.expectWhateverWithError (Unregistered session_id)
                     , timeout = Nothing
-                    , tracker = Just (urlUnregister session_id user_id)
+                    , tracker = Just (urlUnregister session_id)
                     }
-            , requests = [ AddRequest (urlUnregister session_id user_id) ]
+            , requests = [ AddRequest (urlUnregister session_id) ]
             , reload = False
             , done = False
             , errors = []
             }
 
-        Unregistered session_id user_id result ->
+        Unregistered session_id result ->
             case result of
                 Ok _ ->
                     { state = state
                     , cmd = Cmd.none
                     , requests =
-                        [ RemoveRequest (urlUnregister session_id user_id) ]
+                        [ RemoveRequest (urlUnregister session_id) ]
                     , reload = True
                     , done = False
                     , errors = []
@@ -184,7 +184,7 @@ update id_token state msg =
                     { state = state
                     , cmd = Cmd.none
                     , requests =
-                        [ RemoveRequest (urlUnregister session_id user_id) ]
+                        [ RemoveRequest (urlUnregister session_id) ]
                     , reload = False
                     , done = False
                     , errors = [ e ]
@@ -240,7 +240,7 @@ viewTestSession userid testsession =
         unreigster =
             case registered of
                 Just Nothing ->
-                    [ button [ class "button is-danger", onClick (Unregister testsession.id userid) ] [ text "Unregister" ] ]
+                    [ button [ class "button is-danger", onClick (Unregister testsession.id) ] [ text "Unregister" ] ]
 
                 _ ->
                     []
