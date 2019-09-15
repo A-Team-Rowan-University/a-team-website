@@ -240,7 +240,7 @@ viewTestSession userid testsession =
         unreigster =
             case registered of
                 Just Nothing ->
-                    [ button [ class "button is-danger", onClick (Unregister testsession.id userid) ] [ text "Unregister" ] ]
+                    [ button [ class "button is-danger", onClick (Unregister testsession.id userid) ] [ text "Unregister1" ] ]
 
                 _ ->
                     []
