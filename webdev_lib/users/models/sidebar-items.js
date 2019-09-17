@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["UserRequest",""],["UserResponse",""]],"struct":[["JoinedUser",""],["NewRawUser",""],["NewUser",""],["PartialUser",""],["RawUser",""],["SearchUser",""],["User",""],["UserList",""]]});

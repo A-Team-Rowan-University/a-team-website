@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["category_id",""],["correct_answer",""],["id",""],["incorrect_answer_1",""],["incorrect_answer_2",""],["incorrect_answer_3",""],["star","Represents `table_name.*`, which is sometimes needed for efficient count queries. It cannot be used in place of `all_columns`, and has a `SqlType` of `()` to prevent it being used that way"],["title",""]]});

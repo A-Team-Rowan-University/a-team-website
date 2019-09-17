@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["TestRequest",""],["TestResponse",""]],"struct":[["JoinedTest",""],["NewRawTest",""],["NewTest",""],["RawTest",""],["RawTestQuestionCategory",""],["Test",""],["TestList",""],["TestQuestionCategory",""]]});

@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["QuestionCategoryRequest",""],["QuestionCategoryResponse",""]],"struct":[["JoinedQuestionCategory",""],["NewQuestionCategory",""],["NewRawQuestionCategory",""],["QuestionCategory",""],["QuestionCategoryList",""],["RawQuestionCategory",""]]});

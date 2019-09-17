@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["NullableSearch","Search fo a field that can be null"],["Search","Search for a field that cannot be null"],["SearchParseError",""]]});
