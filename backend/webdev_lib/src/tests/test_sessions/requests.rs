@@ -70,6 +70,9 @@ pub fn handle_test_session(
                 .map(|_| TestSessionResponse::NoResponse)
         }
         TestSessionRequest::Unregister(test_session_id, option_user_id) => {
+            if option_user_id.is_some() {
+                check_to_run(requested_user, "UpdateTestSessions", database_connection)?;
+            }
             unregister(test_session_id, option_user_id.or(requested_user), database_connection)
                 .map(|_| TestSessionResponse::NoResponse)
         }
