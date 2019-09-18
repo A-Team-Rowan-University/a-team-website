@@ -46,12 +46,12 @@ display error =
             }
 
         NotLoggedIn ->
-            { title = "Not logged in"
-            , description = "You must be logged in"
+            { title = "Not Logged In"
+            , description = "Use Rowan Email to Sign-in"
             }
 
         Permission permission ->
-            { title = "Permission Denied!"
+            { title = "We are Sorry!"
             , description = "You do not have permission to " ++ permission
             }
 
@@ -102,7 +102,7 @@ display error =
             , description =
                 """
                 The server responded incorrectly.
-                Please report this error.
+                Please report this error. Thank you for bringing this to our attention!
                 """ ++ e
             }
 
@@ -113,7 +113,7 @@ display error =
 
         TestNotComplete ->
             { title = "Answer all the questions!"
-            , description = "You may not submit the test until all the questions are answered"
+            , description = "Test will not be submitted until all the questions are answered"
             }
 
 
