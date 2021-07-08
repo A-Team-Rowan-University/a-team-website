@@ -218,7 +218,7 @@ pub enum TestSessionResponse {
     ManyTestSessions(TestSessionList),
     AnonymousQuestions(AnonymousQuestionList),
     TestSessionRegistration(TestSessionRegistration),
-    Image(Vec<u8>),
+    Pdf(Vec<u8>),
     NoResponse,
 }
 
@@ -237,8 +237,8 @@ impl TestSessionResponse {
             TestSessionResponse::AnonymousQuestions(questions) => {
                 rouille::Response::json(&questions)
             }
-            TestSessionResponse::Image(bytes) => {
-                rouille::Response::from_data("image/png", bytes)
+            TestSessionResponse::Pdf(bytes) => {
+                rouille::Response::from_data("application/pdf", bytes)
             }
             TestSessionResponse::NoResponse => rouille::Response::empty_204(),
         }

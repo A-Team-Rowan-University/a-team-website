@@ -13,16 +13,6 @@ use chrono::offset::Local;
 use chrono::offset::TimeZone;
 
 use reqwest;
-use image::png::PNGDecoder;
-use image::ImageDecoder;
-use image::ImageBuffer;
-use image::GenericImage;
-use image::ImageFormat;
-use image::ImageOutputFormat;
-use image::Rgba;
-
-use rusttype::Font;
-use rusttype::Scale;
 
 use rand::seq::SliceRandom;
 
@@ -100,7 +90,7 @@ pub fn handle_test_session(
         TestSessionRequest::Certificate(id) => {
             //check_to_run(requested_user, "GetTestSessions", database_connection)?;
             generate_certificate(id, database_connection)
-                .map(|u| TestSessionResponse::Image(u))
+                .map(|u| TestSessionResponse::Pdf(u))
         }
         TestSessionRequest::CreateTestSession(test_session) => {
             check_to_run(requested_user, "CreateTestSessions", database_connection)?;
@@ -137,55 +127,20 @@ pub(crate) fn generate_certificate(
         let user  = get_user(registration.taker_id, database_connection)?;
 
         trace!("Fetching certificate template");
-        let mut certificate_response = reqwest::get("http://frontend/static/safety_certificate_template.png")?;
+        let mut certificate_template_response = reqwest::get("http://frontend/static/safety_certificates/safety_certificates.tex")?.text()?;
 
-        trace!("Reading image");
-        let mut bytes = Vec::new();
-        certificate_response.read_to_end(&mut bytes)?;
-        let mut image = image::load_from_memory(&bytes)?;
+        trace!("Fetching rowan logo");
+        let mut rowan_logo_response = reqwest::get("http://frontend/static/safety_certificates/rowan_logo.png")?.text()?;
 
-        let font = Font::from_bytes(FONT_DATA as &[u8])?;
-        let scale = Scale::uniform(177.0);
+        trace!("Fetching signature.pdf");
+        let mut signature_pdf = reqwest::get("http://frontend/static/safety_certificates/signature.pdf")?.text()?;
 
-        let glyphs: Vec<_> = font.layout(
-            &format!("{} {}", user.first_name, user.last_name),
-            scale,
-            rusttype::point(3015.0, 3480.0)
-        ).chain(font.layout(
-            &format!("{:09}", user.banner_id),
-            scale,
-            rusttype::point(3015.0, 3834.0)
-        )).chain(font.layout(
-            &format!("{}", user.email),
-            scale,
-            rusttype::point(3015.0, 4188.0)
-        )).chain(font.layout(
-            &format!("{}", completion_date.format("%m/%d/%Y  %I:%M%P")),
-            scale,
-            rusttype::point(3015.0, 4543.0)
-        )).chain(font.layout(
-            &format!("{:.2}%", score * 100.0),
-            scale,
-            rusttype::point(3015.0, 5606.0)
-        )).collect();
+        trace!("Fetching signature.pdf_tex");
+        let mut signature_pdf_tex = reqwest::get("http://frontend/static/safety_certificates/signature.pdf_tex")?.text()?;
 
-        for glyph in glyphs {
-            if let Some(bounding_box) = glyph.pixel_bounding_box() {
-                glyph.draw(|x, y, v| {
-                    let v = 255 - ((v * 255.0) as u8);
-                    image.put_pixel(
-                        x + bounding_box.min.x as u32,
-                        y + bounding_box.min.y as u32,
-                        Rgba([v, v, v, 255])
-                    )
-                });
-            }
-        }
-
-        trace!("Writing image");
-        let mut outbuf = Cursor::new(Vec::new());
-        image.write_to(&mut outbuf, ImageOutputFormat::PNG)?;
-        Ok(outbuf.into_inner())
+        trace!("Writing pdf");
+        let pdf_data: Vec<u8> = tectonic::latex_to_pdf(certificate_template_response)?;
+        Ok(pdf_data)
     } else {
         Err(Error::new(ErrorKind::TestNotSubmitted))
     }

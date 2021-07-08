@@ -23,7 +23,7 @@ pub enum ErrorKind {
     SubmissionsClosedForTest,
     TestNotSubmitted,
     Network,
-    Image,
+    LaTeX,
     Font,
     Io,
     Unimplemented,
@@ -59,7 +59,7 @@ impl std::fmt::Display for Error {
             ErrorKind::OpeningClosedForTest => write!(f, "The test session is closed"),
             ErrorKind::TestNotSubmitted => write!(f, "The test was not submitted"),
             ErrorKind::Network => write!(f, "There was a network problem"),
-            ErrorKind::Image => write!(f, "There was an image problem"),
+            ErrorKind::LaTeX => write!(f, "There was an LaTeX problem"),
             ErrorKind::Io => write!(f, "There was an io problem"),
             ErrorKind::Font => write!(f, "There was a font problem"),
             ErrorKind::SubmissionsClosedForTest => {
@@ -115,6 +115,12 @@ impl From<r2d2::Error> for Error {
     }
 }
 
+impl From<tectonic::errors::Error> for Error {
+    fn from(e: tectonic::errors::Error) -> Error {
+        Error::with_source(ErrorKind::LaTeX, Box::new(e))
+    }
+}
+
 impl From<serde_json::Error> for Error {
     fn from(s: serde_json::Error) -> Error {
         Error::with_source(ErrorKind::Body, Box::new(s))
@@ -136,18 +142,6 @@ impl From<std::str::ParseBoolError> for Error {
 impl From<url::ParseError> for Error {
     fn from(s: url::ParseError) -> Error {
         Error::with_source(ErrorKind::Url, Box::new(s))
-    }
-}
-
-impl From<image::ImageError> for Error {
-    fn from(e: image::ImageError) -> Error {
-        Error::with_source(ErrorKind::Image, Box::new(e))
-    }
-}
-
-impl From<rusttype::Error> for Error {
-    fn from(e: rusttype::Error) -> Error {
-        Error::with_source(ErrorKind::Font, Box::new(e))
     }
 }
 
@@ -222,7 +216,7 @@ impl From<Error> for rouille::Response {
             ErrorKind::Network => {
                 rouille::Response::text(e.to_string()).with_status_code(501)
             }
-            ErrorKind::Image => {
+            ErrorKind::LaTeX => {
                 rouille::Response::text(e.to_string()).with_status_code(501)
             }
             ErrorKind::Font => {

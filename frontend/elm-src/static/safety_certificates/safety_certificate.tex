@@ -1,0 +1,79 @@
+\documentclass{article}
+
+\usepackage[top=1.75in,left=1in,bottom=1in,right=1in]{geometry}
+\usepackage{graphicx}
+\usepackage[absolute]{textpos}
+\usepackage{titling}
+
+\parindent0pt
+\raggedright
+\pagestyle{empty}
+\pagenumbering{gobble}
+
+% variables
+\def \name {}
+\def \banner {}
+\def \email {}
+\def \completionDate {}
+\def \expirationDate {}
+\def \minScore {}
+\def \score {}
+
+\title{\textbf{Common and ECE Lab Safety Training Certificate Completion
+    Report}\vspace{-9ex}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+{\renewcommand{\arraystretch}{2}
+  \begin{tabular}{r l}
+  \textbf{Name:                 } & \name\\
+  \textbf{Banner ID:            } & \banner\\
+  \textbf{Email:                } & \email\\
+  \textbf{Completion Date:      } & \completionDate\\
+  \textbf{Expiration Date:      } & \expirationDate\\
+  \textbf{Minimum Passing Score:} & \minScore\%\\
+  \textbf{Reported Score:       } & \score\%\\
+
+\end{tabular}
+}
+
+\vspace{3\baselineskip}
+
+\begin{Large}
+\textbf{Authorizing Signature}
+\end{Large}
+
+
+\begin{textblock*}{2in}[-0.0,-5.75](1.5in,1.33in)
+  \includegraphics[width=2in]{./signature.pdf}
+\end{textblock*}
+
+\vspace{5\baselineskip}
+Signature:\\
+\bigskip
+
+Name: Mario Leone\\
+Phone: 856-256-5337
+
+
+\begin{textblock*}{2.25in}[0.3066,0.30](1.5in,1.33in)
+  \includegraphics[width=2.25in]{./rowan_logo.png}
+\end{textblock*}
+
+% Add the footnote.
+\vfill
+{\normalsize\sffamily
+  \begin{flushright}
+    \textbf{Rev: 09-10-18\\[-0.1\baselineskip]}
+  \end{flushright}
+  \textbf{Henry M. Rowan College of Engineering – Electrical \& Computer Engineering Department}\\
+  Rowan University\\
+  201 Mullica Hill Road\\
+  Glassboro, NJ 08028-1701
+}
+
+\end{document}

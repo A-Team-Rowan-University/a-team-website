@@ -1,6 +1,10 @@
 # select build image
 FROM rust:1.37 as build
 
+# install system dependencies
+RUN apt-get -y update
+RUN apt-get -y install libfontconfig1-dev libgraphite2-dev libharfbuzz-dev libicu-dev libssl-dev zlib1g-dev
+
 # create a new empty shell project
 RUN USER=root cargo new --bin webdev_server
 WORKDIR /webdev_server
